@@ -10,6 +10,7 @@ class Config(Main):
             self.project_name   = ""
             self.verbosity      = -1
             self.goal           = ""
+            self.output_dir     = ""
 
     class Paths():
         def __init__(self):
@@ -97,6 +98,12 @@ class Config(Main):
                         else:
                             self.error("In config file, [general]:goal not recognized!")
                             
+                    if data[0] == "output_dir":
+                        self.general.output_dir = data[1]
+
+                        if not os.path.isdir(self.general.output_dir):
+                            self.error("Output directory not present")
+
                 # [paths] section
                 if cursor_location == "paths":
                     if data[0] == "bwa":

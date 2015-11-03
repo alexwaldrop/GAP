@@ -25,7 +25,7 @@ if config.general.goal == "align":
         
         aligner.threads = task.mincpus
         if aligner.to_stdout:
-            task.command = "%s > out.sam" % aligner.getCommand()
+            task.command = "%s > %s/out.sam" % (aligner.getCommand(), config.general.output_dir)
         else:
             task.command = aligner.getCommand()
 
