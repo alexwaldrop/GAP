@@ -11,6 +11,7 @@ class Config(Main):
             self.verbosity      = -1
             self.goal           = ""
             self.output_dir     = ""
+            self.temp_dir       = ""
 
     class Paths():
         def __init__(self):
@@ -103,6 +104,12 @@ class Config(Main):
 
                         if not os.path.isdir(self.general.output_dir):
                             self.error("Output directory not present")
+
+                    if data[0] == "temp_dir":
+                        self.general.temp_dir = data[1]
+
+                        if not os.path.isdir(self.general.temp_dir):
+                            self.error("Temporary directory not present")
 
                 # [paths] section
                 if cursor_location == "paths":
