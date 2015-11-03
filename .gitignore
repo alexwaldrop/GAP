@@ -1,5 +1,6 @@
 # project-specific
 editor.vim
+GAP.config
 
 # sphinx
 docs/build/
