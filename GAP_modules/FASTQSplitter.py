@@ -1,4 +1,5 @@
 from GAP_interfaces import Main
+import os
 
 class FASTQSplitter(Main):
 
@@ -55,3 +56,8 @@ class FASTQSplitter(Main):
         self.message("Splitting FASTQ file has been completed.")
 
         return split_count
+
+    def validate(self):
+        
+        if not os.path.isfile(self.file_path):
+            self.error("Input file could not be found!")
