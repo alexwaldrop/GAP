@@ -9,7 +9,7 @@ class SamtoolsBAMMerge(Main):
         self.nr_splits    = 0
 
     def merge(self):
-        bam_splits = ["split_%d.bam" % i for i in range(nr_splits)]
+        bam_splits = ["split_%d.bam" % (i+1) for i in range(nr_splits)]
         
         if self.sorted_input:
             return "samtools merge out.bam %s" % " ".join(bam_splits)
