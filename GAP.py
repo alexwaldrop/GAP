@@ -6,6 +6,7 @@ from GAP_system import Config, TaskManager, Task
 config = Config("GAP.config")
 
 from GAP_modules import FASTQSplitter as Splitter
+from GAP_modules import SamtoolsSamToBam as ConverterSamToBam
 
 if config.cluster.ID == 0:
     from GAP_modules import SLURM as Cluster
@@ -14,6 +15,7 @@ if config.aligner.ID == 0:
     from GAP_modules import BwaAligner as Aligner
 
 splitter    = Splitter(config)
+converter   = ConverterSamToBam(config)
 cluster     = Cluster(config)
 aligner     = Aligner(config)
 task_manager = TaskManager(config, cluster)
@@ -37,8 +39,13 @@ if config.general.goal == "align":
             aligner.R1      = "%s/split_R1_%d.fastq" % (config.general.temp_dir, split_id)
             aligner.R2      = "%s/split_R2_%d.fastq" % (config.general.temp_dir, split_id)
             aligner.threads = task.mincpus
+
+            converter.threads = task.mincpus
             if aligner.to_stdout:
-                task.command = "%s > %s/split_%d.sam" % (aligner.getCommand(), config.general.temp_dir, split_id)
+                if aligner.output_type == "sam":
+                    task.command = "%s | %s > %s/split_%d.bam" % (aligner.getCommand(), converter.getCommand(), config.general.temp_dir, split_id)
+                else:
+                    task.command = "%s > %s/split_%d.bam" % (aligner.getCommand(), config.general.temp_dir, split_id)
             else:
                 task.command = aligner.getCommand()
 
@@ -53,8 +60,13 @@ if config.general.goal == "align":
         aligner.R1      = config.paths.R1
         aligner.R2      = config.paths.R2
         aligner.threads = task.mincpus
+
+        converter.threads = task.mincpus
         if aligner.to_stdout:
-            task.command = "%s > %s/out.sam" % (aligner.getCommand(), config.general.output_dir)
+            if aligner.output_type == "sam":
+                task.command = "%s | %s > %s/out.bam" % (aligner.getCommand(), converter.getCommand(), config.general.output_dir)
+            else:
+                task.command = "%s > %s/out.bam" % (aligner.getCommand(), config.general.output_dir)
         else:
             task.command = aligner.getCommand()
 
