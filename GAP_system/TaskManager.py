@@ -48,14 +48,17 @@ class TaskManager(Main):
             # Checking the status of the running jobs
             for task_name in self.running:
                 exit_status = self.cluster.checkStatus(self.tasks[task_name].job_id)
-                if exit_status == 0:
-                    self.complete(task_name)
-                    self.launchTask()
-                    break
-                else:
-                    self.error("A task was interrupted!")
+
+                # Checking if task is not running
+                if exit_status != 2:
+                    if exit_status == 0:
+                        self.complete(task_name)
+                        self.launchTask()
+                        break
+                    else:
+                        self.error("A task was interrupted!")
             else:
-                time.sleep(5)
+                time.sleep(3)
             
     def launchTask(self): 
         # List of launched tasks
@@ -82,7 +85,9 @@ class TaskManager(Main):
                         
                         # Starting the process
                         task.start()
-        
+
+                        break
+
         for task_name in launched:
             self.queue.remove(task_name)
 
