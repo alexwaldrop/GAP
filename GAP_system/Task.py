@@ -12,7 +12,7 @@ class Task(Main):
         self.nodes      = 1
         self.mincpus    = 1
 
-        self.job_id     = ""
+        self.job_id     = False
         self.which_node = -1
 
         self.cluster    = cluster
@@ -23,7 +23,8 @@ class Task(Main):
         self.validate()       
 
         self.cluster.runCommand(self.name, self.command, nodes=self.nodes, mincpus=self.mincpus)
-        self.job_id = self.cluster.getJobID(self.name)
+        while self.job_id == False:
+            self.job_id = self.cluster.getJobID(self.name)
 
     def validate(self):
         if self.command == "":
