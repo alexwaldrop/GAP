@@ -16,7 +16,7 @@ class SamtoolsSamToBam(Converter):
         self.threads        = -1
 
     def getCommand(self):
-        if self.thread  == -1:
+        if self.threads  == -1:
             self.error("In converter implementation, number of threads not specified!")
 
         return "%s view -bS -@ %d -" % (self.config.paths.samtools, self.threads) 
