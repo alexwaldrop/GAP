@@ -6,6 +6,8 @@ class FASTQSplitter(Main):
     def __init__(self, config):
         Main.__init__(self, config)
 
+        self.temp_dir = config.general.temp_dir
+
     def byNrReads(self, file_path, type, nr_reads):
 
         # Setting the required values in the object
@@ -39,7 +41,7 @@ class FASTQSplitter(Main):
                     self.warning("Unrecognized FASTQ file type '%s' in the pipeline. Default: Single-End.") 
                     split_filename  = "split_%d.fastq" % split_count
 
-                split_filepath  = "%s/%s" % (self.general.temp_dir, split_filename)
+                split_filepath  = "%s/%s" % (self.temp_dir, split_filename)
 
                 self.message("Writing to split file %s." % split_filename)
 
@@ -53,8 +55,13 @@ class FASTQSplitter(Main):
                         if line != "":
                             out.write(line)
                         else:
-                            done = true
+                            done = True
                             break
+
+                # Deleting split if empty (possible when total_reads % nr_reads == 0)
+                if os.path.getsize(split_filepath) == 0:
+                    os.remove(split_filepath)
+                    split_count -= 1
 
         self.message("Splitting FASTQ file has been completed.")
 
