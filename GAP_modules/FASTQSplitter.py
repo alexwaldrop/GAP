@@ -3,19 +3,22 @@ import os
 
 class FASTQSplitter(Main):
 
-    def __init__(self, config, file_path, type):
+    def __init__(self, config):
         Main.__init__(self, config)
 
+    def byNrReads(self, file_path, type, nr_reads):
+
+        # Setting the required values in the object
         self.file_path  = file_path
         self.type       = type
+        self.nr_reads   = nr_reads
 
-    def byNrReads(self, nr_reads):
-        
-        if nr_reads <= 0:
-            self.error("Cannot split a FASTQ file by %d reads!" % nr_reads)
+        # Validating the values
+        self.validate()
 
-        self.message("Splitting FASTQ file by %d reads." % nr_reads)
+        self.message("Splitting FASTQ file by %d reads." % self.nr_reads)
 
+        # Splitting the file
         split_count = 0
         with open(self.file_path) as f:
             
@@ -61,3 +64,6 @@ class FASTQSplitter(Main):
         
         if not os.path.isfile(self.file_path):
             self.error("Input file could not be found!")
+
+        if self.nr_reads <= 0:
+            self.error("Cannot split a FASTQ file by %d reads!" % self.nr_reads)
