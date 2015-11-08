@@ -13,6 +13,8 @@ class SLURM(Main):
         self.partition = config.cluster.partition
         self.mem       = config.cluster.mem
 
+        self.temp_dir  = config.general.temp_dir
+
         self.job_name  = "GAP_%d" % random.randint(0, 10**6)
 
         self.mainID    = 0
@@ -68,12 +70,25 @@ class SLURM(Main):
         return False
 
     def runCommand(self, job_name, cmd, nodes=1, mincpus=1): 
-        cluster_cmd = "srun --job-name=%s --nodes=%d --mem=%s --partition=%s --mincpus=%d --jobid=%d %s" % (job_name, nodes, self.mem, self.partition, mincpus, self.mainID, cmd)
+        sbatch_script = \
+"""#!/usr/bin/env bash
+#SBATCH --job-name=%s
+#SBATCH --output=%s/%s.out
+#SBATCH --nodes=%d
+#SBATCH --mem=%s
+#SBATCH --partition=%s
+#SBATCH --mincpus=%d
+#SBATCH --jobid=%d
 
-        self.message("Running the following command:\n  %s" % cluster_cmd)
+%s
+""" % (job_name, self.temp_dir, job_name, nodes, self.mem, self.partition, mincpus, self.mainID, cmd)
+
+        cluster_cmd = "echo \"%s\" | sbatch " % sbatch_script
+
+        self.message("Running the following command:\n  %s" % cmd)
 
         p = sp.Popen([cluster_cmd], stdout=sp.PIPE, shell=True)
-        output = p.communicate()[0]
+        p.communicate()[0]
         
         return p.returncode == 0
 
