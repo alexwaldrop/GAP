@@ -19,6 +19,7 @@ class Config(Main):
             self.R2         = ""
             
             self.bwa        = ""
+            self.samtools   = ""
 
     class Cluster():
         def __init__(self):
@@ -118,6 +119,12 @@ class Config(Main):
                         
                         if not os.path.isfile(self.paths.bwa):
                             self.error("BWA path not found!")
+
+                    if data[0] == "samtools":
+                        self.paths.samtools = data[1]
+
+                        if not os.path.isfile(self.paths.samtools):
+                            self.error("Samtools path not found!")
 
                     if data[0] == "R1":
                         self.paths.R1 = data[1]
