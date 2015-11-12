@@ -69,28 +69,24 @@ class SLURM(Main):
 
         return False
 
-    def runCommand(self, job_name, cmd, nodes=1, mincpus=1): 
-        sbatch_script = \
-"""#!/usr/bin/env bash
-#SBATCH --job-name=%s
-#SBATCH --output=%s/%s.out
-#SBATCH --nodes=%d
-#SBATCH --mem=%s
-#SBATCH --partition=%s
-#SBATCH --mincpus=%d
-#SBATCH --jobid=%d
-
-%s
-""" % (job_name, self.temp_dir, job_name, nodes, self.mem, self.partition, mincpus, self.mainID, cmd)
-
-        cluster_cmd = "echo \"%s\" | sbatch " % sbatch_script
+    def runCommand(self, job_name, cmd, nodes=1, mincpus=1):
 
         self.message("Running the following command:\n  %s" % cmd)
 
-        p = sp.Popen([cluster_cmd], stdout=sp.PIPE, shell=True)
-        p.communicate()[0]
-        
-        return p.returncode == 0
+        # Creating a bash file and changing its permissions
+        aux_sh = "%s/%s.sh" % (self.temp_dir, job_name)
+        with open(aux_sh, "w") as f:
+            f.write("#!/usr/bin/env bash\n")
+            f.write(cmd)
+        os.chmod(aux_sh, 0755)
+
+        # Generating the command to be run
+        cluster_cmd = "srun --job-name=%s --output=%s/%s.out --nodes=%d --mem=%s --partition=%s --mincpus=%d --jobid=%d %s" % (job_name, self.temp_dir, job_name, nodes, self.mem, self.partition, mincpus, self.mainID, aux_sh)
+
+        # Launching the process
+        proc = sp.Popen(cluster_cmd, shell=True)
+
+        return proc
 
     def checkStatus(self, job_id):
         p = sp.Popen(["sacct -oState%%5 --noheader --jobs=%s" % job_id], stdout=sp.PIPE, shell=True)

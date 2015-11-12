@@ -22,7 +22,7 @@ class Task(Main):
     def start(self):
         self.validate()       
 
-        self.cluster.runCommand(self.name, self.command, nodes=self.nodes, mincpus=self.mincpus)
+        proc = self.cluster.runCommand(self.name, self.command, nodes=self.nodes, mincpus=self.mincpus)
         while self.job_id == False:
             self.job_id = self.cluster.getJobID(self.name)
 
