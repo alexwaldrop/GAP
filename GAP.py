@@ -7,6 +7,7 @@ config = Config("GAP.config")
 
 from GAP_modules import FASTQSplitter as Splitter
 from GAP_modules import SamtoolsSamToBam as ConverterSamToBam
+from GAP_modules import SamtoolsBAMMerge as BAMMerger
 
 if config.cluster.ID == 0:
     from GAP_modules import SLURM as Cluster
@@ -16,6 +17,7 @@ if config.aligner.ID == 0:
 
 splitter    = Splitter(config)
 converter   = ConverterSamToBam(config)
+merger      = BAMMerger(config)
 cluster     = Cluster(config)
 aligner     = Aligner(config)
 task_manager = TaskManager(config, cluster)
@@ -24,8 +26,8 @@ split_count = 0
 splitted = config.cluster.nodes > 1
 
 if splitted:
-    splitter.byNrReads(config.paths.R1, "PE_R1", int(1e5))
-    split_count = splitter.byNrReads(config.paths.R2, "PE_R2", int(1e5))
+    splitter.byNrReads(config.paths.R1, "PE_R1", int(1e7))
+    split_count = splitter.byNrReads(config.paths.R2, "PE_R2", int(1e7))
 
 if config.general.goal == "align":
     if splitted:
@@ -71,5 +73,18 @@ if config.general.goal == "align":
             task.command = aligner.getCommand()
 
         task_manager.addTask(task)
+
+if splitted:
+    task = Task("merge", config, cluster)
+    task.type       = "merge"
+
+    task.nodes      = 1
+    task.mincpus    = config.cluster.mincpus
+    task.requires   = ["align_%d" % split_id for split_id in range(1, split_count+1)]
+
+    merger.nr_splits= split_count
+    task.command    = merger.getCommand()
+
+    task_manager.addTask(task)
 
 task_manager.run()
