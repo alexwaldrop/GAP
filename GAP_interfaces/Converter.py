@@ -2,6 +2,7 @@ from GAP_interfaces import Main
 import abc
 
 class Converter(Main):
+    __metaclass__   = abc.ABCMeta
 
     input_types     = ["sam", "bam"]
     output_types    = ["sam", "bam"]
