@@ -22,32 +22,50 @@ cluster     = Cluster(config)
 aligner     = Aligner(config)
 task_manager = TaskManager(config, cluster)
 
-split_count = 0
 splitted = config.cluster.nodes > 1
 
 if splitted:
-    splitter.byNrReads(config.paths.R1, "PE_R1", int(1e7))
-    split_count = splitter.byNrReads(config.paths.R2, "PE_R2", int(1e7))
+    # Splitting R1
+    task = Task("split_0", config, cluster)
+    task.type       = "split"
+    task.nodes      = 1
+    task.mincpus    = 1
+    task.command    = splitter.byNrReads(config.paths.R1, "PE_R1", int(1e6))
+
+    task_manager.addTask(task)
+
+    # Splitting R2
+    task = Task("split_1", config, cluster)
+    task.type       = "split"
+    task.nodes      = 1
+    task.mincpus    = 1
+    task.command    = splitter.byNrReads(config.paths.R2, "PE_R2", int(1e6))
+
+    task_manager.addTask(task)
+
+    # Getting the number of splits
+    split_count = splitter.split_count
 
 if config.general.goal == "align":
     if splitted:
-        for split_id in range(1, split_count+1):
+        for split_id in range(split_count):
             task = Task("align_%d" % split_id, config, cluster)
             task.type       ="align"
 
             task.nodes      = 1
             task.mincpus    = config.cluster.mincpus
+            task.requires   = ["split_0", "split_1"]
 
-            aligner.R1      = "%s/split_R1_%d.fastq" % (config.general.temp_dir, split_id)
-            aligner.R2      = "%s/split_R2_%d.fastq" % (config.general.temp_dir, split_id)
+            aligner.R1      = "%s/fastq_R1_%04d" % (config.general.temp_dir, split_id)
+            aligner.R2      = "%s/fastq_R2_%04d" % (config.general.temp_dir, split_id)
             aligner.threads = task.mincpus
 
             converter.threads = task.mincpus
             if aligner.to_stdout:
                 if aligner.output_type == "sam":
-                    task.command = "%s | %s > %s/split_%d.bam" % (aligner.getCommand(), converter.getCommand(), config.general.temp_dir, split_id)
+                    task.command = "%s | %s > %s/bam_%04d" % (aligner.getCommand(), converter.getCommand(), config.general.temp_dir, split_id)
                 else:
-                    task.command = "%s > %s/split_%d.bam" % (aligner.getCommand(), config.general.temp_dir, split_id)
+                    task.command = "%s > %s/bam_%04d" % (aligner.getCommand(), config.general.temp_dir, split_id)
             else:
                 task.command = aligner.getCommand()
 
@@ -80,7 +98,7 @@ if splitted:
 
     task.nodes      = 1
     task.mincpus    = config.cluster.mincpus
-    task.requires   = ["align_%d" % split_id for split_id in range(1, split_count+1)]
+    task.requires   = ["align_%d" % split_id for split_id in range(split_count)]
 
     merger.nr_splits= split_count
     task.command    = merger.getCommand()

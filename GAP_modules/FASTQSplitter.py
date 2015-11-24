@@ -1,5 +1,6 @@
 from GAP_interfaces import Main
 import os
+import math
 
 class FASTQSplitter(Main):
 
@@ -14,58 +15,28 @@ class FASTQSplitter(Main):
         self.file_path  = file_path
         self.type       = type
         self.nr_reads   = nr_reads
+        with open(file_path) as inp:
+            self.total_reads= sum(1 for line in inp) / 4
 
         # Validating the values
         self.validate()
 
-        self.message("Splitting FASTQ file by %d reads." % self.nr_reads)
+        # Computing the number of splits
+        self.split_count = int(math.ceil(float(self.total_reads) / self.nr_reads))
 
-        # Splitting the file
-        split_count = 0
-        with open(self.file_path) as f:
-            
-            done = False
-          
-            while not done:
-    
-                # Creating a new split file, considering the original fastq type
-                split_count    += 1
-                
-                if self.type == "PE_R1":
-                    split_filename  = "split_R1_%d.fastq" % split_count
-                elif self.type == "PE_R2":
-                    split_filename  = "split_R2_%d.fastq" % split_count
-                elif self.type == "SE":
-                    split_filename  = "split_%d.fastq" % split_count
-                else:
-                    self.warning("Unrecognized FASTQ file type '%s' in the pipeline. Default: Single-End.") 
-                    split_filename  = "split_%d.fastq" % split_count
+        # Setting up the prefix and suffix of the splits
+        if self.type == "PE_R1":
+            split_prefix  = "fastq_R1_"
+        elif self.type == "PE_R2":
+            split_prefix  = "fastq_R2_"
+        elif self.type == "SE":
+            split_prefix  = "fastq_"
+        else:
+            self.warning("Unrecognized FASTQ file type '%s' in the pipeline. Default: Single-End.") 
+            split_prefix  = "fastq_"
 
-                split_filepath  = "%s/%s" % (self.temp_dir, split_filename)
-
-                self.message("Writing to split file %s." % split_filename)
-
-                # Writing to the new split file
-                with open(split_filepath, "w") as out:
-
-                    # Copying maximum nr_reads*4 lines
-                    for i in range(nr_reads*4):
-                        line = f.readline()
-            
-                        if line != "":
-                            out.write(line)
-                        else:
-                            done = True
-                            break
-
-                # Deleting split if empty (possible when total_reads % nr_reads == 0)
-                if os.path.getsize(split_filepath) == 0:
-                    os.remove(split_filepath)
-                    split_count -= 1
-
-        self.message("Splitting FASTQ file has been completed.")
-
-        return split_count
+        # Returning the command to be run
+        return "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (nr_reads*4, file_path, self.temp_dir, split_prefix)
 
     def validate(self):
         

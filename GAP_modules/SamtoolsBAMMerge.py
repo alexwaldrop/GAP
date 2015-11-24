@@ -12,7 +12,7 @@ class SamtoolsBAMMerge(Main):
         self.nr_splits    = 0
 
     def getCommand(self):
-        bam_splits = ["%s/split_%d.bam" % (self.temp_dir, i+1) for i in range(self.nr_splits)]
+        bam_splits = ["%s/bam_%04d" % (self.temp_dir, i) for i in range(self.nr_splits)]
         
         if self.sorted_input:
             return "%s merge %s/out.bam %s" % (self.samtools_path, self.temp_dir, " ".join(bam_splits))
