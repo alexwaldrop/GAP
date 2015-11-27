@@ -9,13 +9,13 @@ class FASTQSplitter(Main):
 
         self.temp_dir = config.general.temp_dir
 
-    def byNrReads(self, file_path, type, nr_reads):
+    def byNrReads(self, nr_reads, R1_file, R2_file=None):
 
         # Setting the required values in the object
-        self.file_path  = file_path
-        self.type       = type
+        self.R1         = R1_file
+        self.R2         = R2_file
         self.nr_reads   = nr_reads
-        with open(file_path) as inp:
+        with open(R1_file) as inp:
             self.total_reads= sum(1 for line in inp) / 4
 
         # Validating the values
@@ -24,24 +24,34 @@ class FASTQSplitter(Main):
         # Computing the number of splits
         self.split_count = int(math.ceil(float(self.total_reads) / self.nr_reads))
 
-        # Setting up the prefix and suffix of the splits
-        if self.type == "PE_R1":
-            split_prefix  = "fastq_R1_"
-        elif self.type == "PE_R2":
-            split_prefix  = "fastq_R2_"
-        elif self.type == "SE":
-            split_prefix  = "fastq_"
+        # Setting up the prefix of the splits
+        if R2_file != None:
+            # Pair-End Sequencing
+            R1_pre  = "fastq_R1_"
+            R2_pre  = "fastq_R2_"
         else:
-            self.warning("Unrecognized FASTQ file type '%s' in the pipeline. Default: Single-End.") 
-            split_prefix  = "fastq_"
+            # Single-End Sequencing
+            R1_pre  = "fastq_"
+
+        # Generating the required commands
+        R1_command = "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (self.nr_reads*4, self.R1, self.temp_dir, R1_pre)
+        if R2_file != None:
+            R2_command = "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (self.nr_reads*4, self.R2, self.temp_dir, R2_pre)
 
         # Returning the command to be run
-        return "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (nr_reads*4, file_path, self.temp_dir, split_prefix)
+        if R2_file != None:
+            return "%s && %s" % (R1_command, R2_command)
+        else:
+            return R1_command
 
     def validate(self):
         
-        if not os.path.isfile(self.file_path):
-            self.error("Input file could not be found!")
+        if not os.path.isfile(self.R1):
+            self.error("Input file(s) could not be found!")
+
+        if self.R2 != None:
+            if not os.path.isfile(self.R2):
+                self.error("Input file(s) could not be found!")
 
         if self.nr_reads <= 0:
             self.error("Cannot split a FASTQ file by %d reads!" % self.nr_reads)

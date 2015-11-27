@@ -24,22 +24,14 @@ task_manager = TaskManager(config, cluster)
 
 splitted = config.cluster.nodes > 1
 
+# Splitting the FASTQ file(s)
 if splitted:
-    # Splitting R1
-    task = Task("split_0", config, cluster)
+    task = Task("split", config, cluster)
+
     task.type       = "split"
     task.nodes      = 1
     task.mincpus    = 1
-    task.command    = splitter.byNrReads(config.paths.R1, "PE_R1", int(1e6))
-
-    task_manager.addTask(task)
-
-    # Splitting R2
-    task = Task("split_1", config, cluster)
-    task.type       = "split"
-    task.nodes      = 1
-    task.mincpus    = 1
-    task.command    = splitter.byNrReads(config.paths.R2, "PE_R2", int(1e6))
+    task.command    = splitter.byNrReads(int(1e6), config.paths.R1, config.paths.R2)
 
     task_manager.addTask(task)
 
@@ -54,7 +46,7 @@ if config.general.goal == "align":
 
             task.nodes      = 1
             task.mincpus    = config.cluster.mincpus
-            task.requires   = ["split_0", "split_1"]
+            task.requires   = ["split"]
 
             aligner.R1      = "%s/fastq_R1_%04d" % (config.general.temp_dir, split_id)
             aligner.R2      = "%s/fastq_R2_%04d" % (config.general.temp_dir, split_id)
