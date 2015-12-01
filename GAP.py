@@ -7,6 +7,7 @@ config = Config("GAP.config")
 
 from GAP_modules import FASTQSplitter as Splitter
 from GAP_modules import SamtoolsSamToBam as ConverterSamToBam
+from GAP_modules import SamtoolsBAMSorter as BAMSorter
 from GAP_modules import SamtoolsBAMMerge as BAMMerger
 
 if config.cluster.ID == 0:
@@ -17,6 +18,7 @@ if config.aligner.ID == 0:
 
 splitter    = Splitter(config)
 converter   = ConverterSamToBam(config)
+sorter      = BAMSorter(config)
 merger      = BAMMerger(config)
 cluster     = Cluster(config)
 aligner     = Aligner(config)
@@ -31,7 +33,7 @@ if splitted:
     task.type       = "split"
     task.nodes      = 1
     task.mincpus    = 1
-    task.command    = splitter.byNrReads(int(1e6), config.paths.R1, config.paths.R2)
+    task.command    = splitter.byNrReads(int(1e7), config.paths.R1, config.paths.R2)
 
     task_manager.addTask(task)
 
@@ -53,11 +55,14 @@ if config.general.goal == "align":
             aligner.threads = task.mincpus
 
             converter.threads = task.mincpus
+
+            sorter.threads  = task.mincpus
+            sorter.prefix   = "bam_%04d" % split_id
             if aligner.to_stdout:
                 if aligner.output_type == "sam":
-                    task.command = "%s | %s > %s/bam_%04d" % (aligner.getCommand(), converter.getCommand(), config.general.temp_dir, split_id)
+                    task.command = "%s | %s | %s" % (aligner.getCommand(), converter.getCommand(), sorter.getCommand())
                 else:
-                    task.command = "%s > %s/bam_%04d" % (aligner.getCommand(), config.general.temp_dir, split_id)
+                    task.command = "%s | %s" % (aligner.getCommand(), sorter.getCommand())
             else:
                 task.command = aligner.getCommand()
 
@@ -74,15 +79,19 @@ if config.general.goal == "align":
         aligner.threads = task.mincpus
 
         converter.threads = task.mincpus
+
+        sorter.threads  = task.micpus
+        sorter.prefix   = "out"
         if aligner.to_stdout:
             if aligner.output_type == "sam":
-                task.command = "%s | %s > %s/out.bam" % (aligner.getCommand(), converter.getCommand(), config.general.output_dir)
+                task.command = "%s | %s | %s" % (aligner.getCommand(), converter.getCommand(),sorter.getCommand())
             else:
-                task.command = "%s > %s/out.bam" % (aligner.getCommand(), config.general.output_dir)
+                task.command = "%s | %s" % (aligner.getCommand(), sorter.getCommand())
         else:
             task.command = aligner.getCommand()
 
         task_manager.addTask(task)
+
 
 if splitted:
     task = Task("merge", config, cluster)
@@ -92,6 +101,8 @@ if splitted:
     task.mincpus    = config.cluster.mincpus
     task.requires   = ["align_%d" % split_id for split_id in range(split_count)]
 
+    merger.threads  = task.mincpus
+    merger.sorted_input = True
     merger.nr_splits= split_count
     task.command    = merger.getCommand()
 
