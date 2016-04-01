@@ -103,7 +103,7 @@ class GoogleCompute(Main):
 
         return sp.Popen(" ".join(args), shell=True)
 
-    def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None):
+    def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0):
         
         self.message("Creating instance '%s'." % name)
 
@@ -120,6 +120,8 @@ class GoogleCompute(Main):
             args.append("pd-ssd")
         else:
             args.append("pd-standard")
+
+        args.extend(["--local-ssd" for _ in xrange(nr_local_ssd)])
 
         args.append("--image")
         args.append("ubuntu-14-04")
