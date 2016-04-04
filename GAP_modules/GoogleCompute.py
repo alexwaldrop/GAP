@@ -145,7 +145,8 @@ class GoogleCompute(Main):
             args.append("--image")
             args.append("ubuntu-14-04")
 
-        return sp.Popen(" ".join(args), shell=True)
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0):
         
@@ -182,7 +183,8 @@ class GoogleCompute(Main):
         else:
             args.append(zone)
 
-        return sp.Popen(" ".join(args), shell=True)
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def attachDisk(self, disk_name, instance_name, zone = None, is_read_only = True):
 
@@ -205,7 +207,8 @@ class GoogleCompute(Main):
         else:
             args.append(zone)
 
-        return sp.Popen(" ".join(args), shell = True)
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def detachDisk(self, disk_name, instance_name, zone = None):
 
@@ -222,7 +225,8 @@ class GoogleCompute(Main):
         else:
             args.append(zone)
 
-        return sp.Popen(" ".join(args), shell = True)
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def destroyDisk(self, name, zone = None):
 
@@ -239,7 +243,8 @@ class GoogleCompute(Main):
         # Provide input to the command
         args[0:0] = ["yes", "2>/dev/null", "|"]
 
-        return sp.Popen(" ".join(args), shell=True) 
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def destroyInstance(self, name, zone = None):
 
@@ -256,7 +261,8 @@ class GoogleCompute(Main):
         # Provide input to the command
         args[0:0] = ["yes", "2>/dev/null", "|"]
 
-        return sp.Popen(" ".join(args), shell=True)
+        with open(os.devnull, "w") as devnull:
+            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def runCommand(self, job_name, command, cpus = 1, mem = 1):
 
