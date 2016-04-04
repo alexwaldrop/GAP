@@ -1,7 +1,32 @@
 import math
 import os
 import subprocess as sp
+import threading
+import time
+
 from GAP_interfaces import Main
+
+class Instance():
+
+    def __init__(self, name, typ, cmdP):
+        self.name   = name
+        self.type   = typ
+
+        self.cmdP       = cmdP
+        self.destroyP   = None
+
+    def isBusy(self):
+
+        if self.cmdP.poll() is None:
+            return True
+        elif self.destroyP is not None and self.destroyP.poll() is None:
+            return True
+
+        return False
+
+    def isDead(self):
+
+        return self.destroyP is not None and self.destroyP.poll() is not None
 
 class GoogleCompute(Main):
 
@@ -11,14 +36,25 @@ class GoogleCompute(Main):
         self.key_location   = "keys/Davelab_GAP_key.json"
         self.authenticate()
         
+        self.prefix         = "gap-"
+
+        self.instances      = []
+        sweeper             = threading.Timer(60.0, self.cleanPlatform)
+        sweeper.start()
+
         self.zone           = self.getZone()
 
     def __del__(self):
-        # Destroying instances and disks
-        pass
+
+        self.cleanPlatform(force=True)
+
+        while len(self.instances):
+            self.instances = [ inst for inst in self.instances if not inst.isDead() ]
+
+            time.sleep(5)
 
     def authenticate(self):
-        
+
         self.message("Authenticating to the Google Cloud.")
 
         if not os.path.exists(self.key_location):
@@ -31,6 +67,14 @@ class GoogleCompute(Main):
             self.error("Authentication to Google Cloud failed!")
 
         self.message("Authentication to Google Cloud was successful.")
+
+    def cleanPlatform(self, force = False):
+
+        self.instances = [ inst for inst in self.instances if not inst.isDead() ]
+
+        for inst in self.instances:
+            if inst.destroyP is None and (not inst.isBusy() or force):
+                inst.destroyP = self.destroyInstance(inst.name)
 
     def getInstanceType(self, cpus, mem):
             
@@ -214,8 +258,21 @@ class GoogleCompute(Main):
 
         return sp.Popen(" ".join(args), shell=True)
 
-    def runCommand(self, command):
-        pass
+    def runCommand(self, job_name, command, cpus = 1, mem = 1):
+
+        inst_type   = self.getInstanceType(cpus, mem)
+        inst_name   = self.prefix + job_name
+        cmd         = "gcloud compute ssh gap@%s --command '%s'" % (inst_name, command)
+
+        self.createInstance(inst_name, inst_type).wait()
+
+        # Waiting for instance to get ready
+        time.sleep(10)
+
+        proc    = sp.Popen(cmd, shell=True)
+        self.instances.append( Instance(inst_name, inst_type, proc) )
+
+        return proc
 
     def validate(self):
         pass
