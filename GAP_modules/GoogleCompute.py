@@ -148,8 +148,8 @@ class GoogleCompute(Main):
         with open(os.devnull, "w") as devnull:
             return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0):
-        
+    def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0, start_up_script = None):
+
         self.message("Creating instance '%s'." % name)
 
         args = ["gcloud compute instances create %s" % name]
@@ -176,6 +176,10 @@ class GoogleCompute(Main):
 
         if is_preemptible:
             args.append("--preemptible")
+
+        if start_up_script is not None:
+            args.append("--metadata")
+            args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script.lower() )
 
         args.append("--zone")
         if zone is None:
