@@ -39,6 +39,7 @@ class GoogleCompute(Main):
         self.prefix         = "gap-"
 
         self.instances      = []
+        self.main_server    = None
         sweeper             = threading.Timer(60.0, self.cleanPlatform)
         sweeper.start()
 
@@ -47,6 +48,9 @@ class GoogleCompute(Main):
     def __del__(self):
 
         self.cleanPlatform(force=True)
+
+        if self.main_server is not None:
+            self.destroyInstance(self.main_server).wait()
 
         while len(self.instances):
             self.instances = [ inst for inst in self.instances if not inst.isDead() ]
@@ -189,6 +193,28 @@ class GoogleCompute(Main):
 
         with open(os.devnull, "w") as devnull:
             return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+
+    def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, zone = None, nr_local_ssd = 0):
+
+        server_name = name + "-server"
+        self.message("Creating File Server '%s'." % server_name)
+
+        proc = self.createInstance(server_name, instance_type,
+                            boot_disk_size      = boot_disk_size,
+                            is_boot_disk_ssd    = is_boot_disk_ssd,
+                            zone                = zone,
+                            nr_local_ssd        = nr_local_ssd,
+                            start_up_script     = "nfs_setup.sh")
+        return_code = proc.wait()
+
+        self.main_server = server_name
+
+        # Waiting for the instance to get ready
+        if return_code != 0:
+            self.error("File Server '%s' could not be created!" % server_name)
+        else:
+            time.sleep(15)
+            self.message("File Server '%s' is up and running." % server_name)
 
     def attachDisk(self, disk_name, instance_name, zone = None, is_read_only = True):
 
