@@ -183,7 +183,10 @@ class GoogleCompute(Main):
 
         if start_up_script is not None:
             args.append("--metadata")
-            args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script.lower() )
+            args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script)
+        elif nr_local_ssd != 0:
+            args.append("--metadata")
+            args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD.sh")
 
         args.append("--zone")
         if zone is None:
@@ -199,12 +202,17 @@ class GoogleCompute(Main):
         server_name = name + "-server"
         self.message("Creating File Server '%s'." % server_name)
 
+        if nr_local_ssd == 0:
+            start_up_script = "nfs.sh"
+        else:
+            start_up_script = "nfs_LocalSSD.sh"
+
         proc = self.createInstance(server_name, instance_type,
                             boot_disk_size      = boot_disk_size,
                             is_boot_disk_ssd    = is_boot_disk_ssd,
                             zone                = zone,
                             nr_local_ssd        = nr_local_ssd,
-                            start_up_script     = "nfs_setup.sh")
+                            start_up_script     = start_up_script)
         return_code = proc.wait()
 
         self.main_server = server_name
