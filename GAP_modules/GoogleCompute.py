@@ -302,19 +302,23 @@ class GoogleCompute(Main):
         with open(os.devnull, "w") as devnull:
             return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def runCommand(self, job_name, command, cpus = 1, mem = 1):
+    def runCommand(self, job_name, command, on_instance = None, cpus = 1, mem = 1):
 
-        inst_type   = self.getInstanceType(cpus, mem)
-        inst_name   = self.prefix + job_name
-        cmd         = "gcloud compute ssh gap@%s --command '%s'" % (inst_name, command)
+        if on_instance is None:
+            inst_type   = self.getInstanceType(cpus, mem)
+            inst_name   = self.prefix + job_name
+            self.createInstance(inst_name, inst_type).wait()
 
-        self.createInstance(inst_name, inst_type).wait()
+            # Waiting for instance to get ready
+            time.sleep(10)
+        else:
+            inst_name   = on_instance
 
-        # Waiting for instance to get ready
-        time.sleep(10)
+        cmd = "gcloud compute ssh gap@%s --command '%s'" % (inst_name, command)
 
-        proc    = sp.Popen(cmd, shell=True)
-        self.instances.append( Instance(inst_name, inst_type, proc) )
+        proc = sp.Popen(cmd, shell=True)
+        if on_instance is None:
+            self.instances.append( Instance(inst_name, inst_type, proc) )
 
         return proc
 
