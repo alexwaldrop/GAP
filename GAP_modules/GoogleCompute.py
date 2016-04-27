@@ -121,6 +121,42 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
+    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3):
+
+        # Obtaining the needed type of instance
+        instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
+
+        # Create the main server
+        self.createFileServer("main" , instance_type, nr_local_ssd = nr_local_ssd)
+
+        # Waiting for the instance to run all the start-up scripts
+        time.sleep(100)
+
+        # Getting raw data paths
+        R1_path = sample_data["R1_path"]
+        R2_path = sample_data["R2_path"]
+
+        # Creating list of processes
+        wait_list = []
+
+        # Copying input data
+        wait_list.append(self.runCommand("copyFASTQ_R1", "gsutil cp %s /data/" % R1_path, on_instance=self.main_server))
+        wait_list.append(self.runCommand("copyFASTQ_R2", "gsutil cp %s /data/" % R2_path, on_instance=self.main_server))
+
+        # Copying the reference genome
+        wait_list.append(self.runCommand("copyRef", "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/", on_instance=self.main_server))
+
+        # Copying and configuring the softwares
+        wait_list.append(self.runCommand("copySrc", "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh", on_instance=self.main_server))
+
+        # Waiting for all the copying processes to be done
+        done = False
+        while not done:
+            done = True
+            for proc in wait_list:
+                if proc.poll() == None:
+                    done = False
+
     def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
         
         self.message("Creating persistent disk '%s'." % name)
