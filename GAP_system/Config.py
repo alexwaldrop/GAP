@@ -8,7 +8,7 @@ class Config(Main):
         def __init__(self):
             self.config_file    = ""
             self.project_name   = ""
-            self.verbosity      = -1
+            self.verbosity      = 2
             self.goal           = ""
             self.output_dir     = ""
             self.temp_dir       = ""
@@ -34,17 +34,23 @@ class Config(Main):
             self.ID         = -1
             self.ref        = ""
 
-    def __init__(self, config_file):        
+    def __init__(self, config_file, silent = False):
+
         # Initializing the data
         self.general    = self.General()
         self.paths      = self.Paths()
         self.cluster    = self.Cluster()
         self.aligner    = self.Aligner()
 
+        Main.__init__(self, self)
+
         self.general.goals  = ["align"]
         self.cluster.types  = ["SLURM"]
         self.aligner.types  = ["BWA"]
         
+        if silent:
+            self.error  = self.warning
+
         # Reading config file
         self.readConfigFile(config_file)
 
