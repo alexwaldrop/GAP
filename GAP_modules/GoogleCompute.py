@@ -157,6 +157,11 @@ class GoogleCompute(Main):
                 if proc.poll() == None:
                     done = False
 
+        # Adding new paths
+        sample_data["R1_new_path"] = "/data/%s" % sample_data["R1_path"].split("/")[-1]
+        sample_data["R2_new_path"] = "/data/%s" % sample_data["R2_path"].split("/")[-1]
+
+
     def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
         
         self.message("Creating persistent disk '%s'." % name)
