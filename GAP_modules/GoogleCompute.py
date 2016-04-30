@@ -91,22 +91,22 @@ class GoogleCompute(Main):
             if mem <= 3.5:
                 return "n1-standard-1"
 
-        # Defining instance type to cpu/mem ratios
-        ratio_high_cpu  = 2/1.80
-        ratio_standard  = 2/7.50
-        ratio_high_mem  = 2/13.00
+        # Defining instance type to mem/cpu ratios
+        ratio_high_cpu  = 1.80  / 2
+        ratio_standard  = 7.50  / 2
+        ratio_high_mem  = 13.00 / 2
 
         # Identifying needed instance type
-        ratio_cpu_mem = cpus*1.0/mem
-        if ratio_cpu_mem <= ratio_high_mem:
-            instance_type   = "highmem"
-        elif ratio_cpu_mem <= ratio_standard:
+        ratio_mem_cpu = mem * 1.0 / cpus
+        if ratio_mem_cpu <= ratio_high_cpu:
+            instance_type   = "highcpu"
+        elif ratio_mem_cpu <= ratio_standard:
             instance_type   = "standard"
         else:
-            instance_type   = "highcpu"            
+            instance_type   = "highmem"
 
-        # Converting the number of cpus to the closest power of 2
-        nr_cpus = 2**int(math.log(cpus, 2))
+        # Converting the number of cpus to the closest upper power of 2
+        nr_cpus = 2**math.ceil(math.log(cpus, 2))
     
         # Returning instance name
         return "n1-%s-%d" % (instance_type, nr_cpus)
