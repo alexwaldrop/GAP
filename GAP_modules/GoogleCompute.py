@@ -213,6 +213,9 @@ class GoogleCompute(Main):
 
         args.extend(["--local-ssd" for _ in xrange(nr_local_ssd)])
 
+        args.append("--scopes")
+        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
+
         args.append("--image")
         args.append("ubuntu-14-04")
 
