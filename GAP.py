@@ -25,10 +25,12 @@ align.R1 = s["R1_new_path"]
 align.R2 = s["R2_new_path"]
 align.threads = 32
 
-print (align.getCommand())
-
 # Running the alignment command
 plat.runCommand("align", align.getCommand(), on_instance = plat.main_server).wait()
+s["outputs"] = ["/data/out.bam"]
+
+# Copy the final results to the bucket
+plat.finalize(s)
 
 # Aligning done
 print ("DONE!")

@@ -173,6 +173,22 @@ class GoogleCompute(Main):
                     done = False
 
 
+    def finalize(self, sample_data):
+
+        # Creating list of processes
+        wait_list = []
+
+        # Copying the output data
+        for output_path in sample_data["outputs"]:
+            wait_list.append(self.runCommand("copyOut", "gsutil -m cp -r %s gs://davelab_temp/" % output_path, on_instance=self.main_server))
+
+        # Waiting for all the copying processes to be done
+        done = False
+        while not done:
+            done = True
+            for proc in wait_list:
+                if proc.poll() == None:
+                    done = False
 
     def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
         
