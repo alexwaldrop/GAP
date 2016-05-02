@@ -9,8 +9,11 @@ from GAP_modules import GoogleCompute as Platform
 config = Config("GAP.config", silent = True)
 
 # Setting up a fake profile
-s = { "R1_path":"gs://davelab_temp/R1_40M_TEST.fastq",
-      "R2_path":"gs://davelab_temp/R2_40M_TEST.fastq"}
+#s = { "R1_path":"gs://davelab_temp/R1_40M_TEST.fastq",
+#      "R2_path":"gs://davelab_temp/R2_40M_TEST.fastq"}
+
+s = { "R1_path":"gs://davelab_temp/R1_TEST.fastq.gz",
+      "R2_path":"gs://davelab_temp/R2_TEST.fastq.gz"}
 
 # Setting up the platform
 plat = Platform(config)

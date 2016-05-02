@@ -127,7 +127,7 @@ class GoogleCompute(Main):
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 
         # Create the main server
-        self.createFileServer("main" , instance_type, nr_local_ssd = nr_local_ssd)
+        self.createFileServer("main", instance_type, nr_local_ssd = nr_local_ssd)
 
         # Waiting for the instance to run all the start-up scripts
         time.sleep(100)
@@ -136,12 +136,27 @@ class GoogleCompute(Main):
         R1_path = sample_data["R1_path"]
         R2_path = sample_data["R2_path"]
 
+        # Adding new paths
+        sample_data["R1_new_path"] = "/data/%s" % R1_path.split("/")[-1].rstrip(".gz")
+        sample_data["R2_new_path"] = "/data/%s" % R2_path.split("/")[-1].rstrip(".gz")
+
+        # Identifying if decompression is needed
+        with_decompress = { "R1": R1_path.endswith(".gz"),
+                            "R2": R2_path.endswith(".gz") }
+
         # Creating list of processes
         wait_list = []
 
         # Copying input data
-        wait_list.append(self.runCommand("copyFASTQ_R1", "gsutil cp %s /data/" % R1_path, on_instance=self.main_server))
-        wait_list.append(self.runCommand("copyFASTQ_R2", "gsutil cp %s /data/" % R2_path, on_instance=self.main_server))
+        cmd = "gsutil cp %s /data/ " % R1_path
+        if with_decompress["R1"]:
+            cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R1_new_path"])
+        wait_list.append(self.runCommand("copyFASTQ_R1", cmd, on_instance=self.main_server))
+
+        cmd = "gsutil cp %s /data/ " % R2_path
+        if with_decompress["R2"]:
+            cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R2_new_path"])
+        wait_list.append(self.runCommand("copyFASTQ_R2", cmd, on_instance=self.main_server))
 
         # Copying the reference genome
         wait_list.append(self.runCommand("copyRef", "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/", on_instance=self.main_server))
@@ -157,9 +172,6 @@ class GoogleCompute(Main):
                 if proc.poll() == None:
                     done = False
 
-        # Adding new paths
-        sample_data["R1_new_path"] = "/data/%s" % sample_data["R1_path"].split("/")[-1]
-        sample_data["R2_new_path"] = "/data/%s" % sample_data["R2_path"].split("/")[-1]
 
 
     def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
