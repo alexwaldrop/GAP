@@ -3,6 +3,8 @@ from GAP_interfaces import Aligner
 from GAP_modules import SamtoolsSamToBam as ConverterSamToBam
 from GAP_modules import SamtoolsBAMSorter as BAMSorter
 
+__main_class__= "BwaAligner"
+
 class BwaAligner(Aligner):
     
     def __init__(self, config):

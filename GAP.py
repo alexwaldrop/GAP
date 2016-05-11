@@ -1,8 +1,7 @@
 #!/usr/bin/env python2.7
 
 import time
-from GAP_system import Config
-from GAP_modules import BwaAligner as Aligner
+from GAP_system import Config, Node
 from GAP_modules import GoogleCompute as Platform
 
 # Generating the config object
@@ -19,15 +18,8 @@ s = { "R1_path":"gs://davelab_temp/R1_TEST.fastq.gz",
 plat = Platform(config)
 plat.prepareData(s, nr_local_ssd=2)
 
-# Setting up the aligner
-align = Aligner(config)
-align.R1 = s["R1_new_path"]
-align.R2 = s["R2_new_path"]
-align.threads = 32
-
-# Running the alignment command
-plat.runCommand("align", align.getCommand(), on_instance = plat.main_server).wait()
-s["outputs"] = ["/data/out.bam"]
+# Running the alignment
+Node(config, plat, s, "BwaAligner").run()
 
 # Copy the final results to the bucket
 plat.finalize(s)
