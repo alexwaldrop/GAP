@@ -6,27 +6,72 @@ import time
 
 from GAP_interfaces import Main
 
-class Instance():
+class GoogleResource():
 
-    def __init__(self, name, typ, cmdP):
+    def __init__(self, name, type_, create_process=None):
+
         self.name   = name
-        self.type   = typ
+        self.type_  = type_
 
-        self.cmdP       = cmdP
-        self.destroyP   = None
+        self.set_create_process(create_process)
+        self.destroy_process = None
 
-    def isBusy(self):
+    def set_create_process(self, proc):
 
-        if self.cmdP.poll() is None:
-            return True
-        elif self.destroyP is not None and self.destroyP.poll() is None:
-            return True
+        if proc is None:
+            self.create_process = None
+        elif isinstance(proc, GoogleProcess):
+            self.create_process = proc
+        else:
+            self.create_process = GoogleProcess("create_%s" % (self.name), proc)
 
-        return False
+    def get_create_process(self):
+        return self.create_process
 
-    def isDead(self):
+    def set_destroy_process(self, proc):
 
-        return self.destroyP is not None and self.destroyP.poll() is not None
+        if proc is None:
+            self.destroy_process = None
+        elif isinstance(proc, GoogleProcess):
+            self.destroy_process = proc
+        else:
+            self.destroy_process = GoogleProcess("destroy_%s" % (proc), proc)
+
+    def get_destroy_process(self):
+        return self.destroy_process
+
+    def get_type(self):
+        return self.type_
+
+    def is_ready(self):
+        return self.create_process is not None and self.create_process.is_done()
+
+    def is_dead(self):
+        return self.destroy_process is not None and self.destroy_process.is_done()
+
+
+class GoogleProcess():
+
+    def __init__(self, name, process):
+
+        self.name = name
+
+        self.proc = process
+        self.return_code = None
+
+    def is_done(self):
+        return self.get_return_code() is not None
+
+    def get_return_code(self, wait=False):
+
+        if self.return_code is None:
+            if wait:
+                self.return_code = self.proc.wait()
+            else:
+                self.return_code = self.proc.poll()
+
+        return self.return_code
+
 
 class GoogleCompute(Main):
 
@@ -38,22 +83,34 @@ class GoogleCompute(Main):
         
         self.prefix         = "gap-"
 
-        self.instances      = []
+        self.resources      = {}
         self.main_server    = None
-        sweeper             = threading.Timer(60.0, self.cleanPlatform)
-        sweeper.start()
 
         self.zone           = self.getZone()
 
     def __del__(self):
 
-        self.cleanPlatform(force=True)
+        while self.resources:
 
-        if self.main_server is not None:
-            self.destroyInstance(self.main_server).wait()
+            to_remove = []
 
-        while len(self.instances):
-            self.instances = [ inst for inst in self.instances if not inst.isDead() ]
+            for resource_name, resource in self.resources.iteritems():
+
+                if resource.get_destroy_process() is None:
+                    if resource.get_type() == "instance":
+                        proc = self.destroyInstance(resource_name)
+                    elif resource.get_type() == "disk":
+                        proc = self.destroyDisk(resource_name)
+                    else:
+                        proc = None
+
+                    resource.set_destroy_process(proc)
+
+                elif resource.is_dead():
+                    to_remove.append(resource_name)
+
+            for resource_name in to_remove:
+                del self.resources[resource_name]
 
             time.sleep(5)
 
@@ -64,21 +121,12 @@ class GoogleCompute(Main):
         if not os.path.exists(self.key_location):
             self.error("Authentication key was not found!")
 
-        return_code = sp.Popen(["gcloud auth activate-service-account --key-file %s" % self.key_location],
-                                    shell = True).wait()
+        proc = GoogleProcess("authenticate", sp.Popen(["gcloud auth activate-service-account --key-file %s" % self.key_location], shell = True))
 
-        if return_code != 0:
+        if proc.get_return_code(wait=True) != 0:
             self.error("Authentication to Google Cloud failed!")
 
         self.message("Authentication to Google Cloud was successful.")
-
-    def cleanPlatform(self, force = False):
-
-        self.instances = [ inst for inst in self.instances if not inst.isDead() ]
-
-        for inst in self.instances:
-            if inst.destroyP is None and (not inst.isBusy() or force):
-                inst.destroyP = self.destroyInstance(inst.name)
 
     def getInstanceType(self, cpus, mem):
             
@@ -127,7 +175,13 @@ class GoogleCompute(Main):
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 
         # Create the main server
-        self.createFileServer("main", instance_type, nr_local_ssd = nr_local_ssd)
+        proc = self.createFileServer("main-server", instance_type, nr_local_ssd=nr_local_ssd)
+        resource = GoogleResource("main-server", "instance", create_process=proc)
+        self.resources["main-server"] = resource
+
+        # Waiting for the server to be created
+        while not resource.is_ready():
+            time.sleep(5)
 
         # Waiting for the instance to run all the start-up scripts
         time.sleep(100)
@@ -151,27 +205,40 @@ class GoogleCompute(Main):
         cmd = "gsutil cp %s /data/ " % R1_path
         if with_decompress["R1"]:
             cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R1_new_path"])
-        wait_list.append(self.runCommand("copyFASTQ_R1", cmd, on_instance=self.main_server))
+        wait_list.append(
+            GoogleProcess("copyFASTQ_R1",
+                self.runCommand("copyFASTQ_R1", cmd, on_instance=self.main_server)
+            )
+        )
 
         cmd = "gsutil cp %s /data/ " % R2_path
         if with_decompress["R2"]:
             cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R2_new_path"])
-        wait_list.append(self.runCommand("copyFASTQ_R2", cmd, on_instance=self.main_server))
+        wait_list.append(
+            GoogleProcess("copyFASTQ_R2",
+                self.runCommand("copyFASTQ_R2", cmd, on_instance=self.main_server)
+            )
+        )
 
         # Copying the reference genome
-        wait_list.append(self.runCommand("copyRef", "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/", on_instance=self.main_server))
+        cmd = "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/"
+        wait_list.append(
+            GoogleProcess("copyRef",
+                self.runCommand("copyRef", cmd, on_instance=self.main_server)
+            )
+        )
 
         # Copying and configuring the softwares
-        wait_list.append(self.runCommand("copySrc", "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh", on_instance=self.main_server))
+        cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
+        wait_list.append(
+            GoogleProcess("copySrc",
+                self.runCommand("copySrc", cmd, on_instance=self.main_server)
+            )
+        )
 
         # Waiting for all the copying processes to be done
-        done = False
-        while not done:
-            done = True
-            for proc in wait_list:
-                if proc.poll() == None:
-                    done = False
-
+        while not all( proc.is_done() for proc in wait_list ):
+            time.sleep(5)
 
     def finalize(self, sample_data):
 
@@ -179,16 +246,17 @@ class GoogleCompute(Main):
         wait_list = []
 
         # Copying the output data
-        for output_path in sample_data["outputs"]:
-            wait_list.append(self.runCommand("copyOut", "gsutil -m cp -r %s gs://davelab_temp/" % output_path, on_instance=self.main_server))
+        for i, output_path in enumerate(sample_data["outputs"]):
+            cmd = "gsutil -m cp -r %s gs://davelab_temp/" % output_path
+            wait_list.append(
+                GoogleProcess("copyOut_%d" % i,
+                    self.runCommand("copyOut_%d" % i, cmd, on_instance=self.main_server)
+                )
+            )
 
         # Waiting for all the copying processes to be done
-        done = False
-        while not done:
-            done = True
-            for proc in wait_list:
-                if proc.poll() == None:
-                    done = False
+        while not all( proc.is_done() for proc in wait_list ):
+            time.sleep(5)
 
     def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
         
@@ -271,30 +339,19 @@ class GoogleCompute(Main):
 
     def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, zone = None, nr_local_ssd = 0):
 
-        server_name = name + "-server"
-        self.message("Creating File Server '%s'." % server_name)
+        self.main_server = name
 
         if nr_local_ssd == 0:
             start_up_script = "nfs.sh"
         else:
             start_up_script = "nfs_LocalSSD.sh"
 
-        proc = self.createInstance(server_name, instance_type,
+        return self.createInstance(self.main_server, instance_type,
                             boot_disk_size      = boot_disk_size,
                             is_boot_disk_ssd    = is_boot_disk_ssd,
                             zone                = zone,
                             nr_local_ssd        = nr_local_ssd,
                             start_up_script     = start_up_script)
-        return_code = proc.wait()
-
-        self.main_server = server_name
-
-        # Waiting for the instance to get ready
-        if return_code != 0:
-            self.error("File Server '%s' could not be created!" % server_name)
-        else:
-            time.sleep(15)
-            self.message("File Server '%s' is up and running." % server_name)
 
     def attachDisk(self, disk_name, instance_name, zone = None, is_read_only = True):
 
@@ -377,22 +434,21 @@ class GoogleCompute(Main):
     def runCommand(self, job_name, command, on_instance = None, cpus = 1, mem = 1):
 
         if on_instance is None:
-            inst_type   = self.getInstanceType(cpus, mem)
-            inst_name   = self.prefix + job_name
-            self.createInstance(inst_name, inst_type).wait()
+            inst_type = self.getInstanceType(cpus, mem)
+            inst_name = self.prefix + job_name
+
+            proc = self.createInstance(inst_name, inst_type)
+            self.resources[inst_name] = GoogleResource(inst_name, "instance", create_process=proc)
 
             # Waiting for instance to get ready
+            self.resources[inst_name].get_return_code(wait=True)
             time.sleep(10)
         else:
-            inst_name   = on_instance
+            inst_name = on_instance
 
         cmd = "gcloud compute ssh gap@%s --command '%s'" % (inst_name, command)
 
-        proc = sp.Popen(cmd, shell=True)
-        if on_instance is None:
-            self.instances.append( Instance(inst_name, inst_type, proc) )
-
-        return proc
+        return sp.Popen(cmd, shell=True)
 
     def validate(self):
         pass
