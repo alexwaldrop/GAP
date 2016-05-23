@@ -212,7 +212,7 @@ class GoogleCompute(Main):
         # Copying input data
         cmd = "gsutil cp %s /data/ " % R1_path
         if with_decompress["R1"]:
-            cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R1_new_path"])
+            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1_new_path"])
         wait_list.append(
             GoogleProcess("copyFASTQ_R1",
                 self.runCommand("copyFASTQ_R1", cmd, on_instance=self.main_server)
@@ -221,7 +221,7 @@ class GoogleCompute(Main):
 
         cmd = "gsutil cp %s /data/ " % R2_path
         if with_decompress["R2"]:
-            cmd += "; pigz -p %d -d %s" % (nr_cpus/2, sample_data["R2_new_path"])
+            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2_new_path"])
         wait_list.append(
             GoogleProcess("copyFASTQ_R2",
                 self.runCommand("copyFASTQ_R2", cmd, on_instance=self.main_server)
@@ -261,6 +261,10 @@ class GoogleCompute(Main):
             time.sleep(5)
 
     def finalize(self, sample_data):
+
+        # Exiting if no outputs are present
+        if "outputs" not in sample_data:
+            return None
 
         # Creating list of processes
         wait_list = []
