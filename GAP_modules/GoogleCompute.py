@@ -169,8 +169,7 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
-    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3):
-
+    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, splitted=False, nr_splits=23):
         # Obtaining the needed type of instance
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 
@@ -179,12 +178,21 @@ class GoogleCompute(Main):
         resource = GoogleResource("main-server", "instance", create_process=proc)
         self.resources["main-server"] = resource
 
-        # Waiting for the server to be created
-        while not resource.is_ready():
+        self.main_server = "main-server"
+
+        # Creating the split servers
+        if splitted:
+            for i in xrange(nr_splits):
+                proc = self.createFileServer("split%d-server" % i, instance_type, nr_local_ssd=1)
+                resource = GoogleResource("split%d-server" % i, "instance", create_process=proc)
+                self.resources["split%d-server" % i] = resource
+
+        # Waiting for the servers to be created
+        while not all( resource.is_ready() for _, resource in self.resources.iteritems() ):
             time.sleep(5)
 
         # Waiting for the instance to run all the start-up scripts
-        time.sleep(100)
+        time.sleep(120)
 
         # Getting raw data paths
         R1_path = sample_data["R1_path"]
@@ -235,6 +243,18 @@ class GoogleCompute(Main):
                 self.runCommand("copySrc", cmd, on_instance=self.main_server)
             )
         )
+
+        # Creating split directory and mount split server
+        if splitted:
+            for i in xrange(nr_splits):
+                cmd = "mkdir -p /data/split%d && " % i
+                cmd += "sudo mount -t nfs split%d-server:/data /data/split%d" % (i, i)
+
+                wait_list.append(
+                    GoogleProcess("mountSplit%d" % i,
+                        self.runCommand("mountSplit%d" % i, cmd, on_instance=self.main_server)
+                    )
+                )
 
         # Waiting for all the copying processes to be done
         while not all( proc.is_done() for proc in wait_list ):
@@ -339,14 +359,12 @@ class GoogleCompute(Main):
 
     def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, zone = None, nr_local_ssd = 0):
 
-        self.main_server = name
-
         if nr_local_ssd == 0:
             start_up_script = "nfs.sh"
         else:
             start_up_script = "nfs_LocalSSD.sh"
 
-        return self.createInstance(self.main_server, instance_type,
+        return self.createInstance(name, instance_type,
                             boot_disk_size      = boot_disk_size,
                             is_boot_disk_ssd    = is_boot_disk_ssd,
                             zone                = zone,
