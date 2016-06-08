@@ -11,11 +11,11 @@ class Node(Main):
         self.platform = platform
         self.sample_data = sample_data
 
-#        try:
-        self.main = self.initialize_module(module_name)
-        self.instance   = self.main["class"](self.config)
-#        except:
-#            self.error("Module %s cannot be imported!" % module_name)
+        try:
+            self.main = self.initialize_module(module_name)
+            self.main["instance"] = self.main["class"](self.config)
+        except:
+            self.error("Module %s cannot be imported!" % module_name)
         
         self.process = None
 
@@ -31,11 +31,11 @@ class Node(Main):
 
     def run(self):
 
-        self.instance.R1 = self.sample_data["R1_new_path"]
-        self.instance.R2 = self.sample_data["R2_new_path"]
-        self.instance.threads     = 32
+        self.main["instance"].R1 = self.sample_data["R1_new_path"]
+        self.main["instance"].R2 = self.sample_data["R2_new_path"]
+        self.main["instance"].threads     = 32
 
-        cmd = self.instance.getCommand()
+        cmd = self.main["instance"].getCommand()
 
         self.process = self.platform.runCommand("align", cmd, on_instance=self.platform.main_server)
 
