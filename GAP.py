@@ -16,7 +16,7 @@ s = { "R1_path":"gs://davelab_temp/R1_TEST.fastq.gz",
 
 # Setting up the platform
 plat = Platform(config)
-plat.prepareData(s, nr_local_ssd=2)
+plat.prepareData(s, nr_local_ssd=2, split=True, nr_splits=20, nr_cpus=1)
 
 # Running the alignment
 Node(config, plat, s, "BwaAligner").run()

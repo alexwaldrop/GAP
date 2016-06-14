@@ -1,4 +1,6 @@
 import importlib
+import time
+
 from GAP_interfaces import Main
 
 class Node(Main):
@@ -11,12 +13,28 @@ class Node(Main):
         self.platform = platform
         self.sample_data = sample_data
 
+        # Importing main module
         try:
             self.main = self.initialize_module(module_name)
             self.main["instance"] = self.main["class"](self.config)
         except:
             self.error("Module %s cannot be imported!" % module_name)
-        
+
+        # Importing splitter and merger:
+        if self.main["instance"].can_split:
+
+            try:
+                self.split = self.initialize_module(self.main["instance"].splitter)
+                self.split["instance"] = self.split["class"](self.config)
+            except:
+                self.error("Module %s cannot be imported!" % self.main["instance"].splitter)
+
+            try:
+                self.merge = self.initialize_module(self.main["instance"].merger)
+                self.merge["instance"] = self.merge["class"](self.config)
+            except:
+                self.error("Module %s cannot be imported!" % self.main["instance"].merger)
+
         self.process = None
 
     def initialize_module(self, module_name):
@@ -29,11 +47,47 @@ class Node(Main):
 
         return d
 
-    def run(self):
+    def run_split(self):
+
+        # Setting up the splitter
+        self.split["instance"].R1 = self.sample_data["R1_new_path"]
+        self.split["instance"].R2 = self.sample_data["R2_new_path"]
+        self.split["instance"].nr_splits = 20
+
+        # Running the splitter
+        cmd = self.split["instance"].getCommand()
+        self.process = self.platform.runCommand("split", cmd, on_instance=self.platform.main_server)
+        self.process.wait()
+
+        # Calling the process on each split
+        procs = []
+        for split_id in xrange(self.platform.nr_splits):
+            self.main["instance"].R1 = "%s/fastq_R1_%02d" % (self.config.general.temp_dir, split_id)
+            self.main["instance"].R2 = "%s/fastq_R2_%02d" % (self.config.general.temp_dir, split_id)
+            self.main["instance"].threads = 32
+
+            cmd = self.main["instance"].getCommand()
+
+            procs.append(self.platform.runCommand("align%d" % split_id, cmd, on_instance="split%d-server" % split_id) )
+
+        # Waiting for all the split aligning processes to finish
+        while not all( proc.poll() is not None for proc in procs ):
+            time.sleep(5)
+
+        # Setting up the merger
+        self.merge["instance"].nr_splits = self.platform.nr_splits
+        self.merge["instance"].threads = 32
+
+        # Running the merger
+        cmd = self.merge["instance"].getCommand()
+        self.process = self.platform.runCommand("merge", cmd, on_instance=self.platform.main_server)
+        self.process.wait()
+
+    def run_normal(self):
 
         self.main["instance"].R1 = self.sample_data["R1_new_path"]
         self.main["instance"].R2 = self.sample_data["R2_new_path"]
-        self.main["instance"].threads     = 32
+        self.main["instance"].threads = 32
 
         cmd = self.main["instance"].getCommand()
 
@@ -42,6 +96,13 @@ class Node(Main):
         self.sample_data["outputs"] = ["/data/out.bam"]
 
         self.process.wait()
+
+    def run(self):
+
+        if self.main["instance"].can_split:
+            self.run_split()
+        else:
+            self.run_normal()
 
     def validate(self):
         pass
