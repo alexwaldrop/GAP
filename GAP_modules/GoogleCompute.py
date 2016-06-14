@@ -169,7 +169,7 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
-    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, splitted=False, nr_splits=23):
+    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, split=False, nr_splits=23):
         # Obtaining the needed type of instance
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 
@@ -180,8 +180,11 @@ class GoogleCompute(Main):
 
         self.main_server = "main-server"
 
+        # Memorize the number of splits for later use
+        self.nr_splits = nr_splits
+
         # Creating the split servers
-        if splitted:
+        if split:
             for i in xrange(nr_splits):
                 proc = self.createFileServer("split%d-server" % i, instance_type, nr_local_ssd=1)
                 resource = GoogleResource("split%d-server" % i, "instance", create_process=proc)
@@ -235,6 +238,13 @@ class GoogleCompute(Main):
                 self.runCommand("copyRef", cmd, on_instance=self.main_server)
             )
         )
+        if split:
+            for i in xrange(nr_splits):
+                wait_list.append(
+                    GoogleProcess("copyRef_split%d" % i,
+                        self.runCommand("copyRef_split%d" % i, cmd, on_instance="split%d-server" % i)
+                    )
+                )
 
         # Copying and configuring the softwares
         cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
@@ -243,9 +253,16 @@ class GoogleCompute(Main):
                 self.runCommand("copySrc", cmd, on_instance=self.main_server)
             )
         )
+        if split:
+            for i in xrange(nr_splits):
+                wait_list.append(
+                    GoogleProcess("copySrc_split%d" % i,
+                        self.runCommand("copySrc_split%d" % i, cmd, on_instance="split%d-server" % i)
+                    )
+                )
 
         # Creating split directory and mount split server
-        if splitted:
+        if split:
             for i in xrange(nr_splits):
                 cmd = "mkdir -p /data/split%d && " % i
                 cmd += "sudo mount -t nfs split%d-server:/data /data/split%d" % (i, i)
