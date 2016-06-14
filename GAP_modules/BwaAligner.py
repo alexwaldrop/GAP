@@ -28,6 +28,10 @@ class BwaAligner(Aligner):
         self.sam_to_bam     = ConverterSamToBam(config)
         self.bam_sort       = BAMSorter(config)
 
+        self.can_split      = True
+        self.splitter       = "FASTQSplitter"
+        self.merger         = "SamtoolsBAMMerge"
+
     def getCPURequirement(self):
         return self.threads
 
