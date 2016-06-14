@@ -1,6 +1,8 @@
-from GAP_interfaces import Main
 import os
-import math
+
+from GAP_interfaces import Main
+
+__main_class__ = "FASTQSplitter"
 
 class FASTQSplitter(Main):
 
@@ -9,49 +11,30 @@ class FASTQSplitter(Main):
 
         self.temp_dir = config.general.temp_dir
 
-    def byNrReads(self, nr_reads, R1_file, R2_file=None):
+        self.R1 = None
+        self.R2 = None
 
-        # Setting the required values in the object
-        self.R1         = R1_file
-        self.R2         = R2_file
-        self.nr_reads   = nr_reads
-        with open(R1_file) as inp:
-            self.total_reads= sum(1 for line in inp) / 4
+        self.nr_splits = 2
 
-        # Validating the values
-        self.validate()
+    def getCommand(self):
 
-        # Computing the number of splits
-        self.split_count = int(math.ceil(float(self.total_reads) / self.nr_reads))
+        # Generating the commands
+        cmds = []
 
-        # Setting up the prefix of the splits
-        if R2_file != None:
-            # Pair-End Sequencing
-            R1_pre  = "fastq_R1_"
-            R2_pre  = "fastq_R2_"
-        else:
-            # Single-End Sequencing
-            R1_pre  = "fastq_"
+        # Obtaining number of reads
+        cmds.append("nr_lines=$(( `du -b %s | cut -f1` / `head -n4 %s | wc -c` / %d * 4))" % (self.R1, self.R1, self.nr_splits) )
 
-        # Generating the required commands
-        R1_command = "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (self.nr_reads*4, self.R1, self.temp_dir, R1_pre)
-        if R2_file != None:
-            R2_command = "split --suffix-length=4 --numeric-suffixes --lines=%d %s %s/%s" % (self.nr_reads*4, self.R2, self.temp_dir, R2_pre)
+        # Splitting the files
+        cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R1_" % (self.R1, self.temp_dir) )
+        cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R2_" % (self.R2, self.temp_dir) )
 
-        # Returning the command to be run
-        if R2_file != None:
-            return "%s && %s" % (R1_command, R2_command)
-        else:
-            return R1_command
+        # Moving the splits in their folder
+        for split_id in xrange(self.nr_splits):
+            cmds.append("mv %s/fastq_R1_%02d %s/split%d/" % (self.temp_dir, split_id, self.temp_dir, split_id) )
+            cmds.append("mv %s/fastq_R2_%02d %s/split%d/" % (self.temp_dir, split_id, self.temp_dir, split_id) )
+
+        return " && ".join(cmds)
 
     def validate(self):
-        
-        if not os.path.isfile(self.R1):
-            self.error("Input file(s) could not be found!")
 
-        if self.R2 != None:
-            if not os.path.isfile(self.R2):
-                self.error("Input file(s) could not be found!")
-
-        if self.nr_reads <= 0:
-            self.error("Cannot split a FASTQ file by %d reads!" % self.nr_reads)
+        pass
