@@ -83,6 +83,10 @@ class Node(Main):
         self.process = self.platform.runCommand("merge", cmd, on_instance=self.platform.main_server)
         self.process.wait()
 
+        # Marking for output
+
+        self.sample_data["outputs"] = ["/data/out.bam"]
+
     def run_normal(self):
 
         self.main["instance"].R1 = self.sample_data["R1_new_path"]
