@@ -52,7 +52,7 @@ class Node(Main):
         # Setting up the splitter
         self.split["instance"].R1 = self.sample_data["R1_new_path"]
         self.split["instance"].R2 = self.sample_data["R2_new_path"]
-        self.split["instance"].nr_splits = 20
+        self.split["instance"].nr_splits = self.config.general.nr_splits
 
         # Running the splitter
         cmd = self.split["instance"].getCommand()
@@ -64,7 +64,7 @@ class Node(Main):
         for split_id in xrange(self.platform.nr_splits):
             self.main["instance"].R1 = "%s/fastq_R1_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].R2 = "%s/fastq_R2_%02d" % (self.config.general.temp_dir, split_id)
-            self.main["instance"].threads = 32
+            self.main["instance"].threads = self.config.general.nr_cpus
 
             cmd = self.main["instance"].getCommand()
 
@@ -76,7 +76,7 @@ class Node(Main):
 
         # Setting up the merger
         self.merge["instance"].nr_splits = self.platform.nr_splits
-        self.merge["instance"].threads = 32
+        self.merge["instance"].threads = self.config.general.nr_cpus
 
         # Running the merger
         cmd = self.merge["instance"].getCommand()
@@ -91,7 +91,7 @@ class Node(Main):
 
         self.main["instance"].R1 = self.sample_data["R1_new_path"]
         self.main["instance"].R2 = self.sample_data["R2_new_path"]
-        self.main["instance"].threads = 32
+        self.main["instance"].threads = self.config.general.nr_cpus
 
         cmd = self.main["instance"].getCommand()
 

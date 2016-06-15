@@ -78,6 +78,8 @@ class GoogleCompute(Main):
     def __init__(self, config):
         Main.__init__(self, config)
 
+        self.config         = config
+
         self.key_location   = "keys/Davelab_GAP_key.json"
         self.authenticate()
         
@@ -169,7 +171,14 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
-    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, split=False, nr_splits=23, preemptible_splits=True):
+    def prepareData(self, sample_data, nr_cpus=None, nr_local_ssd = 3, split=False, nr_splits=None, preemptible_splits=True):
+
+        # Setting the arguments with default values
+        if nr_cpus is None:
+            nr_cpus = self.config.general.nr_cpus
+        if nr_splits is None:
+            nr_splits = self.config.general.nr_splits
+
         # Obtaining the needed type of instance
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 

@@ -7,6 +7,10 @@ from GAP_modules import GoogleCompute as Platform
 # Generating the config object
 config = Config("GAP.config", silent = True)
 
+# Setting up some variables
+config.general.nr_cpus = 1
+config.general.nr_splits = 3
+
 # Setting up a fake profile
 
 # 5M reads R1/R2
@@ -31,7 +35,7 @@ s = { "R1_path":"gs://davelab_temp/R1.fastq.gz",
 
 # Setting up the platform
 plat = Platform(config)
-plat.prepareData(s, nr_local_ssd=2, split=True, nr_splits=20, nr_cpus=1)
+plat.prepareData(s, nr_local_ssd=2, split=True)
 
 # Running the alignment
 Node(config, plat, s, "BwaAligner").run()
