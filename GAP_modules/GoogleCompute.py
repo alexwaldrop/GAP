@@ -169,7 +169,7 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
-    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, split=False, nr_splits=23):
+    def prepareData(self, sample_data, nr_cpus = 32, nr_local_ssd = 3, split=False, nr_splits=23, preemptible_splits=True):
         # Obtaining the needed type of instance
         instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
 
@@ -186,7 +186,7 @@ class GoogleCompute(Main):
         # Creating the split servers
         if split:
             for i in xrange(nr_splits):
-                proc = self.createFileServer("split%d-server" % i, instance_type, nr_local_ssd=1)
+                proc = self.createFileServer("split%d-server" % i, instance_type, nr_local_ssd=1, is_preemptible=preemptible_splits)
                 resource = GoogleResource("split%d-server" % i, "instance", create_process=proc)
                 self.resources["split%d-server" % i] = resource
 
@@ -378,7 +378,7 @@ class GoogleCompute(Main):
         with open(os.devnull, "w") as devnull:
             return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, zone = None, nr_local_ssd = 0):
+    def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0):
 
         if nr_local_ssd == 0:
             start_up_script = "nfs.sh"
@@ -388,6 +388,7 @@ class GoogleCompute(Main):
         return self.createInstance(name, instance_type,
                             boot_disk_size      = boot_disk_size,
                             is_boot_disk_ssd    = is_boot_disk_ssd,
+                            is_preemptible      = is_preemptible,
                             zone                = zone,
                             nr_local_ssd        = nr_local_ssd,
                             start_up_script     = start_up_script)
