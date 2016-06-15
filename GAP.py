@@ -8,11 +8,26 @@ from GAP_modules import GoogleCompute as Platform
 config = Config("GAP.config", silent = True)
 
 # Setting up a fake profile
-#s = { "R1_path":"gs://davelab_temp/R1_40M_TEST.fastq",
-#      "R2_path":"gs://davelab_temp/R2_40M_TEST.fastq"}
 
-s = { "R1_path":"gs://davelab_temp/R1_TEST.fastq.gz",
-      "R2_path":"gs://davelab_temp/R2_TEST.fastq.gz"}
+# 5M reads R1/R2
+s = { "R1_path":"gs://davelab_temp/R1.fastq.gz",
+      "R2_path":"gs://davelab_temp/R2.fastq.gz"}
+
+# 10M reads R1/R2
+#s = { "R1_path":"gs://davelab_temp/R1_10M.fastq.gz",
+#      "R2_path":"gs://davelab_temp/R2_10M.fastq.gz"}
+
+# 50M reads R1/R2
+#s = { "R1_path":"gs://davelab_temp/R1_50M.fastq.gz",
+#      "R2_path":"gs://davelab_temp/R2_50M.fastq.gz"}
+
+# 100M reads R1/R2
+#s = { "R1_path":"gs://davelab_temp/R1_100M.fastq.gz",
+#      "R2_path":"gs://davelab_temp/R2_100M.fastq.gz"}
+
+# Whole genome
+#s = { "R1_path":"gs://davelab_temp/HMNTTCCXX_s1_1_K19_0349_SL147226.fastq.gz",
+#      "R2_path":"gs://davelab_temp/HMNTTCCXX_s1_1_K19_0349_SL147226.fastq.gz"}
 
 # Setting up the platform
 plat = Platform(config)
