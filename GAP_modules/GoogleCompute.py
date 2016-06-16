@@ -374,9 +374,12 @@ class GoogleCompute(Main):
         if start_up_script is not None:
             args.append("--metadata")
             args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script)
-        elif nr_local_ssd != 0:
+        elif nr_local_ssd == 1:
             args.append("--metadata")
             args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD.sh")
+        elif nr_local_ssd > 1:
+            args.append("--metadata")
+            args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD_RAID.sh")
 
         args.append("--zone")
         if zone is None:
@@ -391,8 +394,10 @@ class GoogleCompute(Main):
 
         if nr_local_ssd == 0:
             start_up_script = "nfs.sh"
-        else:
+        elif nr_local_ssd == 1:
             start_up_script = "nfs_LocalSSD.sh"
+        else:
+            start_up_script = "nfs_LocalSSD_RAID.sh"
 
         return self.createInstance(name, instance_type,
                             boot_disk_size      = boot_disk_size,
