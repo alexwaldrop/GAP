@@ -59,9 +59,22 @@ class Node(Main):
         self.process = self.platform.runCommand("split", cmd, on_instance=self.platform.main_server)
         self.process.wait()
 
+        # Creating the split servers
+        self.platform.createSplitServers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus, is_preemptible=False)
+
+        cmds = []
+
+        # Moving the splits in their folders
+        for split_id in xrange(self.config.general.nr_splits):
+            cmds.append("mv %s/fastq_R1_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
+            cmds.append("mv %s/fastq_R2_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
+
+        self.process = self.platform.runCommand("move_splits", " && ".join(cmds), on_instance=self.platform.main_server)
+        self.process.wait()
+
         # Calling the process on each split
         procs = []
-        for split_id in xrange(self.platform.nr_splits):
+        for split_id in xrange(self.config.general.nr_splits):
             self.main["instance"].R1 = "%s/fastq_R1_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].R2 = "%s/fastq_R2_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].threads = self.config.general.nr_cpus
@@ -75,7 +88,7 @@ class Node(Main):
             time.sleep(5)
 
         # Setting up the merger
-        self.merge["instance"].nr_splits = self.platform.nr_splits
+        self.merge["instance"].nr_splits = self.config.general.nr_splits
         self.merge["instance"].threads = self.config.general.nr_cpus
 
         # Running the merger
@@ -83,8 +96,16 @@ class Node(Main):
         self.process = self.platform.runCommand("merge", cmd, on_instance=self.platform.main_server)
         self.process.wait()
 
-        # Marking for output
+        # Destroying the splits
+        procs = []
+        for split_id in xrange(self.config.general.nr_splits):
+            procs.append( self.platform.destroyInstance("split%d-server" % split_id) )
 
+        # Waiting for all the split servers to DIE!!!
+        while not all( proc.poll() is not None for proc in procs ):
+            time.sleep(5)
+
+        # Marking for output
         self.sample_data["outputs"] = ["/data/out.bam"]
 
     def run_normal(self):
@@ -103,7 +124,7 @@ class Node(Main):
 
     def run(self):
 
-        if self.main["instance"].can_split:
+        if self.main["instance"].can_split and self.config.general.split:
             self.run_split()
         else:
             self.run_normal()

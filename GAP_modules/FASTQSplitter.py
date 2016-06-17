@@ -28,11 +28,6 @@ class FASTQSplitter(Main):
         cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R1_" % (self.R1, self.temp_dir) )
         cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R2_" % (self.R2, self.temp_dir) )
 
-        # Moving the splits in their folder
-        for split_id in xrange(self.nr_splits):
-            cmds.append("mv %s/fastq_R1_%02d %s/split%d/" % (self.temp_dir, split_id, self.temp_dir, split_id) )
-            cmds.append("mv %s/fastq_R2_%02d %s/split%d/" % (self.temp_dir, split_id, self.temp_dir, split_id) )
-
         return " && ".join(cmds)
 
     def validate(self):

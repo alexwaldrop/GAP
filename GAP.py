@@ -9,6 +9,7 @@ config = Config("GAP.config", silent = True)
 
 # Setting up some variables
 config.general.nr_cpus = 1
+config.general.split = True
 config.general.nr_splits = 3
 
 # Setting up a fake profile
@@ -35,7 +36,7 @@ s = { "R1_path":"gs://davelab_temp/R1.fastq.gz",
 
 # Setting up the platform
 plat = Platform(config)
-plat.prepareData(s, nr_local_ssd=2, split=True)
+plat.prepareData(s)
 
 # Running the alignment
 Node(config, plat, s, "BwaAligner").run()
