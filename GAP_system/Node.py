@@ -56,11 +56,11 @@ class Node(Main):
 
         # Running the splitter
         cmd = self.split["instance"].getCommand()
-        self.process = self.platform.runCommand("split", cmd, on_instance=self.platform.main_server)
-        self.process.wait()
+        self.platform.instances["main-server"].run_command("split", cmd)
+        self.platform.instances["main-server"].wait_all()
 
         # Creating the split servers
-        self.platform.createSplitServers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus, is_preemptible=False)
+        self.platform.create_split_servers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus, is_preemptible=False)
 
         cmds = []
 
@@ -69,11 +69,10 @@ class Node(Main):
             cmds.append("mv %s/fastq_R1_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
             cmds.append("mv %s/fastq_R2_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
 
-        self.process = self.platform.runCommand("move_splits", " && ".join(cmds), on_instance=self.platform.main_server)
-        self.process.wait()
+        self.platform.instances["main-server"].run_command("move_splits", " && ".join(cmds))
+        self.platform.instances["main-server"].wait_all()
 
         # Calling the process on each split
-        procs = []
         for split_id in xrange(self.config.general.nr_splits):
             self.main["instance"].R1 = "%s/fastq_R1_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].R2 = "%s/fastq_R2_%02d" % (self.config.general.temp_dir, split_id)
@@ -81,32 +80,34 @@ class Node(Main):
 
             cmd = self.main["instance"].getCommand()
 
-            procs.append(self.platform.runCommand("align%d" % split_id, cmd, on_instance="split%d-server" % split_id) )
+            self.platform.instances["split%d-server" % split_id].run_command("align%d" % split_id, cmd)
 
         # Waiting for all the split aligning processes to finish
-        while not all( proc.poll() is not None for proc in procs ):
-            time.sleep(5)
+        for instance_name, instance_obj in self.platform.instances.iteritems():
+	    if instance_name.startswith("split"):
+	        instance_obj.wait_all()
 
-        # Setting up the merger
+	    # Setting up the merger
         self.merge["instance"].nr_splits = self.config.general.nr_splits
         self.merge["instance"].threads = self.config.general.nr_cpus
 
         # Running the merger
         cmd = self.merge["instance"].getCommand()
-        self.process = self.platform.runCommand("merge", cmd, on_instance=self.platform.main_server)
-        self.process.wait()
+        self.platform.instances["main-server"].run_command("merge", cmd)
+        self.platform.instances["main-server"].wait_all()
 
         # Destroying the splits
-        procs = []
-        for split_id in xrange(self.config.general.nr_splits):
-            procs.append( self.platform.destroyInstance("split%d-server" % split_id) )
+        for instance_name, instance_obj in self.platform.instances.iteritems():
+	    if instance_name.startswith("split"):
+	        instance_obj.destroy()
 
         # Waiting for all the split servers to DIE!!!
-        while not all( proc.poll() is not None for proc in procs ):
-            time.sleep(5)
+        for instance_name, instance_obj in self.platform.instances.iteritems():
+	    if instance_name.startswith("split"):
+	        instance_obj.wait_all()
 
         # Marking for output
-        self.sample_data["outputs"] = ["/data/out.bam"]
+        self.sample_data["outputs"] = ["%s/out.bam" % self.config.general.temp_dir]
 
     def run_normal(self):
 
@@ -116,11 +117,11 @@ class Node(Main):
 
         cmd = self.main["instance"].getCommand()
 
-        self.process = self.platform.runCommand("align", cmd, on_instance=self.platform.main_server)
+        self.platform.instances["main-server"].run_command("align", cmd)
+        self.platform.instances["main-server"].wait_all()
 
-        self.sample_data["outputs"] = ["/data/out.bam"]
-
-        self.process.wait()
+        # Marking for output
+        self.sample_data["outputs"] = ["%s/out.bam" % self.config.general.temp_dir]
 
     def run(self):
 

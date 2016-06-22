@@ -6,71 +6,231 @@ import time
 
 from GAP_interfaces import Main
 
-class GoogleResource():
+class Instance():
 
-    def __init__(self, name, type_, create_process=None):
+    def __init__(self, name, nr_cpus, mem, **kwargs):
 
+        # Setting variables
+        self.name           = name
+        self.nr_cpus, self.mem, self.instance_type = GoogleCompute.get_instance_type(nr_cpus, mem)
+
+        self.is_server          = kwargs.get("is_server",        False)
+        self.boot_disk_size     = kwargs.get("boot_disk_size",   10)
+        self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
+        self.is_preemptible     = kwargs.get("is_preemptible",   False)
+        self.zone               = kwargs.get("zone",             "us-east1-b")
+        self.nr_local_ssd       = kwargs.get("nr_local_ssd",     0)
+        self.start_up_script    = kwargs.get("start_up_script",  None)
+
+        self.attached_disks     = []
+        self.processes          = {}
+
+    def create(self):
+
+        print("--------Creating %s" % self.name)
+
+        args = ["gcloud compute instances create %s" % self.name]
+
+        args.append("--boot-disk-size")
+        if self.boot_disk_size >= 1024:
+            args.append("%dTB" % int(self.boot_disk_size/1024))
+        else:
+            args.append("%dGB" % int(self.boot_disk_size))
+
+        args.append("--boot-disk-type")
+        if self.is_boot_disk_ssd:
+            args.append("pd-ssd")
+        else:
+            args.append("pd-standard")
+
+        args.extend(["--local-ssd" for _ in xrange(self.nr_local_ssd)])
+
+        args.append("--scopes")
+        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
+
+        args.append("--image")
+        args.append("ubuntu-14-04")
+
+        args.append("--machine-type")
+        args.append(self.instance_type)
+
+        if self.is_preemptible:
+            args.append("--preemptible")
+
+        if self.start_up_script is not None:
+            args.append("--metadata")
+            args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script)
+        elif self.is_server:
+            if self.nr_local_ssd == 0:
+                args.append("--metadata")
+                args.append("startup-script-url=gs://davelab_data/scripts/nfs.sh")
+            elif self.nr_local_ssd == 1:
+                args.append("--metadata")
+                args.append("startup-script-url=gs://davelab_data/scripts/nfs_LocalSSD.sh")
+            elif self.nr_local_ssd > 1:
+                args.append("--metadata")
+                args.append("startup-script-url=gs://davelab_data/scripts/nfs_LocalSSD_RAID.sh")
+        else:
+            if self.nr_local_ssd == 1:
+                args.append("--metadata")
+                args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD.sh")
+            elif self.nr_local_ssd > 1:
+                args.append("--metadata")
+                args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD_RAID.sh")
+
+        args.append("--zone")
+        args.append(self.zone)
+
+        with open(os.devnull, "w") as devnull:
+            self.processes["create"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+
+    def destroy(self):
+
+        print("--------Destroying %s" % self.name)
+
+        args = ["gcloud compute instances delete %s" % self.name]
+
+        args.append("--zone")
+        args.append(self.zone)
+
+        # Provide input to the command
+        args[0:0] = ["yes", "2>/dev/null", "|"]
+
+        with open(os.devnull, "w") as devnull:
+            self.processes["destroy"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+
+    def attach_disk(self, disk, read_only=True):
+
+        args = ["gcloud compute instances attach-disk %s" % self.name]
+
+        args.append("--disk")
+        args.append(disk.name)
+
+        args.append("--mode")
+        if read_only:
+            args.append("ro")
+        else:
+            args.append("rw")
+
+        args.append("--zone")
+        args.append(self.zone)
+
+        self.attached_disks.append(disk)
+
+        with open(os.devnull, "w") as devnull:
+            self.processes["attach_disk_%s" % disk.name] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+
+    def detach_disk(self, disk):
+
+        args = ["gcloud compute instances detach-disk %s" % self.name]
+
+        args.append("--disk")
+        args.append(disk.name)
+
+        args.append("--zone")
+        args.append(self.zone)
+
+        self.attached_disks.remove(disk)
+
+        with open(os.devnull, "w") as devnull:
+            self.processes["detach_disk_%s" % disk.name] =  sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+
+    def run_command(self, job_name, command, wait=False):
+
+        cmd = "gcloud compute ssh gap@%s --command '%s'" % (self.name, command)
+
+        self.processes[job_name] = sp.Popen(cmd, shell=True)
+
+        if wait:
+            self.processes[job_name].wait()
+
+    def wait_all(self):
+
+        for proc_name, proc_obj in self.processes.iteritems():
+            proc_obj.wait()
+
+            # Logging if not logged yet
+            if not hasattr(proc_obj, 'logged'):
+                if proc_name == "create":
+                    print("--------Creation %s complete" % self.name)
+                elif proc_name == "destroy":
+                    print("--------Destroy %s complete" % self.name)
+                else:
+                    print("--------Process '%s' on instance '%s' complete!" % (proc_name, self.name))
+                proc_obj.logged = True
+
+
+class Disk():
+
+    def __init__(self, name, size, **kwargs):
+
+        # Setting variables
         self.name   = name
-        self.type_  = type_
+        self.size   = size
 
-        self.set_create_process(create_process)
-        self.destroy_process = None
+        self.is_SSD     = kwargs.get("is_SSD",      False)
+        self.zone       = kwargs.get("zone",        "us-east1-b")
+        self.with_image = kwargs.get("with_image",  False)
 
-    def set_create_process(self, proc):
+        self.processes  = {}
 
-        if proc is None:
-            self.create_process = None
-        elif isinstance(proc, GoogleProcess):
-            self.create_process = proc
+    def create(self):
+
+        print("---------Creating %s" % self.name)
+
+        args = ["gcloud compute disks create %s" % self.name]
+
+        args.append("--size")
+        if self.size >= 1024:
+            args.append("%dTB" % int(self.size/1024))
         else:
-            self.create_process = GoogleProcess("create_%s" % (self.name), proc)
+            args.append("%dGB" % int(self.size))
 
-    def get_create_process(self):
-        return self.create_process
-
-    def set_destroy_process(self, proc):
-
-        if proc is None:
-            self.destroy_process = None
-        elif isinstance(proc, GoogleProcess):
-            self.destroy_process = proc
+        args.append("--type")
+        if self.is_SSD:
+            args.append("pd-ssd")
         else:
-            self.destroy_process = GoogleProcess("destroy_%s" % (proc), proc)
+            args.append("pd-standard")
 
-    def get_destroy_process(self):
-        return self.destroy_process
+        args.append("--zone")
+        args.append(self.zone)
 
-    def get_type(self):
-        return self.type_
+        if self.with_image:
+            args.append("--image")
+            args.append("ubuntu-14-04")
 
-    def is_ready(self):
-        return self.create_process is not None and self.create_process.is_done()
+        with open(os.devnull, "w") as devnull:
+            self.processes["create"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def is_dead(self):
-        return self.destroy_process is not None and self.destroy_process.is_done()
+    def destroy(self):
 
+        print("---------Destroy %s" % self.name)
 
-class GoogleProcess():
+        args = ["gcloud compute disks delete %s" % self.name]
 
-    def __init__(self, name, process):
+        args.append("--zone")
+        args.append(self.zone)
 
-        self.name = name
+        # Provide input to the command
+        args[0:0] = ["yes", "2>/dev/null", "|"]
 
-        self.proc = process
-        self.return_code = None
+        with open(os.devnull, "w") as devnull:
+            self.processes["destroy"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def is_done(self):
-        return self.get_return_code() is not None
+    def wait_all(self):
 
-    def get_return_code(self, wait=False):
+        for proc_name, proc_obj in self.processes.iteritems():
+            proc_obj.wait()
 
-        if self.return_code is None:
-            if wait:
-                self.return_code = self.proc.wait()
-            else:
-                self.return_code = self.proc.poll()
-
-        return self.return_code
+            # Logging if not logged yet
+            if not hasattr(proc_obj, 'logged'):
+                if proc_name == "create":
+                    print("--------Creation %s complete" % self.name)
+                elif proc_name == "destroy":
+                    print("--------Destroy %s complete" % self.name)
+                else:
+                    print("--------Process '%s' on instance '%s' complete!" % (proc_name, self.name))
+                proc_obj.logged = True
 
 
 class GoogleCompute(Main):
@@ -82,39 +242,31 @@ class GoogleCompute(Main):
 
         self.key_location   = "keys/Davelab_GAP_key.json"
         self.authenticate()
-        
-        self.prefix         = "gap-"
 
-        self.resources      = {}
-        self.main_server    = None
+        self.instances      = {}
+        self.disks          = {}
 
-        self.zone           = self.getZone()
+        self.zone           = self.get_zone()
 
     def __del__(self):
 
-        while self.resources:
+        # Destroying all the instances
+        for _, instance_obj in self.instances.iteritems():
+            if instance_obj.processes.get("destroy") is None:
+                instance_obj.destroy()
 
-            to_remove = []
+        # Waiting for the instances to be destroyed
+        for _, instance_obj in self.instances.iteritems():
+            instance_obj.processes["destroy"].wait()
 
-            for resource_name, resource in self.resources.iteritems():
+        # Destroying all the disks
+        for _, disk_obj in self.disks.iteritems():
+            if disk_obj.processes.get("destroy") is None:
+                disk_obj.destroy()
 
-                if resource.get_destroy_process() is None:
-                    if resource.get_type() == "instance":
-                        proc = self.destroyInstance(resource_name)
-                    elif resource.get_type() == "disk":
-                        proc = self.destroyDisk(resource_name)
-                    else:
-                        proc = None
-
-                    resource.set_destroy_process(proc)
-
-                elif resource.is_dead():
-                    to_remove.append(resource_name)
-
-            for resource_name in to_remove:
-                del self.resources[resource_name]
-
-            time.sleep(5)
+        # Waiting for the disks to be destroyed
+        for _, disk_obj in self.disks.iteritems():
+            disk_obj.processes["destroy"].wait()
 
     def authenticate(self):
 
@@ -123,46 +275,16 @@ class GoogleCompute(Main):
         if not os.path.exists(self.key_location):
             self.error("Authentication key was not found!")
 
-        proc = GoogleProcess("authenticate", sp.Popen(["gcloud auth activate-service-account --key-file %s" % self.key_location], shell = True))
+        cmd = "gcloud auth activate-service-account --key-file %s" % self.key_location
+        proc = sp.Popen(cmd, shell = True)
 
-        if proc.get_return_code(wait=True) != 0:
+        if proc.wait() != 0:
             self.error("Authentication to Google Cloud failed!")
 
         self.message("Authentication to Google Cloud was successful.")
 
-    def getInstanceType(self, cpus, mem):
-            
-        # Treating special cases
-        if cpus == 1:
-            if mem <= 0.6:
-                return "f1-micro"
-            if mem <= 1.7:
-                return "g1-small"
-            if mem <= 3.5:
-                return "n1-standard-1"
+    def get_zone(self):
 
-        # Defining instance type to mem/cpu ratios
-        ratio_high_cpu  = 1.80  / 2
-        ratio_standard  = 7.50  / 2
-        ratio_high_mem  = 13.00 / 2
-
-        # Identifying needed instance type
-        ratio_mem_cpu = mem * 1.0 / cpus
-        if ratio_mem_cpu <= ratio_high_cpu:
-            instance_type   = "highcpu"
-        elif ratio_mem_cpu <= ratio_standard:
-            instance_type   = "standard"
-        else:
-            instance_type   = "highmem"
-
-        # Converting the number of cpus to the closest upper power of 2
-        nr_cpus = 2**math.ceil(math.log(cpus, 2))
-    
-        # Returning instance name
-        return "n1-%s-%d" % (instance_type, nr_cpus)
-
-    def getZone(self):
-        
         p = sp.Popen(["gcloud config list 2>/dev/null | grep \"zone\""], stdout = sp.PIPE, stderr = sp.PIPE, shell = True)
         output = p.communicate()[0]
 
@@ -171,25 +293,56 @@ class GoogleCompute(Main):
         else:
             return "us-east1-b"
 
-    def prepareData(self, sample_data, nr_cpus=None, nr_local_ssd = 3):
+    @staticmethod
+    def get_instance_type(nr_cpus, mem):
+
+        # Treating special cases
+        if nr_cpus == 1:
+            if mem <= 0.6:
+                return (1, 0.6, "f1-micro")
+            if mem <= 1.7:
+                return (1, 1.7, "g1-small")
+            if mem <= 3.5:
+                return (1, 3.5, "n1-standard-1")
+
+        # Defining instance type to mem/cpu ratios
+        ratio = {}
+        ratio["highcpu"] = 1.80  / 2
+        ratio["standard"] = 7.50  / 2
+        ratio["highmem"] = 13.00 / 2
+
+        # Identifying needed instance type
+        ratio_mem_cpu = mem * 1.0 / nr_cpus
+        if ratio_mem_cpu <= ratio["highcpu"]:
+            instance_type   = "highcpu"
+        elif ratio_mem_cpu <= ratio["standard"]:
+            instance_type   = "standard"
+        else:
+            instance_type   = "highmem"
+
+        # Converting the number of cpus to the closest upper power of 2
+        nr_cpus = 2**math.ceil(math.log(nr_cpus, 2))
+
+        # Computing the memory obtain on the instance
+        mem = nr_cpus * ratio[instance_type]
+
+        # Setting the instance type name
+        inst_type_name = "n1-%s-%d" % (instance_type, nr_cpus)
+
+        return (nr_cpus, mem, inst_type_name)
+
+    def prepare_data(self, sample_data, nr_cpus=None, mem=None, nr_local_ssd=3):
 
         # Setting the arguments with default values
         if nr_cpus is None:
             nr_cpus = self.config.general.nr_cpus
-
-        # Obtaining the needed type of instance
-        instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
+        if mem is None:
+            mem = self.config.general.mem
 
         # Create the main server
-        proc = self.createFileServer("main-server", instance_type, nr_local_ssd=nr_local_ssd)
-        resource = GoogleResource("main-server", "instance", create_process=proc)
-        self.resources["main-server"] = resource
-
-        self.main_server = "main-server"
-
-        # Waiting for the main server to be created
-        while not self.resources["main-server"].is_ready():
-            time.sleep(5)
+        self.instances["main-server"] = Instance("main-server", nr_cpus, mem, is_server=True, nr_local_ssd=nr_local_ssd)
+        self.instances["main-server"].create()
+        self.instances["main-server"].wait_all()
 
         # Waiting for the instance to run all the start-up scripts
         time.sleep(120)
@@ -202,103 +355,69 @@ class GoogleCompute(Main):
         sample_data["R1_new_path"] = "/data/%s" % R1_path.split("/")[-1].rstrip(".gz")
         sample_data["R2_new_path"] = "/data/%s" % R2_path.split("/")[-1].rstrip(".gz")
 
-        # Creating list of processes
-        wait_list = []
-
         # Copying input data
         cmd = "gsutil cp %s /data/ " % R1_path
         if R1_path.endswith(".gz"):
             cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1_new_path"])
-        wait_list.append(
-            GoogleProcess("copyFASTQ_R1",
-                self.runCommand("copyFASTQ_R1", cmd, on_instance=self.main_server)
-            )
-        )
+        self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
         cmd = "gsutil cp %s /data/ " % R2_path
         if R2_path.endswith(".gz"):
             cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2_new_path"])
-        wait_list.append(
-            GoogleProcess("copyFASTQ_R2",
-                self.runCommand("copyFASTQ_R2", cmd, on_instance=self.main_server)
-            )
-        )
+        self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying the reference genome
         cmd = "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/"
-        wait_list.append(
-            GoogleProcess("copyRef",
-                self.runCommand("copyRef", cmd, on_instance=self.main_server)
-            )
-        )
+        self.instances["main-server"].run_command("copyRef", cmd)
 
         # Copying and configuring the softwares
         cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
-        wait_list.append(
-            GoogleProcess("copySrc",
-                self.runCommand("copySrc", cmd, on_instance=self.main_server)
-            )
-        )
+        self.instances["main-server"].run_command("copySrc", cmd)
 
         # Waiting for all the copying processes to be done
-        while not all( proc.is_done() for proc in wait_list ):
-            time.sleep(5)
+        self.instances["main-server"].wait_all()
 
-    def createSplitServers(self, nr_splits, nr_cpus=None, nr_local_ssd=1, is_preemptible=True):
+    def create_split_servers(self, nr_splits, nr_cpus=None, mem=None, nr_local_ssd=1, is_preemptible=True):
         # Memorize the number of splits for later use
         if nr_cpus is None:
             nr_cpus = self.config.general.nr_cpus
 
-        # Obtaining the needed type of instance
-        instance_type   = self.getInstanceType(nr_cpus, 2 * nr_cpus)
-
         # Creating the split servers
-        for i in xrange(nr_splits):
-            proc = self.createFileServer("split%d-server" % i, instance_type, nr_local_ssd=nr_local_ssd, is_preemptible=is_preemptible)
-            resource = GoogleResource("split%d-server" % i, "instance", create_process=proc)
-            self.resources["split%d-server" % i] = resource
+        for split_id in xrange(nr_splits):
+            name = "split%d-server" % split_id
+            self.instances[name] = Instance(name, nr_cpus, 2*nr_cpus, is_server=True, nr_local_ssd=nr_local_ssd, is_preemptible=is_preemptible)
+            self.instances[name].create()
 
         # Waiting for the servers to be created
-        while not all( resource.is_ready() for _, resource in self.resources.iteritems() ):
-            time.sleep(5)
+        for instance_name, instance_obj in self.instances.iteritems():
+            if instance_name.startswith("split"):
+                instance_obj.wait_all()
 
         # Waiting for instances to run the start-up scripts
         time.sleep(90)
 
-        wait_list = []
-
         # Copying the reference geneme on the splits
         cmd = "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/"
-        for i in xrange(nr_splits):
-            wait_list.append(
-                GoogleProcess("copyRef_split%d" % i,
-                    self.runCommand("copyRef_split%d" % i, cmd, on_instance="split%d-server" % i)
-                )
-            )
+        for split_id in xrange(nr_splits):
+            self.instances["split%d-server" % split_id].run_command("copyRef", cmd)
 
         # Copying and configuring the softwares
         cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
-        for i in xrange(nr_splits):
-            wait_list.append(
-                GoogleProcess("copySrc_split%d" % i,
-                    self.runCommand("copySrc_split%d" % i, cmd, on_instance="split%d-server" % i)
-                )
-            )
+        for split_id in xrange(nr_splits):
+            self.instances["split%d-server" % split_id].run_command("copySrc", cmd)
+
+        # Waiting for the data to be copied
+        for instance_name, instance_obj in self.instances.iteritems():
+            if instance_name.startswith("split"):
+                instance_obj.wait_all()
 
         # Creating split directory and mount split server
-        for i in xrange(nr_splits):
-            cmd = "mkdir -p /data/split%d && " % i
-            cmd += "sudo mount -t nfs split%d-server:/data /data/split%d" % (i, i)
+        for split_id in xrange(nr_splits):
+            cmd = "mkdir -p /data/split%d && " % split_id
+            cmd += "sudo mount -t nfs split%d-server:/data /data/split%d" % (split_id, split_id)
+            self.instances["main-server"].run_command("mountSplit%d" % split_id, cmd)
 
-            wait_list.append(
-                GoogleProcess("mountSplit%d" % i,
-                    self.runCommand("mountSplit%d" % i, cmd, on_instance=self.main_server)
-                )
-            )
-
-        # Waiting for all the copying processes to be done
-        while not all( proc.is_done() for proc in wait_list ):
-            time.sleep(5)
+        self.instances["main-server"].wait_all()
 
     def finalize(self, sample_data):
 
@@ -312,211 +431,10 @@ class GoogleCompute(Main):
         # Copying the output data
         for i, output_path in enumerate(sample_data["outputs"]):
             cmd = "gsutil -m cp -r %s gs://davelab_temp/" % output_path
-            wait_list.append(
-                GoogleProcess("copyOut_%d" % i,
-                    self.runCommand("copyOut_%d" % i, cmd, on_instance=self.main_server)
-                )
-            )
+            self.instances["main-server"].run_command("copyOut_%d" % i, cmd)
 
         # Waiting for all the copying processes to be done
-        while not all( proc.is_done() for proc in wait_list ):
-            time.sleep(5)
-
-    def createDisk(self, name, size, is_SSD = False, zone = None, with_image = False):
-        
-        self.message("Creating persistent disk '%s'." % name)
-
-        args = ["gcloud compute disks create %s" % name]
-
-        args.append("--size")
-        if size >= 1024:
-            args.append("%dTB" % int(size/1024))
-        else:
-            args.append("%dGB" % int(size))
-
-        args.append("--type")
-        if is_SSD:
-            args.append("pd-ssd")
-        else:
-            args.append("pd-standard")
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-
-        if with_image:
-            args.append("--image")
-            args.append("ubuntu-14-04")
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def createInstance(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0, start_up_script = None):
-
-        self.message("Creating instance '%s'." % name)
-
-        args = ["gcloud compute instances create %s" % name]
-
-        args.append("--boot-disk-size")
-        if boot_disk_size >= 1024:
-            args.append("%dTB" % int(boot_disk_size/1024))
-        else:
-            args.append("%dGB" % int(boot_disk_size))
-
-        args.append("--boot-disk-type")
-        if is_boot_disk_ssd:
-            args.append("pd-ssd")
-        else:
-            args.append("pd-standard")
-
-        args.extend(["--local-ssd" for _ in xrange(nr_local_ssd)])
-
-        args.append("--scopes")
-        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
-
-        args.append("--image")
-        args.append("ubuntu-14-04")
-
-        args.append("--machine-type")
-        args.append(instance_type)
-
-        if is_preemptible:
-            args.append("--preemptible")
-
-        if start_up_script is not None:
-            args.append("--metadata")
-            args.append("startup-script-url=gs://davelab_data/scripts/%s" % start_up_script)
-        elif nr_local_ssd == 1:
-            args.append("--metadata")
-            args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD.sh")
-        elif nr_local_ssd > 1:
-            args.append("--metadata")
-            args.append("startup-script-url=gs://davelab_data/scripts/LocalSSD_RAID.sh")
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def createFileServer(self, name, instance_type, boot_disk_size = 10, is_boot_disk_ssd = False, is_preemptible = False, zone = None, nr_local_ssd = 0):
-
-        if nr_local_ssd == 0:
-            start_up_script = "nfs.sh"
-        elif nr_local_ssd == 1:
-            start_up_script = "nfs_LocalSSD.sh"
-        else:
-            start_up_script = "nfs_LocalSSD_RAID.sh"
-
-        return self.createInstance(name, instance_type,
-                            boot_disk_size      = boot_disk_size,
-                            is_boot_disk_ssd    = is_boot_disk_ssd,
-                            is_preemptible      = is_preemptible,
-                            zone                = zone,
-                            nr_local_ssd        = nr_local_ssd,
-                            start_up_script     = start_up_script)
-
-    def attachDisk(self, disk_name, instance_name, zone = None, is_read_only = True):
-
-        self.message("Attaching disk '%s' to instance '%s'." % (disk_name, instance_name))
-
-        args = ["gcloud compute instances attach-disk %s" % instance_name]
-
-        args.append("--disk")
-        args.append(disk_name)
-
-        args.append("--mode")
-        if is_read_only:
-            args.append("ro")
-        else:
-            args.append("rw")
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def detachDisk(self, disk_name, instance_name, zone = None):
-
-        self.message("Detaching disk '%s' from instance '%s'." % (disk_name, instance_name))
-
-        args = ["gcloud compute instances detach-disk %s" % instance_name]
-
-        args.append("--disk")
-        args.append(disk_name)
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def destroyDisk(self, name, zone = None):
-
-        self.message("Destroying disk '%s'." % name)
-
-        args = ["gcloud compute disks delete %s" % name]
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-        
-        # Provide input to the command
-        args[0:0] = ["yes", "2>/dev/null", "|"]
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def destroyInstance(self, name, zone = None):
-
-        self.message("Destroying instance '%s'." % name)
-
-        args = ["gcloud compute instances delete %s" % name]
-
-        args.append("--zone")
-        if zone is None:
-            args.append(self.zone)
-        else:
-            args.append(zone)
-
-        # Provide input to the command
-        args[0:0] = ["yes", "2>/dev/null", "|"]
-
-        with open(os.devnull, "w") as devnull:
-            return sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
-
-    def runCommand(self, job_name, command, on_instance = None, cpus = 1, mem = 1):
-
-        if on_instance is None:
-            inst_type = self.getInstanceType(cpus, mem)
-            inst_name = self.prefix + job_name
-
-            proc = self.createInstance(inst_name, inst_type)
-            self.resources[inst_name] = GoogleResource(inst_name, "instance", create_process=proc)
-
-            # Waiting for instance to get ready
-            self.resources[inst_name].get_return_code(wait=True)
-            time.sleep(10)
-        else:
-            inst_name = on_instance
-
-        cmd = "gcloud compute ssh gap@%s --command '%s'" % (inst_name, command)
-
-        return sp.Popen(cmd, shell=True)
+        self.instances["main-server"].wait_all()
 
     def validate(self):
         pass
