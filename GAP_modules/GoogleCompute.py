@@ -15,7 +15,7 @@ class Instance():
         self.nr_cpus, self.mem, self.instance_type = GoogleCompute.get_instance_type(nr_cpus, mem)
 
         self.is_server          = kwargs.get("is_server",        False)
-        self.boot_disk_size     = kwargs.get("boot_disk_size",   10)
+        self.boot_disk_size     = kwargs.get("boot_disk_size",   15)
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
         self.is_preemptible     = kwargs.get("is_preemptible",   False)
         self.zone               = kwargs.get("zone",             "us-east1-b")
@@ -49,7 +49,7 @@ class Instance():
         args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
 
         args.append("--image")
-        args.append("ubuntu-14-04")
+        args.append("/davelab-gcloud/davelab-image")
 
         args.append("--machine-type")
         args.append(self.instance_type)
@@ -366,10 +366,6 @@ class GoogleCompute(Main):
             cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2_new_path"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
-        # Copying the reference genome
-        cmd = "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/"
-        self.instances["main-server"].run_command("copyRef", cmd)
-
         # Copying and configuring the softwares
         cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
         self.instances["main-server"].run_command("copySrc", cmd)
@@ -395,11 +391,6 @@ class GoogleCompute(Main):
 
         # Waiting for instances to run the start-up scripts
         time.sleep(90)
-
-        # Copying the reference geneme on the splits
-        cmd = "mkdir -p /data/ref/; gsutil -m cp -r gs://davelab_data/ref/hg19/* /data/ref/"
-        for split_id in xrange(nr_splits):
-            self.instances["split%d-server" % split_id].run_command("copyRef", cmd)
 
         # Copying and configuring the softwares
         cmd = "gsutil -m cp -r gs://davelab_data/src /data/ && bash /data/src/setup.sh"
