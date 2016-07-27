@@ -43,7 +43,7 @@ class Instance():
         else:
             args.append("pd-standard")
 
-        args.extend(["--local-ssd" for _ in xrange(self.nr_local_ssd)])
+        args.extend(["--local-ssd ''" for _ in xrange(self.nr_local_ssd)])
 
         args.append("--scopes")
         args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
