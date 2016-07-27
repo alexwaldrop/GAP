@@ -6,6 +6,22 @@ import time
 
 from GAP_interfaces import Main
 
+class GoogleProcess(sp.Popen):
+
+    def __init__(self, args, **kwargs):
+
+        super(GoogleProcess, self).__init__(args, **kwargs)
+
+        self.logged = False
+        if isinstance(args, list):
+            self.command = " ".join(args)
+        else:
+            self.command = args
+
+    def is_done(self):
+
+        return self.poll() is not None
+
 class Instance():
 
     def __init__(self, name, nr_cpus, mem, **kwargs):
@@ -82,7 +98,7 @@ class Instance():
         args.append(self.zone)
 
         with open(os.devnull, "w") as devnull:
-            self.processes["create"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["create"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def destroy(self):
 
@@ -97,7 +113,7 @@ class Instance():
         args[0:0] = ["yes", "2>/dev/null", "|"]
 
         with open(os.devnull, "w") as devnull:
-            self.processes["destroy"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["destroy"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def attach_disk(self, disk, read_only=True):
 
@@ -118,7 +134,7 @@ class Instance():
         self.attached_disks.append(disk)
 
         with open(os.devnull, "w") as devnull:
-            self.processes["attach_disk_%s" % disk.name] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["attach_disk_%s" % disk.name] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def detach_disk(self, disk):
 
@@ -133,13 +149,13 @@ class Instance():
         self.attached_disks.remove(disk)
 
         with open(os.devnull, "w") as devnull:
-            self.processes["detach_disk_%s" % disk.name] =  sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["detach_disk_%s" % disk.name] =  GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def run_command(self, job_name, command, wait=False):
 
         cmd = "gcloud compute ssh gap@%s --command '%s'" % (self.name, command)
 
-        self.processes[job_name] = sp.Popen(cmd, shell=True)
+        self.processes[job_name] = GoogleProcess(cmd, shell=True)
 
         if wait:
             self.processes[job_name].wait()
@@ -150,7 +166,7 @@ class Instance():
             proc_obj.wait()
 
             # Logging if not logged yet
-            if not hasattr(proc_obj, 'logged'):
+            if not proc_obj.logged:
                 if proc_name == "create":
                     print("--------Creation %s complete" % self.name)
                 elif proc_name == "destroy":
@@ -200,7 +216,7 @@ class Disk():
             args.append("ubuntu-14-04")
 
         with open(os.devnull, "w") as devnull:
-            self.processes["create"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["create"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def destroy(self):
 
@@ -215,7 +231,7 @@ class Disk():
         args[0:0] = ["yes", "2>/dev/null", "|"]
 
         with open(os.devnull, "w") as devnull:
-            self.processes["destroy"] = sp.Popen(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+            self.processes["destroy"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
     def wait_all(self):
 
@@ -223,7 +239,7 @@ class Disk():
             proc_obj.wait()
 
             # Logging if not logged yet
-            if not hasattr(proc_obj, 'logged'):
+            if not proc_obj.logged:
                 if proc_name == "create":
                     print("--------Creation %s complete" % self.name)
                 elif proc_name == "destroy":
