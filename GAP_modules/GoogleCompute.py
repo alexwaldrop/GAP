@@ -432,9 +432,6 @@ class GoogleCompute(Main):
         if "outputs" not in sample_data:
             return None
 
-        # Creating list of processes
-        wait_list = []
-
         # Copying the output data
         for i, output_path in enumerate(sample_data["outputs"]):
             cmd = "gsutil -m cp -r %s gs://davelab_temp/" % output_path
