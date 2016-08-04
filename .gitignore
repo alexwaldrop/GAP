@@ -2,6 +2,9 @@
 editor.vim
 GAP.config
 
+# pycharm
+.idea/
+
 # sphinx
 docs/build/
 
