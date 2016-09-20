@@ -1,5 +1,6 @@
 from SLURM import SLURM
 from GoogleCompute import GoogleCompute
+from GoogleCompute import GoogleException
 
 from FASTQSplitter import FASTQSplitter
 from SamtoolsBAMMerge import SamtoolsBAMMerge

@@ -60,54 +60,82 @@ class Node(Main):
         self.platform.instances["main-server"].wait_all()
 
         # Creating the split servers
-        self.platform.create_split_servers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus, is_preemptible=False)
+        self.platform.create_split_servers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus,
+                                           is_preemptible=True, nr_local_ssd=0)
 
-        cmds = []
-
-        # Moving the splits in their folders
-        for split_id in xrange(self.config.general.nr_splits):
-            cmds.append("mv %s/fastq_R1_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
-            cmds.append("mv %s/fastq_R2_%02d %s/split%d/" % (self.config.general.temp_dir, split_id, self.config.general.temp_dir, split_id) )
-
-        self.platform.instances["main-server"].run_command("move_splits", " && ".join(cmds))
-        self.platform.instances["main-server"].wait_all()
+        # TODO: PASS DATA TO MAIN MODULE IN A NICER WAY
 
         # Calling the process on each split
         for split_id in xrange(self.config.general.nr_splits):
             self.main["instance"].R1 = "%s/fastq_R1_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].R2 = "%s/fastq_R2_%02d" % (self.config.general.temp_dir, split_id)
             self.main["instance"].threads = self.config.general.nr_cpus
+            self.main["instance"].split_id = split_id
 
             cmd = self.main["instance"].getCommand()
 
             self.platform.instances["split%d-server" % split_id].run_command("align%d" % split_id, cmd)
 
         # Waiting for all the split aligning processes to finish
-        for instance_name, instance_obj in self.platform.instances.iteritems():
-	    if instance_name.startswith("split"):
-	        instance_obj.wait_all()
+        while True:
 
-	    # Setting up the merger
+            still_running = False
+
+            for instance_name, instance_obj in self.platform.instances.iteritems():
+                if instance_name.startswith("split"):
+
+                    # Generating process name
+                    split_id = int(instance_name.split("-")[0].split("split")[-1])
+                    proc_name = "align%d" % split_id
+
+                    # Check if process is done
+                    if instance_obj.poll_process(proc_name):
+
+                        # Skipping instances that are resetting
+                        if instance_obj.is_preemptible and not instance_obj.available_event.is_set():
+                            continue
+
+                        # Skipping process that has already been registered
+                        if instance_obj.processes[proc_name].complete:
+                            continue
+
+                        # Skipping process that has previously failed and not marked complete
+                        if instance_obj.processes[proc_name].has_failed():
+                            still_running = True
+                            continue
+
+                        # Checking the complete process
+                        instance_obj.wait_process(proc_name)
+
+                        # Destroy the split
+                        instance_obj.destroy()
+
+                    else:
+                        still_running = True
+
+            if still_running:
+                time.sleep(5)
+            else:
+                break
+
+        # Setting up the merger
         self.merge["instance"].nr_splits = self.config.general.nr_splits
         self.merge["instance"].threads = self.config.general.nr_cpus
 
         # Running the merger
         cmd = self.merge["instance"].getCommand()
         self.platform.instances["main-server"].run_command("merge", cmd)
-        self.platform.instances["main-server"].wait_all()
-
-        # Destroying the splits
-        for instance_name, instance_obj in self.platform.instances.iteritems():
-	    if instance_name.startswith("split"):
-	        instance_obj.destroy()
 
         # Waiting for all the split servers to DIE!!!
         for instance_name, instance_obj in self.platform.instances.iteritems():
-	    if instance_name.startswith("split"):
-	        instance_obj.wait_all()
+            if instance_name.startswith("split"):
+                instance_obj.wait_all()
+
+        # Waiting for the merging to finish
+        self.platform.instances["main-server"].wait_all()
 
         # Marking for output
-        self.sample_data["outputs"] = ["%s/out.bam" % self.config.general.temp_dir]
+        self.sample_data["outputs"] = ["%s/%s.bam" % (self.config.general.temp_dir, self.config.general.sample_name)]
 
     def run_normal(self):
 

@@ -16,6 +16,8 @@ class FASTQSplitter(Main):
 
         self.nr_splits = 2
 
+        self.prefix = list(("fastq_R1", "fastq_R2"))
+
     def getCommand(self):
 
         # Generating the commands
@@ -25,10 +27,17 @@ class FASTQSplitter(Main):
         cmds.append("nr_lines=$(( `du -b %s | cut -f1` / `head -n4 %s | wc -c` / %d * 4))" % (self.R1, self.R1, self.nr_splits) )
 
         # Splitting the files
-        cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R1_" % (self.R1, self.temp_dir) )
-        cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/fastq_R2_" % (self.R2, self.temp_dir) )
+        for prefix in self.prefix:
+            if "R1" in prefix:
+                cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/%s_" % (self.R1, self.temp_dir, prefix) )
+            else:
+                cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/%s_" % (self.R2, self.temp_dir, prefix) )
 
         return " && ".join(cmds)
+
+    def getPrefix(self):
+
+        return self.prefix
 
     def validate(self):
 
