@@ -18,7 +18,7 @@ class Aligner(Main):
         self.to_stdout      = ""
 
     @abc.abstractmethod
-    def getCommand(self):
+    def get_command(self):
         pass
 
     def validate(self):

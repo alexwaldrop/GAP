@@ -7,25 +7,17 @@ __main_class__= "BwaAligner"
 
 class BwaAligner(Aligner):
     
-    def __init__(self, config):
+    def __init__(self, config, sample_data):
 
         Aligner.__init__(self, config)
 
         self.config = config
+        self.sample_data = sample_data
 
-        self.split_id       = -1
+        self.bwa            = self.config.paths.bwa
+        self.ref            = self.config.aligner.ref
 
-        self.input_type     = "fastq"
-        self.output_type    = "sam"
-
-        self.from_stdout    = False
-        self.to_stdout      = True
-
-        self.R1             = None
-        self.R2             = None
-        
-        self.threads        = 1
-        self.mem            = 20
+        self.sample_name    = self.sample_data["sample_name"]
 
         self.sam_to_bam     = ConverterSamToBam(config)
         self.bam_sort       = BAMSorter(config)
@@ -34,27 +26,37 @@ class BwaAligner(Aligner):
         self.splitter       = "FASTQSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
-    def getCPURequirement(self):
-        return self.threads
+        self.R1             = None
+        self.R2             = None
+        self.threads        = None
+        self.split_id       = None
+        self.output_path    = None
 
-    def getMemRequirement(self):
-        return self.mem
+    def get_output(self):
+        return self.output_path
 
-    def getCommand(self):
+    def get_command(self, **kwargs):
 
-        if self.threads == -1:
-            self.error("In aligner implementation, number of threads not specified")
+        # Obtaining the arguments
+        self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
+        self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
+        self.threads            = kwargs.get("cpus",            self.config.general.nr_cpus)
+        self.split_id           = kwargs.get("split_id",        None)
 
-        if self.split_id == -1:
-            self.error("In aligner implementation, the split ID is not specified")
+        self.validate()
 
-        aligner_cmd     = "%s mem -M -t %d %s %s %s" % (self.config.paths.bwa, self.threads, self.config.aligner.ref, self.R1, self.R2)
+        aligner_cmd = "%s mem -M -t %d %s %s %s" % (self.bwa, self.threads, self.ref, self.R1, self.R2)
 
-        self.sam_to_bam.threads = self.threads
-        sam_to_bam_cmd  = self.sam_to_bam.getCommand()
+        sam_to_bam_cmd  = self.sam_to_bam.get_command()
 
-        self.bam_sort.threads   = self.threads
-        self.bam_sort.prefix    = "out_%d" % self.split_id
-        bam_sort_cmd    = self.bam_sort.getCommand()
+        if self.split_id is None:
+            bam_sort_cmd = self.bam_sort.get_command( prefix=self.sample_name )
+        else:
+            bam_sort_cmd = self.bam_sort.get_command( prefix="%s_%d" % (self.sample_name, self.split_id) )
+        self.output_path = self.bam_sort.get_output()
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)
+
+    def validate(self):
+        if self.threads == -1:
+            self.error("In aligner implementation, number of threads not specified")

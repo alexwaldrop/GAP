@@ -301,7 +301,8 @@ class PreemptibleInstance(Instance):
 
     def __init__(self, name, nr_cpus, mem, **kwargs):
 
-        super(PreemptibleInstance, self).__init__(name, nr_cpus, mem, **kwargs)
+        super(PreemptibleInstance, self).__init__(name, nr_cpus, mem,
+                                                  is_preemptible=True, **kwargs)
 
         self.split_id = int(name.split("-")[0].split("split")[-1])
 
@@ -345,6 +346,7 @@ class PreemptibleInstance(Instance):
         self.heart_event.clear()
 
         # Destroying the instance
+        print("I am destroying in the reset!!!")
         self.destroy()
         self.wait_process("destroy", inst_wait=True)
 
@@ -527,6 +529,7 @@ class Disk():
         self.processes  = {}
 
     def create(self):
+    #def create(self, wait_proc=False):
 
         print("---------Creating %s" % self.name)
 
@@ -716,22 +719,22 @@ class GoogleCompute(Main):
         time.sleep(120)
 
         # Getting raw data paths
-        R1_path = sample_data["R1_path"]
-        R2_path = sample_data["R2_path"]
+        R1_path = sample_data["R1_source"]
+        R2_path = sample_data["R2_source"]
 
         # Adding new paths
-        sample_data["R1_new_path"] = "/data/%s" % R1_path.split("/")[-1].rstrip(".gz")
-        sample_data["R2_new_path"] = "/data/%s" % R2_path.split("/")[-1].rstrip(".gz")
+        sample_data["R1"] = "/data/%s" % R1_path.split("/")[-1].rstrip(".gz")
+        sample_data["R2"] = "/data/%s" % R2_path.split("/")[-1].rstrip(".gz")
 
         # Copying input data
         cmd = "gsutil cp %s /data/ " % R1_path
         if R1_path.endswith(".gz"):
-            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1_new_path"])
+            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1"])
         self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
         cmd = "gsutil cp %s /data/ " % R2_path
         if R2_path.endswith(".gz"):
-            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2_new_path"])
+            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares
@@ -782,10 +785,10 @@ class GoogleCompute(Main):
                 if instance_name.startswith("split"):
                     try:
                         instance_obj.wait_process("create")
-                        instance_obj.start_heart()
 
-                    except GoogleException:
+                    except GoogleException as exp:
                         # Failed to create, retry
+                        print("Problem.......! %s " % exp)
                         failed_create.append(instance_name)
 
             # Stopping the loop if no instances failed

@@ -1,30 +1,45 @@
-import os
-
 from GAP_interfaces import Main
 
 __main_class__ = "FASTQSplitter"
 
 class FASTQSplitter(Main):
 
-    def __init__(self, config):
+    def __init__(self, config, sample_data):
         Main.__init__(self, config)
 
-        self.temp_dir = config.general.temp_dir
+        self.config = config
+        self.sample_data = sample_data
 
-        self.R1 = None
-        self.R2 = None
+        self.temp_dir = self.config.general.temp_dir
 
-        self.nr_splits = 2
+        self.prefix = ["fastq_R1", "fastq_R2"]
 
-        self.prefix = list(("fastq_R1", "fastq_R2"))
+        self.R1          = None
+        self.R2          = None
+        self.nr_splits   = None
+        self.output_path = None
 
-    def getCommand(self):
+    def get_output(self):
+        return self.output_path
+
+    def get_command(self, **kwargs):
+
+        # Obtaining the arguments
+        self.R1             = kwargs.get("R1",          self.sample_data["R1"])
+        self.R2             = kwargs.get("R2",          self.sample_data["R2"])
+        self.nr_splits      = kwargs.get("nr_splits",   2)
+
+        # Validate arguments
+        self.validate()
 
         # Generating the commands
-        cmds = []
+        cmds = list()
 
         # Obtaining number of reads
         cmds.append("nr_lines=$(( `du -b %s | cut -f1` / `head -n4 %s | wc -c` / %d * 4))" % (self.R1, self.R1, self.nr_splits) )
+
+        self.output_path = [ { "R1" : "%s/%s_%02d" % (self.temp_dir, self.prefix[0], i),
+                               "R2" : "%s/%s_%02d" % (self.temp_dir, self.prefix[1], i) } for i in xrange(self.nr_splits)]
 
         # Splitting the files
         for prefix in self.prefix:
@@ -35,10 +50,5 @@ class FASTQSplitter(Main):
 
         return " && ".join(cmds)
 
-    def getPrefix(self):
-
-        return self.prefix
-
     def validate(self):
-
         pass

@@ -4,29 +4,50 @@ __main_class__ = "SamtoolsBAMMerge"
 
 class SamtoolsBAMMerge(Main):
 
-    def __init__(self, config):
+    def __init__(self, config, sample_data):
         Main.__init__(self, config)
 
-        self.samtools_path= config.paths.samtools
-        self.temp_dir     = config.general.temp_dir
-        self.output_name  = config.general.sample_name
+        self.config = config
+        self.sample_data = sample_data
 
-        self.sorted_input = True
-        self.nr_splits    = 0
-        self.threads      = -1
+        self.samtools     = self.config.paths.samtools
 
-    def getCommand(self):
+        self.temp_dir     = self.config.general.temp_dir
 
+        self.sample_name  = self.sample_data["sample_name"]
+
+        self.threads      = None
+        self.inputs       = None
+        self.nr_splits    = None
+        self.sorted_input = None
+        self.output_path  = None
+
+    def get_output(self):
+        return self.output_path
+
+    def get_command(self, **kwargs):
+
+        # Obtaining the arguments
+        self.threads        = kwargs.get("cpus",            self.config.general.nr_cpus)
+        self.nr_splits      = kwargs.get("nr_splits",       2)
+        self.sorted_input   = kwargs.get("sorted_input",    True)
+
+        bam_splits = ["%s/%s_%d.bam" % (self.temp_dir, self.sample_name, i) for i in range(self.nr_splits)]
+        self.inputs         = kwargs.get("inputs",          bam_splits)
+
+        # Validate the arguments
+        self.validate()
+
+        self.output_path = "%s/%s.bam" % (self.temp_dir, self.sample_name)
+
+        if self.sorted_input:
+            return "%s merge -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(bam_splits))
+        else:
+            return "%s cat -o %s %s" % (self.samtools, self.output_path, " ".join(bam_splits))
+
+    def validate(self):
         if self.threads == -1:
             self.error("In merger implementation, the number of threads is not specified!")
 
-        if self.sorted_input:
-            bam_splits = ["%s/out_%d.bam" % (self.temp_dir, i) for i in range(self.nr_splits)]
-            return "%s merge -@%d %s/%s.bam %s" % (self.samtools_path, self.threads, self.temp_dir, self.output_name, " ".join(bam_splits))
-        else:
-            bam_splits = ["%s/out_%d.bam" % (self.temp_dir, i) for i in range(self.nr_splits)]
-            return "%s cat -o %s/%s.bam %s" % (self.samtools_path, self.temp_dir, self.output_name, " ".join(bam_splits))
-
-    def validate(self):
         if self.nr_splits == 0:
             self.error("Number of splits was not set before merging!")

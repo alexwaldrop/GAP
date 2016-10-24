@@ -6,17 +6,23 @@ class SamtoolsSamToBam(Converter):
         Converter.__init__(self, config)
 
         self.config = config
-        
-        self.input_type     = "sam"
-        self.output_type    = "bam"
 
-        self.from_stdout    = True
-        self.to_stdout      = True
+        self.samtools = self.config.paths.samtools
 
-        self.threads        = -1
+        self.output_path = None
 
-    def getCommand(self):
-        if self.threads  == -1:
+    def get_output(self):
+        return self.output_path
+
+    def get_command(self, **kwargs):
+
+        # Obtaining the arguments
+        self.threads        = kwargs.get("cpus",        self.config.general.nr_cpus)
+
+        self.validate()
+
+        return "%s view -bS -@ %d -" % (self.samtools, self.threads)
+
+    def validate(self):
+        if self.threads == -1:
             self.error("In converter implementation, number of threads not specified!")
-
-        return "%s view -bS -@ %d -" % (self.config.paths.samtools, self.threads) 
