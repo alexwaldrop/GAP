@@ -4,13 +4,21 @@ import abc
 class Main():  
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, config):
-        self.verbosity  = config.general.verbosity
+    def __init__(self, config=None, silent=False):
+        if config is None:
+            self.verbosity = 2
+        else:
+            self.verbosity  = config["general"]["verbosity"]
+
+        if silent:
+            self.terminate = False
+        else:
+            self.terminate = True
     
     def error(self, text, terminate=True):
         print("[%s] GAP_ERR: %s" % (str(datetime.now()), text))
 
-        if terminate:
+        if terminate and self.terminate:
             exit(1)
 
     def warning(self, text):

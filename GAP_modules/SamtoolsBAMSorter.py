@@ -7,9 +7,9 @@ class SamtoolsBAMSorter(Sorter):
 
         self.config = config
 
-        self.samtools       = self.config.paths.samtools
+        self.samtools       = self.config["paths"]["samtools"]
 
-        self.temp_dir       = config.general.temp_dir
+        self.temp_dir       = self.config["general"]["temp_dir"]
 
         self.prefix         = None
         self.threads        = None
@@ -21,7 +21,7 @@ class SamtoolsBAMSorter(Sorter):
     def get_command(self, **kwargs):
 
         self.prefix         = kwargs.get("prefix",      "")
-        self.threads        = kwargs.get("cpus",        self.config.general.nr_cpus)
+        self.threads        = kwargs.get("cpus",        self.config["instance"]["nr_cpus"])
 
         self.validate()
 

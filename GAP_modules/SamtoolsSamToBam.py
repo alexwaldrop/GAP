@@ -7,7 +7,7 @@ class SamtoolsSamToBam(Converter):
 
         self.config = config
 
-        self.samtools = self.config.paths.samtools
+        self.samtools = self.config["paths"]["samtools"]
 
         self.output_path = None
 
@@ -17,7 +17,7 @@ class SamtoolsSamToBam(Converter):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.threads        = kwargs.get("cpus",        self.config.general.nr_cpus)
+        self.threads        = kwargs.get("cpus",        self.config["instance"]["nr_cpus"])
 
         self.validate()
 

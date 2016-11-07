@@ -52,14 +52,14 @@ class Node(Main):
     def run_split(self):
 
         # Running the splitter
-        cmd = self.split_obj.get_command( nr_splits=self.config.general.nr_splits )
+        cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
         self.platform.instances["main-server"].run_command("split", cmd)
         self.platform.instances["main-server"].wait_all()
 
         self.split_outputs = self.split_obj.get_output()
 
         # Creating the split servers
-        self.platform.create_split_servers(self.config.general.nr_splits, nr_cpus=self.config.general.nr_cpus,
+        self.platform.create_split_servers(self.config["general"]["nr_splits"], nr_cpus=self.config["instance"]["nr_cpus"],
                                            is_preemptible=True, nr_local_ssd=0)
 
         self.main_outputs = list()
@@ -114,7 +114,7 @@ class Node(Main):
                 break
 
         # Running the merger
-        cmd = self.merge_obj.get_command( nr_splits= self.config.general.nr_splits,
+        cmd = self.merge_obj.get_command( nr_splits= self.config["general"]["nr_splits"],
                                           inputs=self.main_outputs )
         self.platform.instances["main-server"].run_command("merge", cmd)
 
@@ -149,7 +149,7 @@ class Node(Main):
 
     def run(self):
 
-        if self.main_obj.can_split and self.config.general.split:
+        if self.main_obj.can_split and self.config["general"]["split"]:
             self.run_split()
         else:
             self.run_normal()

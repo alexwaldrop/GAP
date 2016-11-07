@@ -14,8 +14,8 @@ class BwaAligner(Aligner):
         self.config = config
         self.sample_data = sample_data
 
-        self.bwa            = self.config.paths.bwa
-        self.ref            = self.config.aligner.ref
+        self.bwa            = self.config["paths"]["bwa"]
+        self.ref            = self.config["paths"]["ref"]
 
         self.sample_name    = self.sample_data["sample_name"]
 
@@ -40,7 +40,7 @@ class BwaAligner(Aligner):
         # Obtaining the arguments
         self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
         self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
-        self.threads            = kwargs.get("cpus",            self.config.general.nr_cpus)
+        self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
         self.split_id           = kwargs.get("split_id",        None)
 
         self.validate()

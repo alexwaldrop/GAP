@@ -1,196 +1,57 @@
 import os.path
-import glob
+
+import configobj
+from validate import Validator
+
 from GAP_interfaces import Main
 
 class Config(Main):
 
-    class General():
-        def __init__(self):
-            self.config_file    = ""
-            self.project_name   = ""
-            self.verbosity      = 2
-            self.goal           = ""
-            self.output_dir     = ""
-            self.temp_dir       = ""
-
-    class Paths():
-        def __init__(self):
-            self.R1         = ""
-            self.R2         = ""
-            
-            self.bwa        = ""
-            self.samtools   = ""
-
-    class Cluster():
-        def __init__(self):
-            self.ID         = -1
-            self.instances  = -1
-            self.partition  = ""
-            self.cpus       = -1
-            self.mem        = ""
-
-    class Aligner():
-        def __init__(self):
-            self.ID         = -1
-            self.ref        = ""
-
     def __init__(self, config_file, silent = False):
 
-        # Initializing the data
-        self.general    = self.General()
-        self.paths      = self.Paths()
-        self.cluster    = self.Cluster()
-        self.aligner    = self.Aligner()
+        Main.__init__(self, silent=silent)
 
-        Main.__init__(self, self)
-
-        self.general.goals  = ["align"]
-        self.cluster.types  = ["SLURM"]
-        self.aligner.types  = ["BWA"]
-        
-        if silent:
-            self.error  = self.warning
+        # General config validator
+        self.validate_file = "Config/GAP_validate.config"
 
         # Reading config file
-        self.readConfigFile(config_file)
+        self.config = self.get_config(config_file)
 
-    def readConfigFile(self, config_file):
+        # Validate the config file
+        self.valid  = self.validate()
+        self.config["valid"] = self.valid
+
+    def get_config(self, config_file):
 
         # Checking if the config file exists
         if not os.path.isfile(config_file):
             self.error("Config file not found!")
-        
-        self.general.config_file    = config_file
 
-        # Extracting data from config file
-        cursor_location = ""
+        # Checking if the validator file exists
+        if not os.path.isfile(self.validate_file):
+            self.error("Config validate file not found!")
 
-        with open(config_file, "r") as inp:
-            for line in inp:
-                if line[0] == "#":
-                    continue
- 
-                if "[general]" in line:
-                    cursor_location = "general"
-                    continue
-
-                elif "[paths]" in line:
-                    cursor_location = "paths"
-                    continue
-
-                elif "[cluster]" in line:
-                    cursor_location = "cluster"
-                    continue            
-    
-                elif "[aligner]" in line:
-                    cursor_location = "aligner"
-                    continue                
-
-                data = line.strip("\n").split("=")
-                data = [x.strip(" ") for x in data]
-
-                # [general] section
-                if cursor_location == "general":
-                    if data[0] == "project_name":
-                        self.general.project_name = data[1]
-    
-                    if data[0] == "verbosity":
-                        try:
-                            self.general.verbosity = int(data[1])
-                        except:
-                            self.error("In config file, [general]:verbosity should be an integer!")
-
-                    if data[0] == "goal":
-                        if data[1] in self.general.goals:
-                            self.general.goal = data[1]
-                        else:
-                            self.error("In config file, [general]:goal not recognized!")
-                            
-                    if data[0] == "output_dir":
-                        self.general.output_dir = data[1]
-
-                        if not os.path.isdir(self.general.output_dir):
-                            self.error("Output directory not present")
-
-                    if data[0] == "temp_dir":
-                        self.general.temp_dir = data[1]
-
-                        if not os.path.isdir(self.general.temp_dir):
-                            self.error("Temporary directory not present")
-
-                # [paths] section
-                if cursor_location == "paths":
-                    if data[0] == "bwa":
-                        self.paths.bwa = data[1]
-                        
-                        if not os.path.isfile(self.paths.bwa):
-                            self.error("BWA path not found!")
-
-                    if data[0] == "samtools":
-                        self.paths.samtools = data[1]
-
-                        if not os.path.isfile(self.paths.samtools):
-                            self.error("Samtools path not found!")
-
-                    if data[0] == "R1":
-                        self.paths.R1 = data[1]
-
-                        if not os.path.isfile(self.paths.R1):
-                            self.error("Sample R1 file not found!")
-
-                    if data[0] == "R2":
-                        self.paths.R2 = data[1]
-    
-                        if not os.path.isfile(self.paths.R2):
-                            self.error("Sample R2 file not found!")
-
-                # [cluster] section
-                if cursor_location == "cluster":
-                    if data[0] == "ID":
-                        try:
-                            self.cluster.ID = int(data[1])
-                        except:
-                            self.error("In config file, [cluster]:ID should be an integer!")
-
-                        if self.cluster.ID >= len(self.cluster.types):
-                            self.error("In config file, [cluster]:ID is out of range!")
-                        
-                    if data[0] == "nodes":
-                        try:
-                            self.cluster.nodes = int(data[1])
-                        except:
-                            self.error("In config file, [cluster]:nodes should be an integer!")
-
-                    if data[0] == "partition":
-                        self.cluster.partition = data[1]
-
-                        if len(self.cluster.partition) == 0:
-                            self.error("In config file, [cluster]:partition, no partitions are specified!")
-
-                    if data[0] == "mincpus":
-                        try:
-                            self.cluster.mincpus = int(data[1])
-                        except:
-                            self.error("In config file, [cluster]:mincpus should be an integer!")
-
-                    if data[0] == "mem":
-                        self.cluster.mem = data[1]
-
-                        if len(self.cluster.mem) == 0:
-                            self.error("In config file, [cluster]:mem, no memory limitation is specified!")
-                
-                # [aligner] section
-                if cursor_location == "aligner":
-                    if data[0] == "ID":
-                        try:
-                            self.aligner.ID = int(data[1])
-                        except:
-                            self.error("In config file, [aligner]:ID should be an integer!")
-
-                    if data[0] == "ref":
-                        self.aligner.ref = data[1]
-                        if len(glob.glob(self.aligner.ref + "*")) == 0:
-                            self.error("In config file, [aligner]:ref, the reference path does not exist!")
+        return configobj.ConfigObj(config_file, configspec=self.validate_file)
 
     def validate(self):
-        pass
+
+        validator = Validator()
+        results = self.config.validate(validator)
+
+        if results == True:
+            return True
+
+        errors = configobj.flatten_errors(self.config, results)
+
+        for section_list, key, exception in errors:
+            print(section_list, key, exception)
+            for section in section_list:
+                if key is None:
+                    self.error("In config file, section '%s' is missing!" % section)
+                elif exception == False:
+                    self.error("In config file, key '%s' from section '%s' is missing!" % (key, section))
+                else:
+                    self.error("In config file, key '%s' from section '%s' is invalid!" % (key, section))
+                    raise exception
+
+        return False

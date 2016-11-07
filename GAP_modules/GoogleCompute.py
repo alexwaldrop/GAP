@@ -704,9 +704,9 @@ class GoogleCompute(Main):
 
         # Setting the arguments with default values
         if nr_cpus is None:
-            nr_cpus = self.config.general.nr_cpus
+            nr_cpus = self.config["instance"]["nr_cpus"]
         if mem is None:
-            mem = self.config.general.mem
+            mem = self.config["instance"]["mem"]
 
         # Create the main server
         self.instances["main-server"] = RegularInstance("main-server", nr_cpus, mem,
@@ -747,9 +747,9 @@ class GoogleCompute(Main):
     def create_split_servers(self, nr_splits, nr_cpus=None, mem=None, nr_local_ssd=1, is_preemptible=True):
         # Memorize the number of splits for later use
         if nr_cpus is None:
-            nr_cpus = self.config.general.nr_cpus
+            nr_cpus = self.config["instance"]["nr_cpus"]
         if mem is None:
-            mem = self.config.general.mem
+            mem = self.config["instance"]["mem"]
 
         # Creating the split servers
         for split_id in xrange(nr_splits):

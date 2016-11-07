@@ -10,9 +10,9 @@ class SamtoolsBAMMerge(Main):
         self.config = config
         self.sample_data = sample_data
 
-        self.samtools     = self.config.paths.samtools
+        self.samtools     = self.config["paths"]["samtools"]
 
-        self.temp_dir     = self.config.general.temp_dir
+        self.temp_dir     = self.config["general"]["temp_dir"]
 
         self.sample_name  = self.sample_data["sample_name"]
 
@@ -28,7 +28,7 @@ class SamtoolsBAMMerge(Main):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.threads        = kwargs.get("cpus",            self.config.general.nr_cpus)
+        self.threads        = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
         self.nr_splits      = kwargs.get("nr_splits",       2)
         self.sorted_input   = kwargs.get("sorted_input",    True)
 
