@@ -143,7 +143,7 @@ class Node(Main):
 
         # Marking for output
         if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = list((self.main_obj.get_output()))
+            self.sample_data["outputs"] = [self.main_obj.get_output()]
         else:
             self.sample_data["outputs"].append(self.main_obj.get_output())
 

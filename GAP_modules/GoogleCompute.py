@@ -388,7 +388,7 @@ class PreemptibleInstance(Instance):
                 self.available_event.clear()
 
                 self.reset()
-                time.sleep(30)
+                time.sleep(60)
 
                 # Remounting the mother server
                 self.mount(inst_wait=True, proc_wait=True)
@@ -407,6 +407,10 @@ class PreemptibleInstance(Instance):
 
         except GoogleException:
             print("There was an error on the instance! Restarting the instance soon..")
+
+            # Destroying the current instance, but the heartbeat will recover it
+            self.destroy()
+            self.heart_event.set()
 
         finally:
             # Restarting the heartbeat
@@ -796,7 +800,13 @@ class GoogleCompute(Main):
                 break
 
         # Waiting for instances to run the start-up scripts
-        time.sleep(120)
+        time.sleep(60)
+
+        for instance_name, instance_obj in self.instances.iteritems():
+            if instance_name.startswith("split"):
+                instance_obj.start_heart()
+
+        time.sleep(60)
 
         # Mounting the mother to split server
         for instance_name, instance_obj in self.instances.iteritems():
