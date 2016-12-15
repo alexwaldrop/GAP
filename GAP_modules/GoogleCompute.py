@@ -3,16 +3,16 @@ import os
 import subprocess as sp
 import threading
 import time
+import logging
 from datetime import datetime
-
-from GAP_interfaces import Main
 
 class GoogleException(Exception):
 
     def __init__(self, instance_name=None):
 
         if instance_name is not None:
-            print("[%s]Instance %s has failed!" % (datetime.now(), instance_name))
+            logging.error("(%s) Instance has failed!" % instance_name)
+            exit(1)
 
 
 class GoogleProcess(sp.Popen):
@@ -103,7 +103,7 @@ class Instance(object):
 
         self.status.set(InstanceStatus.CREATING)
 
-        print("[%s] --------Creating %s" % (datetime.now(), self.name))
+        logging.info("(%s) Process 'create' started!" % self.name)
 
         args = ["gcloud compute instances create %s" % self.name]
 
@@ -167,7 +167,7 @@ class Instance(object):
 
         self.status.set(InstanceStatus.DESTROYING)
 
-        print("[%s]--------Destroying %s" % (datetime.now(), self.name))
+        logging.info("(%s) Process 'destroy' started!" % self.name)
 
         args = ["gcloud compute instances delete %s" % self.name]
 
@@ -216,11 +216,28 @@ class Instance(object):
         with open(os.devnull, "w") as devnull:
             self.processes["detach_disk_%s" % disk.name] =  GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
 
-    def run_command(self, job_name, command, proc_wait=False):
+    def run_command(self, job_name, command, log=True, proc_wait=False):
 
         self.status.set(InstanceStatus.RUNNING)
 
+        if log:
+
+            log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
+            log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
+
+            command = command.replace("; ", log_cmd_all + "; ")
+            command = command.replace(" && ", log_cmd_all + " && ")
+            command = command.replace(" & ", log_cmd_all + " & ")
+            command = command.replace(" | ", log_cmd_stderr + " | ")
+            if " > " in command:
+                command += " %s" % log_cmd_stderr
+            else:
+                command += " %s" % log_cmd_all
+
         cmd = "gcloud compute ssh gap@%s --command '%s'" % (self.name, command)
+
+        logging.info("(%s) Process '%s' started!" % (self.name, job_name))
+        logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, command))
 
         self.processes[job_name] = GoogleProcess(cmd, shell=True)
 
@@ -246,7 +263,7 @@ class Instance(object):
     def poll_process(self, proc_name):
 
         if proc_name not in self.processes:
-            print("[%s]-----Process %s not found!" % (datetime.now(), proc_name))
+            logging.debug("(%s) Process '%s' not found!", (self.name, proc_name))
             return False
 
         return self.processes[proc_name].is_done()
@@ -270,14 +287,14 @@ class RegularInstance(Instance):
 
         # Checking if process failed
         if ret_code != 0:
-            print("[%s]--------Process '%s' on instance '%s' failed!" % (datetime.now(), proc_name, self.name))
+            logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
             self.status.set(InstanceStatus.FAILED)
 
             proc_obj.complete = True
             raise GoogleException(self.name)
 
         # Logging the process
-        print("[%s]--------Process '%s' on instance '%s' complete!" % (datetime.now(), proc_name, self.name))
+        logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
 
         # Changing status if needed
         if proc_name == "create":
@@ -346,7 +363,6 @@ class PreemptibleInstance(Instance):
         self.heart_event.clear()
 
         # Destroying the instance
-        print("I am destroying in the reset!!!")
         self.destroy()
         self.wait_process("destroy", inst_wait=True)
 
@@ -406,7 +422,7 @@ class PreemptibleInstance(Instance):
                 self.available_event.set()
 
         except GoogleException:
-            print("There was an error on the instance! Restarting the instance soon..")
+            logging.info("(%s) An error occured! Restarting the instance soon..." % self.name)
 
             # Destroying the current instance, but the heartbeat will recover it
             self.destroy()
@@ -465,10 +481,12 @@ class PreemptibleInstance(Instance):
             # If the instance is preemptible, destroy the instance and the heartbeat will reset it.
             if self.is_preemptible:
 
-                if self.reset_count >= 5:
-                    print("[%s]--------Instance %s has already been resetted %d times. The application will be terminated." % (datetime.now(), self.name, self.reset_count))
+                MAX_RESET_COUNT = 5
 
-                print("[%s]--------Instance %s is preemptible, so it will be reset!" % (datetime.now(), self.name))
+                if self.reset_count >= MAX_RESET_COUNT:
+                    logging.info("(%s) Instance reset count: %d/%d. The reset limit count has been reached. The application will be terminated." % (self.name, self.reset_count, MAX_RESET_COUNT))
+
+                logging.info("(%s) Instance reset count: %d/%d. An error occured, so this pre-emptible instance will be reset." % (self.name, self.reset_count, MAX_RESET_COUNT))
                 self.destroy()
 
                 self.start_heart()
@@ -478,7 +496,7 @@ class PreemptibleInstance(Instance):
                 raise GoogleException(self.name)
 
         # Logging the process
-        print("[%s]--------Process '%s' on instance '%s' complete!" % (datetime.now(), proc_name, self.name))
+        logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
 
         # Changing status if needed
         if proc_name == "create":
@@ -535,7 +553,7 @@ class Disk():
     def create(self):
     #def create(self, wait_proc=False):
 
-        print("---------Creating %s" % self.name)
+        logging.info("(%s) Disk process 'create' started!" % self.name)
 
         args = ["gcloud compute disks create %s" % self.name]
 
@@ -563,7 +581,7 @@ class Disk():
 
     def destroy(self):
 
-        print("---------Destroy %s" % self.name)
+        logging.info("(%s) Disk process 'destroy' started!" % self.name)
 
         args = ["gcloud compute disks delete %s" % self.name]
 
@@ -583,20 +601,13 @@ class Disk():
 
             # Logging if not logged yet
             if not proc_obj.logged:
-                if proc_name == "create":
-                    print("--------Creation %s complete" % self.name)
-                elif proc_name == "destroy":
-                    print("--------Destroy %s complete" % self.name)
-                else:
-                    print("--------Process '%s' on instance '%s' complete!" % (proc_name, self.name))
+                logging.info("(%s) Disk process '%s' complete!" % (self.name, proc_name))
                 proc_obj.logged = True
 
 
-class GoogleCompute(Main):
+class GoogleCompute(object):
 
     def __init__(self, config):
-        Main.__init__(self, config)
-
         self.config         = config
 
         self.key_location   = "keys/Davelab_GAP_key.json"
@@ -614,7 +625,7 @@ class GoogleCompute(Main):
             try:
                 instance_obj.destroy()
             except GoogleException:
-                print("----Could not set the instance %s for destroy!" % instance_name)
+                logging.info("(%s) Could not destroy instance!" % instance_name)
 
         # Waiting for the instances to be destroyed
         for instance_name, instance_obj in self.instances.iteritems():
@@ -624,7 +635,7 @@ class GoogleCompute(Main):
                 else:
                     instance_obj.wait_all()
             except GoogleException:
-                print("----Could not destroy instance %s!" % instance_name)
+                logging.info("(%s) Could not destroy instance!" % instance_name)
 
         # Destroying all the disks
         for disk_name, disk_obj in self.disks.iteritems():
@@ -632,29 +643,32 @@ class GoogleCompute(Main):
                 try:
                     disk_obj.destroy()
                 except GoogleException:
-                    print("---Could not sey the disk %s for destroy!" % disk_name)
+                    logging.info("(%s) Could not destroy disk!" % disk_name)
 
         # Waiting for the disks to be destroyed
         for disk_name, disk_obj in self.disks.iteritems():
             try:
                 disk_obj.wait_all()
             except GoogleException:
-                print("---Could not destroy disk %s!" % disk_name)
+                logging.info("(%s) Could not destroy disk!" % disk_name)
 
     def authenticate(self):
 
-        self.message("Authenticating to the Google Cloud.")
+        logging.info("Authenticating to the Google Cloud.")
 
         if not os.path.exists(self.key_location):
-            self.error("Authentication key was not found!")
+            logging.error("Authentication key was not found!")
+            exit(1)
 
         cmd = "gcloud auth activate-service-account --key-file %s" % self.key_location
-        proc = sp.Popen(cmd, shell = True)
+        with open(os.devnull, "w") as devnull:
+            proc = sp.Popen(cmd, stdout=devnull, stderr=devnull, shell = True)
 
         if proc.wait() != 0:
-            self.error("Authentication to Google Cloud failed!")
+            logging.error("Authentication to Google Cloud failed!")
+            exit(1)
 
-        self.message("Authentication to Google Cloud was successful.")
+        logging.info("Authentication to Google Cloud was successful.")
 
     def get_zone(self):
 
@@ -664,6 +678,7 @@ class GoogleCompute(Main):
         if len(output) != 0:
             return output.strip().split("=")[-1]
         else:
+            logging.info("No zone is specified in the local config file! 'us-east1-b' is selected by default!")
             return "us-east1-b"
 
     @staticmethod
@@ -730,19 +745,24 @@ class GoogleCompute(Main):
         sample_data["R1"] = "/data/%s" % R1_path.split("/")[-1].rstrip(".gz")
         sample_data["R2"] = "/data/%s" % R2_path.split("/")[-1].rstrip(".gz")
 
+        # Creating logging directory
+        cmd = "mkdir -p /data/logs/"
+        self.instances["main-server"].run_command("createLogDir", cmd, log=False)
+        self.instances["main-server"].wait_process("createLogDir")
+
         # Copying input data
         cmd = "gsutil cp %s /data/ " % R1_path
         if R1_path.endswith(".gz"):
-            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1"])
+            cmd += " ; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R1"])
         self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
         cmd = "gsutil cp %s /data/ " % R2_path
         if R2_path.endswith(".gz"):
-            cmd += "; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2"])
+            cmd += " ; pigz -p %d -d %s" % (max(nr_cpus/2, 1), sample_data["R2"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares
-        cmd = "gsutil -m cp -r gs://davelab_data/src /data/ ; bash /data/src/setup.sh"
+        cmd = "sudo mkdir -m 777 -p /data/src/ ; gsutil -m cp -r gs://davelab_data/tools/* /data/src/ ; bash /data/src/setup.sh"
         self.instances["main-server"].run_command("copySrc", cmd)
 
         # Waiting for all the copying processes to be done
@@ -792,7 +812,6 @@ class GoogleCompute(Main):
 
                     except GoogleException as exp:
                         # Failed to create, retry
-                        print("Problem.......! %s " % exp)
                         failed_create.append(instance_name)
 
             # Stopping the loop if no instances failed
@@ -831,6 +850,3 @@ class GoogleCompute(Main):
 
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
-
-    def validate(self):
-        pass

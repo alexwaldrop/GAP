@@ -1,5 +1,6 @@
 import importlib
 import time
+import logging
 
 from GAP_interfaces import Main
 
@@ -13,22 +14,22 @@ def initialize_module(module_name):
 
     return d
 
-class Node(Main):
+class Node(object):
 
     def __init__(self, config, platform, sample_data, module_name):
-
-        Main.__init__(self, config)
 
         self.config = config
         self.platform = platform
         self.sample_data = sample_data
+        self.module_name = module_name
 
         # Importing main module
         try:
             self.main = initialize_module(module_name)
             self.main_obj = self.main["class"](self.config, self.sample_data)
         except ImportError:
-            self.error("Module %s cannot be imported!" % module_name)
+            logging.error("Module %s cannot be imported!" % module_name)
+            exit(1)
 
         # Importing splitter and merger:
         if self.main_obj.can_split:
@@ -37,13 +38,15 @@ class Node(Main):
                 self.split = initialize_module(self.main_obj.splitter)
                 self.split_obj = self.split["class"](self.config, self.sample_data)
             except ImportError:
-                self.error("Module %s cannot be imported!" % self.main_obj.splitter)
+                logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
+                exit(1)
 
             try:
                 self.merge = initialize_module(self.main_obj.merger)
                 self.merge_obj = self.merge["class"](self.config, self.sample_data)
             except ImportError:
-                self.error("Module %s cannot be imported!" % self.main_obj.merger)
+                logging.error("Module %s cannot be imported!" % self.main_obj.merger)
+                exit(1)
 
         self.split_outputs = None
         self.main_outputs  = None
@@ -51,9 +54,14 @@ class Node(Main):
 
     def run_split(self):
 
+        # Creating job names
+        split_job_name  = "%s_split" % self.module_name
+        main_job_name   = lambda split_id: "%s_%d" % (self.module_name, split_id)
+        merge_job_name  = "%s_merge" % self.module_name
+
         # Running the splitter
         cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
-        self.platform.instances["main-server"].run_command("split", cmd)
+        self.platform.instances["main-server"].run_command(split_job_name, cmd)
         self.platform.instances["main-server"].wait_all()
 
         self.split_outputs = self.split_obj.get_output()
@@ -69,7 +77,7 @@ class Node(Main):
             cmd = self.main_obj.get_command( split_id=split_id, **paths )
             self.main_outputs.append( self.main_obj.get_output() )
 
-            self.platform.instances["split%d-server" % split_id].run_command("align%d" % split_id, cmd)
+            self.platform.instances["split%d-server" % split_id].run_command(main_job_name(split_id), cmd)
 
         # Waiting for all the split aligning processes to finish
         while True:
@@ -81,7 +89,7 @@ class Node(Main):
 
                     # Generating process name
                     split_id = int(instance_name.split("-")[0].split("split")[-1])
-                    proc_name = "align%d" % split_id
+                    proc_name = main_job_name(split_id)
 
                     # Check if process is done
                     if instance_obj.poll_process(proc_name):
@@ -116,7 +124,7 @@ class Node(Main):
         # Running the merger
         cmd = self.merge_obj.get_command( nr_splits= self.config["general"]["nr_splits"],
                                           inputs=self.main_outputs )
-        self.platform.instances["main-server"].run_command("merge", cmd)
+        self.platform.instances["main-server"].run_command(merge_job_name, cmd)
 
         # Waiting for all the split servers to DIE!!!
         for instance_name, instance_obj in self.platform.instances.iteritems():
@@ -138,7 +146,7 @@ class Node(Main):
 
         cmd = self.main_obj.get_command()
 
-        self.platform.instances["main-server"].run_command("align", cmd)
+        self.platform.instances["main-server"].run_command(self.module_name, cmd)
         self.platform.instances["main-server"].wait_all()
 
         # Marking for output
@@ -153,6 +161,3 @@ class Node(Main):
             self.run_split()
         else:
             self.run_normal()
-
-    def validate(self):
-        pass
