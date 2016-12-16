@@ -2,8 +2,6 @@ import importlib
 import time
 import logging
 
-from GAP_interfaces import Main
-
 def initialize_module(module_name):
 
     d = dict()

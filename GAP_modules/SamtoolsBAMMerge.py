@@ -1,11 +1,8 @@
-from GAP_interfaces import Main
-
 __main_class__ = "SamtoolsBAMMerge"
 
-class SamtoolsBAMMerge(Main):
+class SamtoolsBAMMerge(object):
 
     def __init__(self, config, sample_data):
-        Main.__init__(self, config)
 
         self.config = config
         self.sample_data = sample_data
@@ -35,19 +32,13 @@ class SamtoolsBAMMerge(Main):
         bam_splits = ["%s/%s_%d.bam" % (self.temp_dir, self.sample_name, i) for i in range(self.nr_splits)]
         self.inputs         = kwargs.get("inputs",          bam_splits)
 
-        # Validate the arguments
-        self.validate()
+        # Generating the merging command
+        if self.sorted_input:
+            bam_merge_cmd = "%s merge -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(bam_splits))
+        else:
+            bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, self.output_path, " ".join(bam_splits))
 
+        # Generating the output path
         self.output_path = "%s/%s.bam" % (self.temp_dir, self.sample_name)
 
-        if self.sorted_input:
-            return "%s merge -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(bam_splits))
-        else:
-            return "%s cat -o %s %s" % (self.samtools, self.output_path, " ".join(bam_splits))
-
-    def validate(self):
-        if self.threads == -1:
-            self.error("In merger implementation, the number of threads is not specified!")
-
-        if self.nr_splits == 0:
-            self.error("Number of splits was not set before merging!")
+        return bam_merge_cmd

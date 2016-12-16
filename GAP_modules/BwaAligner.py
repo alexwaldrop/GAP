@@ -1,26 +1,19 @@
-from GAP_interfaces import Aligner
-
-from GAP_modules import SamtoolsSamToBam as ConverterSamToBam
-from GAP_modules import SamtoolsBAMSorter as BAMSorter
-
 __main_class__= "BwaAligner"
 
-class BwaAligner(Aligner):
+class BwaAligner(object):
     
     def __init__(self, config, sample_data):
-
-        Aligner.__init__(self, config)
 
         self.config = config
         self.sample_data = sample_data
 
         self.bwa            = self.config["paths"]["bwa"]
+        self.samtools       = self.config["paths"]["samtools"]
         self.ref            = self.config["paths"]["ref"]
 
-        self.sample_name    = self.sample_data["sample_name"]
+        self.temp_dir       = self.config["general"]["temp_dir"]
 
-        self.sam_to_bam     = ConverterSamToBam(config)
-        self.bam_sort       = BAMSorter(config)
+        self.sample_name    = self.sample_data["sample_name"]
 
         self.can_split      = True
         self.splitter       = "FASTQSplitter"
@@ -43,20 +36,19 @@ class BwaAligner(Aligner):
         self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
         self.split_id           = kwargs.get("split_id",        None)
 
-        self.validate()
-
+        # Generating command for alignment
         aligner_cmd = "%s mem -M -t %d %s %s %s" % (self.bwa, self.threads, self.ref, self.R1, self.R2)
 
-        sam_to_bam_cmd  = self.sam_to_bam.get_command()
+        # Generating command for converting SAM to BAM
+        sam_to_bam_cmd  = "%s view -bS -@ %d -" % (self.samtools, self.threads)
 
-        if self.split_id is None:
-            bam_sort_cmd = self.bam_sort.get_command( prefix=self.sample_name )
-        else:
-            bam_sort_cmd = self.bam_sort.get_command( prefix="%s_%d" % (self.sample_name, self.split_id) )
-        self.output_path = self.bam_sort.get_output()
+        # Generating command for sorting BAM
+        self.output_prefix = self.sample_name
+        if self.split_id is not None:
+            self.output_prefix += "_%d" % self.split_id
+        bam_sort_cmd = "%s sort -@ %d - %s/%s" % (self.samtools, self.threads, self.temp_dir, self.output_prefix)
+
+        # Generating the output path
+        self.output_path = "%s/%s.bam" % (self.temp_dir, self.output_prefix)
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)
-
-    def validate(self):
-        if self.threads == -1:
-            self.error("In aligner implementation, number of threads not specified")

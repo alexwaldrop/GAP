@@ -4,7 +4,6 @@ import subprocess as sp
 import threading
 import time
 import logging
-from datetime import datetime
 
 class GoogleException(Exception):
 
@@ -221,7 +220,6 @@ class Instance(object):
         self.status.set(InstanceStatus.RUNNING)
 
         if log:
-
             log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
             log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
 
@@ -376,13 +374,12 @@ class PreemptibleInstance(Instance):
         # Restarting heart
         self.heart_event.set()
 
-    def run_command(self, job_name, command, inst_wait=False, proc_wait=False):
+    def run_command(self, job_name, command, log=True, inst_wait=False, proc_wait=False):
 
-        # Waiting for the instance to be available
         if not inst_wait:
             self.available_event.wait()
 
-        super(PreemptibleInstance, self).run_command(job_name, command, proc_wait=proc_wait)
+        super(PreemptibleInstance, self).run_command(job_name, command, log=log, proc_wait=proc_wait)
 
     def heartbeat(self):
 
@@ -473,7 +470,7 @@ class PreemptibleInstance(Instance):
                 return False
 
             # The process has actually failed
-            print("[%s]--------Process '%s' on instance '%s' failed!" % (datetime.now(), proc_name, self.name))
+            logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
             self.status.set(InstanceStatus.FAILED)
 
             proc_obj.complete = True
@@ -530,10 +527,10 @@ class PreemptibleInstance(Instance):
 
         cmd = "sudo mkdir -m a=rwx -p /data && "
         #TODO: remove the next line, when you can make sure that nfs-common is installed from scripts before trying to mount
-        cmd += "sudo apt-get install --yes nfs-common && " 
-        cmd += "sudo mount -t nfs %s:/data /data" % self.instances["main-server"].name
+        cmd += "sudo apt-get install --yes nfs-common >> /dev/null && "
+        cmd += "sudo mount -t nfs %s:/data /data >> /dev/null " % self.instances["main-server"].name
 
-        self.run_command("mount", cmd, inst_wait=inst_wait, proc_wait=proc_wait)
+        self.run_command("mount", cmd, inst_wait=inst_wait, proc_wait=proc_wait, log=False)
 
 
 class Disk():

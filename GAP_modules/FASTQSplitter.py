@@ -1,11 +1,8 @@
-from GAP_interfaces import Main
-
 __main_class__ = "FASTQSplitter"
 
-class FASTQSplitter(Main):
+class FASTQSplitter(object):
 
     def __init__(self, config, sample_data):
-        Main.__init__(self, config)
 
         self.config = config
         self.sample_data = sample_data
@@ -29,9 +26,6 @@ class FASTQSplitter(Main):
         self.R2             = kwargs.get("R2",          self.sample_data["R2"])
         self.nr_splits      = kwargs.get("nr_splits",   2)
 
-        # Validate arguments
-        self.validate()
-
         # Generating the commands
         cmds = list()
 
@@ -49,6 +43,3 @@ class FASTQSplitter(Main):
                 cmds.append("split --suffix-length=2 --numeric-suffixes --lines=$nr_lines %s %s/%s_" % (self.R2, self.temp_dir, prefix) )
 
         return " && ".join(cmds)
-
-    def validate(self):
-        pass

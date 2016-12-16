@@ -2,41 +2,47 @@
 
 import time
 import logging
-from datetime import datetime
 
-from GAP_system import Config, Node
+from GAP_config import Config
+from GAP_system import Node
 from GAP_modules import GoogleCompute as Platform
 from GAP_modules import GoogleException
 
-# Generating the config object
-config = Config("Config/GAP.config", silent = True).config
+# Initilizing global variables
+config = None
+plat = None
 
-if config["sample"]["ref"] == "hg19":
-    config["paths"]["ref"] = "/ref/hg19/ucsc.hg19.fasta"
+def create_config():
+    global config
 
-def setup_logging():
+    # Generating the config object
+    config = Config("GAP_config/GAP.config").config
 
-    # Setting the format of the logs
-    FORMAT = "[%(asctime)s] GAP_%(levelname)s: %(message)s"
-
-    # Setting the level of the logs
-    if config["general"]["verbosity"] == 0:
-        LEVEL = logging.ERROR
-    elif config["general"]["verbosity"] == 1:
-        LEVEL = logging.WARNING
-    elif config["general"]["verbosity"] == 2:
-        LEVEL = logging.INFO
-    else:
-        LEVEL = logging.DEBUG
-
-    # Configuring the logging system
-    logging.basicConfig(level=LEVEL, format=FORMAT)
+    # Setting up the reference genome location
+    if config["sample"]["ref"] == "hg19":
+        config["paths"]["ref"] = "/ref/hg19/ucsc.hg19.fasta"
 
 def main():
     global plat
 
-    # Setup logging
-    setup_logging()
+    # Setting the format of the logs
+    FORMAT = "[%(asctime)s] GAP_%(levelname)s: %(message)s"
+
+    # Configuring the logging system to the lowest level
+    logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+
+    # Creating logging
+    create_config()
+
+    # Setting the level of the logs
+    if config["general"]["verbosity"] == 0:
+        logging.getLogger().setLevel(logging.ERROR)
+    elif config["general"]["verbosity"] == 1:
+        logging.getLogger().setLevel(logging.WARNING)
+    elif config["general"]["verbosity"] == 2:
+        logging.getLogger().setLevel(logging.INFO)
+    else:
+        logging.getLogger().setLevel(logging.DEBUG)
 
     # Setting up the platform
     plat = Platform(config)
@@ -52,8 +58,10 @@ def main():
     logging.info("Analysis pipeline complete.")
     time.sleep(300)
 
-try:
-    main()
-except (KeyboardInterrupt, GoogleException):
-    logging.info("Now exiting!")
-    del plat
+if __name__ == "__main__":
+
+    try:
+        main()
+    except (KeyboardInterrupt, GoogleException):
+        logging.info("Now exiting!")
+        del plat
