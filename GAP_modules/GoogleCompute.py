@@ -617,37 +617,41 @@ class GoogleCompute(object):
 
     def __del__(self):
 
-        # Destroying all the instances
-        for instance_name, instance_obj in self.instances.iteritems():
-            try:
-                instance_obj.destroy()
-            except GoogleException:
-                logging.info("(%s) Could not destroy instance!" % instance_name)
+        if hasattr(self, "instances"):
 
-        # Waiting for the instances to be destroyed
-        for instance_name, instance_obj in self.instances.iteritems():
-            try:
-                if instance_name.startswith("split"):
-                    instance_obj.wait_all(inst_wait=True)
-                else:
-                    instance_obj.wait_all()
-            except GoogleException:
-                logging.info("(%s) Could not destroy instance!" % instance_name)
-
-        # Destroying all the disks
-        for disk_name, disk_obj in self.disks.iteritems():
-            if disk_obj.processes.get("destroy") is None:
+            # Destroying all the instances
+            for instance_name, instance_obj in self.instances.iteritems():
                 try:
-                    disk_obj.destroy()
+                    instance_obj.destroy()
+                except GoogleException:
+                    logging.info("(%s) Could not destroy instance!" % instance_name)
+
+            # Waiting for the instances to be destroyed
+            for instance_name, instance_obj in self.instances.iteritems():
+                try:
+                    if instance_name.startswith("split"):
+                        instance_obj.wait_all(inst_wait=True)
+                    else:
+                        instance_obj.wait_all()
+                except GoogleException:
+                    logging.info("(%s) Could not destroy instance!" % instance_name)
+
+        if hasattr(self, "disks"):
+
+            # Destroying all the disks
+            for disk_name, disk_obj in self.disks.iteritems():
+                if disk_obj.processes.get("destroy") is None:
+                    try:
+                        disk_obj.destroy()
+                    except GoogleException:
+                        logging.info("(%s) Could not destroy disk!" % disk_name)
+
+            # Waiting for the disks to be destroyed
+            for disk_name, disk_obj in self.disks.iteritems():
+                try:
+                    disk_obj.wait_all()
                 except GoogleException:
                     logging.info("(%s) Could not destroy disk!" % disk_name)
-
-        # Waiting for the disks to be destroyed
-        for disk_name, disk_obj in self.disks.iteritems():
-            try:
-                disk_obj.wait_all()
-            except GoogleException:
-                logging.info("(%s) Could not destroy disk!" % disk_name)
 
     def authenticate(self):
 
