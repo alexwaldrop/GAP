@@ -134,11 +134,15 @@ class Node(object):
 
         self.merge_outputs = self.merge_obj.get_output()
 
-        # Marking for output
+        # Ensuring the "outputs" key is present
         if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = [ self.merge_outputs ]
+            self.sample_data["outputs"] = list()
+
+        # Marking for output
+        if isinstance(self.merge_outputs, list):
+            self.sample_data["outputs"].extend(self.merge_outputs)
         else:
-            self.sample_data["outputs"].append( self.merge_outputs )
+            self.sample_data["outputs"].append(self.merge_outputs)
 
     def run_normal(self):
 
@@ -147,11 +151,17 @@ class Node(object):
         self.platform.instances["main-server"].run_command(self.module_name, cmd)
         self.platform.instances["main-server"].wait_all()
 
-        # Marking for output
+        self.main_outputs = self.main_obj.get_output()
+
+        # Ensuring the "outputs" key is present
         if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = [self.main_obj.get_output()]
+            self.sample_data["outputs"] = list()
+
+        # Marking for output
+        if isinstance(self.main_outputs, list):
+            self.sample_data["outputs"].extend(self.main_outputs)
         else:
-            self.sample_data["outputs"].append(self.main_obj.get_output())
+            self.sample_data["outputs"].append(self.main_outputs)
 
     def run(self):
 
