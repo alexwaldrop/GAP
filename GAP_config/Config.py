@@ -52,7 +52,7 @@ class Config(object):
         # Reporting errors with file
         if results != True:
             error_string = "Invalid config error!\n"
-            for (section_list, key, _) in flatten_errors(config_parser, results):
+            for (section_list, key, _) in flatten_errors(self.config, results):
                 if key is not None:
                     error_string += 'The "%s" key in the section "%s" failed validation\n' % (key, ', '.join(section_list))
                 else:

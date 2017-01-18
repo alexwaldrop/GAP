@@ -1,6 +1,8 @@
 import importlib
-import time
 import logging
+import threading
+import Queue
+import sys
 
 def initialize_module(module_name):
 
@@ -13,6 +15,72 @@ def initialize_module(module_name):
     return d
 
 class Node(object):
+
+
+    class SplitServer(threading.Thread):
+        """ Exception throwing method taken from:
+                http://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python
+        """
+
+        def __init__(self, server_name, platform, job_name, cmd, **kwargs):
+            super(Node.SplitServer, self).__init__()
+
+            self.daemon = True
+            self.exception_queue = Queue.Queue()
+
+            self.platform = platform
+            self.server_name = server_name
+            self.server_obj = None
+
+            self.job_name = job_name
+            self.cmd = cmd
+
+            self.kwargs = kwargs
+
+        def run_with_exception(self):
+
+            # Creating split server
+            self.platform.create_split_server(self.server_name, **self.kwargs)
+            self.server_obj = self.platform.instances[self.server_name]
+
+            # Waiting for split server to be created
+            self.server_obj.wait_process("create")
+
+            # Running the command on instance
+            self.server_obj.run_command(self.job_name, self.cmd)
+
+            # Waiting for the job to finish
+            self.server_obj.wait_process(self.job_name)
+
+            # If no exceptions were raised and we reach this point
+            self.server_obj.destroy()
+
+            # Waiting for split server to be destroyed
+            self.server_obj.wait_process("destroy")
+
+        def run(self):
+            try:
+                self.run_with_exception()
+            except BaseException as e:
+                logging.error("(%s) Exception in executing thread: %s." % (self.server_name, e.message))
+                self.exception_queue.put(sys.exc_info())
+            else:
+                self.exception_queue.put(None)
+
+        def wait(self):
+
+            # Check if thread is not running
+            if not self.is_alive():
+
+                # Check if thread has already finished (queue should not be empty)
+                if self.exception_queue.empty():
+                    return
+
+            # If running, or finished already, wait for possible exception to appear
+            exc_info = self.exception_queue.get()
+            if exc_info is not None:
+                raise exc_info[1]
+
 
     def __init__(self, config, platform, sample_data, module_name):
 
@@ -54,7 +122,7 @@ class Node(object):
 
         # Creating job names
         split_job_name  = "%s_split" % self.module_name
-        main_job_name   = lambda split_id: "%s_%d" % (self.module_name, split_id)
+        main_job_name   = lambda splt_id: "%s_%d" % (self.module_name, splt_id)
         merge_job_name  = "%s_merge" % self.module_name
 
         # Running the splitter
@@ -64,63 +132,31 @@ class Node(object):
 
         self.split_outputs = self.split_obj.get_output()
 
-        # Creating the split servers
-        self.platform.create_split_servers(self.config["general"]["nr_splits"], nr_cpus=self.config["instance"]["nr_cpus"],
-                                           is_preemptible=True, nr_local_ssd=0)
-
         self.main_outputs = list()
 
-        # Calling the process on each split
+        # Creating the split server threads
+        split_servers = dict()
         for split_id, paths in enumerate(self.split_outputs):
-            cmd = self.main_obj.get_command( split_id=split_id, **paths )
-            self.main_outputs.append( self.main_obj.get_output() )
 
-            self.platform.instances["split%d-server" % split_id].run_command(main_job_name(split_id), cmd)
+            # Generating split server name
+            server_name = "split%d-server" % split_id
 
-        # Waiting for all the split aligning processes to finish
-        while True:
+            # Obtaining main command
+            cmd = self.main_obj.get_command(split_id=split_id, **paths)
+            self.main_outputs.append(self.main_obj.get_output())
 
-            still_running = False
+            # Creating SplitServer object
+            split_servers[server_name] = self.SplitServer(server_name, self.platform, main_job_name(split_id), cmd)
 
-            for instance_name, instance_obj in self.platform.instances.iteritems():
-                if instance_name.startswith("split"):
+            # Starting split server work
+            split_servers[server_name].start()
 
-                    # Generating process name
-                    split_id = int(instance_name.split("-")[0].split("split")[-1])
-                    proc_name = main_job_name(split_id)
-
-                    # Check if process is done
-                    if instance_obj.poll_process(proc_name):
-
-                        # Skipping instances that are resetting
-                        if instance_obj.is_preemptible and not instance_obj.available_event.is_set():
-                            continue
-
-                        # Skipping process that has already been registered
-                        if instance_obj.processes[proc_name].complete:
-                            continue
-
-                        # Skipping process that has previously failed and not marked complete
-                        if instance_obj.processes[proc_name].has_failed():
-                            still_running = True
-                            continue
-
-                        # Checking the complete process
-                        instance_obj.wait_process(proc_name)
-
-                        # Destroy the split
-                        instance_obj.destroy()
-
-                    else:
-                        still_running = True
-
-            if still_running:
-                time.sleep(5)
-            else:
-                break
+        # Waiting for all the split processes to finish
+        for server_thread in split_servers.itervalues():
+            server_thread.wait()
 
         # Running the merger
-        cmd = self.merge_obj.get_command( nr_splits= self.config["general"]["nr_splits"],
+        cmd = self.merge_obj.get_command( nr_splits=self.config["general"]["nr_splits"],
                                           inputs=self.main_outputs )
         self.platform.instances["main-server"].run_command(merge_job_name, cmd)
 

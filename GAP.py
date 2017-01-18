@@ -62,6 +62,11 @@ if __name__ == "__main__":
 
     try:
         main()
-    except (KeyboardInterrupt, GoogleException):
+    except KeyboardInterrupt:
+        logging.info("Ctrl+C received! Now exiting!")
+        raise
+    except GoogleException:
         logging.info("Now exiting!")
+        plat.finalize(config["sample"], only_logs=True)
         del plat
+        raise

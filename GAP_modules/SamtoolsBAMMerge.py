@@ -32,13 +32,13 @@ class SamtoolsBAMMerge(object):
         bam_splits = ["%s/%s_%d.bam" % (self.temp_dir, self.sample_name, i) for i in range(self.nr_splits)]
         self.inputs         = kwargs.get("inputs",          bam_splits)
 
+        # Generating the output path
+        self.output_path = "%s/%s.bam" % (self.temp_dir, self.sample_name)
+
         # Generating the merging command
         if self.sorted_input:
             bam_merge_cmd = "%s merge -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(bam_splits))
         else:
             bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, self.output_path, " ".join(bam_splits))
-
-        # Generating the output path
-        self.output_path = "%s/%s.bam" % (self.temp_dir, self.sample_name)
 
         return bam_merge_cmd

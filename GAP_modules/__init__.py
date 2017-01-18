@@ -1,5 +1,5 @@
-from GoogleCompute import GoogleCompute
-from GoogleCompute import GoogleException
+from Google import GoogleCompute
+from Google import GoogleException
 
 # BWA Aligning tools
 from FASTQSplitter import FASTQSplitter
