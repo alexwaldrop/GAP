@@ -81,7 +81,7 @@ class Instance(object):
         args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
 
         args.append("--image")
-        args.append("/davelab-gcloud/davelab-image")
+        args.append("davelab-image")
 
         args.append("--machine-type")
         args.append(self.instance_type)
