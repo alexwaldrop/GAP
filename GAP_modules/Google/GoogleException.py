@@ -6,5 +6,4 @@ class GoogleException(Exception):
 
         if instance_name is not None:
             logging.error("(%s) Instance has failed!" % instance_name)
-            exit(1)
 

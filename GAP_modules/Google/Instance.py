@@ -232,8 +232,8 @@ class Instance(object):
         out, err = proc.communicate()
 
         if len(err) != 0:
-            logging.error(
-                "(%s) Getting instance preemptible status failed with the following error: %s!" % (self.name, err))
+            logging.error("(%s) Getting instance preemptible status failed with the following error: %s!" % (self.name, err))
+            raise GoogleException(self.name)
 
         if len(out) == 0:
             return False

@@ -14,7 +14,7 @@ def initialize_module(module_name):
 
     return d
 
-class Node(object):
+class Node(threading.Thread):
 
 
     class SplitServer(threading.Thread):
@@ -83,6 +83,10 @@ class Node(object):
 
 
     def __init__(self, config, platform, sample_data, module_name):
+        super(Node, self).__init__()
+
+        self.daemon = True
+        self.exception_queue = Queue.Queue()
 
         self.config = config
         self.platform = platform
@@ -118,6 +122,8 @@ class Node(object):
         self.main_outputs  = None
         self.merge_outputs = None
 
+        self.complete      = False
+
     def run_split(self):
 
         # Creating job names
@@ -128,7 +134,7 @@ class Node(object):
         # Running the splitter
         cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
         self.platform.instances["main-server"].run_command(split_job_name, cmd)
-        self.platform.instances["main-server"].wait_all()
+        self.platform.instances["main-server"].wait_process(split_job_name)
 
         self.split_outputs = self.split_obj.get_output()
 
@@ -159,14 +165,7 @@ class Node(object):
         cmd = self.merge_obj.get_command( nr_splits=self.config["general"]["nr_splits"],
                                           inputs=self.main_outputs )
         self.platform.instances["main-server"].run_command(merge_job_name, cmd)
-
-        # Waiting for all the split servers to DIE!!!
-        for instance_name, instance_obj in self.platform.instances.iteritems():
-            if instance_name.startswith("split"):
-                instance_obj.wait_all()
-
-        # Waiting for the merging to finish
-        self.platform.instances["main-server"].wait_all()
+        self.platform.instances["main-server"].wait_process(merge_job_name)
 
         self.merge_outputs = self.merge_obj.get_output()
 
@@ -185,7 +184,7 @@ class Node(object):
         cmd = self.main_obj.get_command()
 
         self.platform.instances["main-server"].run_command(self.module_name, cmd)
-        self.platform.instances["main-server"].wait_all()
+        self.platform.instances["main-server"].wait_process(self.module_name)
 
         self.main_outputs = self.main_obj.get_output()
 
@@ -201,7 +200,28 @@ class Node(object):
 
     def run(self):
 
-        if self.main_obj.can_split and self.config["general"]["split"]:
-            self.run_split()
+        try:
+
+            if self.main_obj.can_split and self.config["general"]["split"]:
+                self.run_split()
+            else:
+                self.run_normal()
+
+        except BaseException as e:
+            logging.error("Exception in executing node with module '%s': %s." % (self.module_name, e.message))
+            self.exception_queue.put(sys.exc_info())
         else:
-            self.run_normal()
+            self.exception_queue.put(None)
+        finally:
+            self.complete = True
+
+    def finalize(self):
+
+        # Check if the list is empty
+        if self.exception_queue.empty():
+            return
+
+        # Raise an exception if required
+        exc_info = self.exception_queue.get()
+        if exc_info is not None:
+            raise exc_info[1]

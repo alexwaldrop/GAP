@@ -4,7 +4,7 @@ import time
 import logging
 
 from GAP_config import Config
-from GAP_system import Node
+from GAP_system import NodeManager
 from GAP_modules import GoogleCompute as Platform
 from GAP_modules import GoogleException
 
@@ -48,8 +48,9 @@ def main():
     plat = Platform(config)
     plat.prepare_data(config["sample"], nr_local_ssd=5)
 
-    # Running the alignment
-    Node(config, plat, config["sample"], "BwaAligner").run()
+    # Running the modules
+    node_manager = NodeManager(config, plat)
+    node_manager.run()
 
     # Copy the final results to the bucket
     plat.finalize(config["sample"])
