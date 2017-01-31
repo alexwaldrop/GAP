@@ -42,13 +42,14 @@ class BwaAligner(object):
         # Generating command for converting SAM to BAM
         sam_to_bam_cmd  = "%s view -bS -@ %d -" % (self.samtools, self.threads)
 
-        # Generating command for sorting BAM
-        self.output_prefix = self.sample_name
-        if self.split_id is not None:
-            self.output_prefix += "_%d" % self.split_id
-        bam_sort_cmd = "%s sort -@ %d - %s/%s" % (self.samtools, self.threads, self.temp_dir, self.output_prefix)
-
         # Generating the output path
-        self.output_path = "%s/%s.bam" % (self.temp_dir, self.output_prefix)
+        self.output_path = "%s/%s" % (self.temp_dir, self.sample_name)
+        if self.split_id is not None:
+            self.output_path += "_%d.bam" % self.split_id
+        else:
+            self.output_path += ".bam"
+
+        # Generating command for sorting BAM
+        bam_sort_cmd = "%s sort -@ %d - -o %s" % (self.samtools, self.threads, self.output_path)
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)

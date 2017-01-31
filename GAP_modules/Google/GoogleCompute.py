@@ -167,23 +167,19 @@ class GoogleCompute(object):
         self.instances["main-server"].create()
         self.instances["main-server"].wait_process("create")
 
-        # Getting raw data paths
-        R1_path = sample_data["R1_source"]
-        R2_path = sample_data["R2_source"]
-
         # Adding new paths
-        sample_data["R1"] = "/data/%s" % R1_path.split("/")[-1]
-        sample_data["R2"] = "/data/%s" % R2_path.split("/")[-1]
+        sample_data["R1"] = "/data/R1_%s.fastq.gz" % sample_data["sample_name"]
+        sample_data["R2"] = "/data/R2_%s.fastq.gz" % sample_data["sample_name"]
 
         # Creating logging directory
         cmd = "mkdir -p /data/logs/"
         self.instances["main-server"].run_command("createLogDir", cmd, log=False, proc_wait=True)
 
         # Copying input data
-        cmd = "gsutil cp %s /data/ " % R1_path
+        cmd = "gsutil cp %s %s " % (sample_data["R1_source"], sample_data["R1"])
         self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
-        cmd = "gsutil cp %s /data/ " % R2_path
+        cmd = "gsutil cp %s %s " % (sample_data["R2_source"], sample_data["R2"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares

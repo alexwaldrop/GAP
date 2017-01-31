@@ -1,4 +1,4 @@
-import subprocess as sp
+import logging
 
 __main_class__ = "FASTQSplitter"
 
@@ -32,18 +32,13 @@ class FASTQSplitter(object):
         # Generating the commands
         cmds = list()
 
-        # Obtaining number of reads
-        nr_reads = self.sample_data["nr_read_pairs"]
-
         # If the number of reads is not specified, we compute the number of lines.
         # Integer division and multiplication to ensure reads integrity
-        if nr_reads == -1:
-            if self.R1.endswith(".gz"):
-                cmds.append("nr_lines=$(( `pigz -p %d -d -k -c %s | wc -l` / (%d * 4) * 4))" % (self.threads, self.R1, self.nr_splits) )
-            else:
-                cmds.append("nr_lines=$(( `cat %s | wc -l` / (%d * 4) * 4))" % (self.R1, self.nr_splits) )
+        logging.info("Counting the number of reads in the FASTQ files.")
+        if self.R1.endswith(".gz"):
+            cmds.append("nr_lines=$(( `pigz -p %d -d -k -c %s | wc -l` / (%d * 4) * 4))" % (self.threads, self.R1, self.nr_splits) )
         else:
-            cmds.append("nr_lines=$(( %d / %d ))" % (nr_reads, self.nr_splits))
+            cmds.append("nr_lines=$(( `cat %s | wc -l` / (%d * 4) * 4))" % (self.R1, self.nr_splits) )
 
         # Setting up the output paths
         self.output_path = [ { "R1" : "%s/%s_%02d" % (self.temp_dir, self.prefix[0], i),
