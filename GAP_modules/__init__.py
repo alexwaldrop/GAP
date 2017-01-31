@@ -8,3 +8,6 @@ from BwaAligner import BwaAligner
 
 # FastQC
 from FastQC import FastQC
+
+# Trimmomatic
+from Trimmomatic import Trimmomatic
