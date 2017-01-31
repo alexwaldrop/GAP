@@ -176,10 +176,11 @@ class GoogleCompute(object):
         self.instances["main-server"].run_command("createLogDir", cmd, log=False, proc_wait=True)
 
         # Copying input data
-        cmd = "gsutil cp %s %s " % (sample_data["R1_source"], sample_data["R1"])
+        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+        cmd = "gsutil %s cp %s %s " % (options_fast, sample_data["R1_source"], sample_data["R1"])
         self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
-        cmd = "gsutil cp %s %s " % (sample_data["R2_source"], sample_data["R2"])
+        cmd = "gsutil %s cp %s %s " % (options_fast, sample_data["R2_source"], sample_data["R2"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares
