@@ -178,7 +178,7 @@ class Instance(object):
 
         # Rerunning all the commands
         if len(commands_to_run):
-            while len(commands_to_run) != 1:
+            while len(commands_to_run) != 0:
                 proc_name, proc_cmd = commands_to_run.pop(0)
                 self.run_command(proc_name, proc_cmd)
                 self.wait_process(proc_name)
