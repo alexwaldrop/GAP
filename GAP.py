@@ -1,6 +1,5 @@
 #!/usr/bin/env python2.7
 
-import time
 import logging
 
 from GAP_config import Config
@@ -57,7 +56,6 @@ def main():
 
     # Aligning done
     logging.info("Analysis pipeline complete.")
-    time.sleep(300)
 
 if __name__ == "__main__":
 
