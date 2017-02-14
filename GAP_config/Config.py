@@ -47,16 +47,16 @@ class Config(object):
 
         # Validating schema
         validator = Validator()
-        results = self.config.validate(validator)
+        results = self.config.validate(validator, preserve_errors=True)
 
         # Reporting errors with file
         if results != True:
             error_string = "Invalid config error!\n"
             for (section_list, key, _) in flatten_errors(self.config, results):
                 if key is not None:
-                    error_string += 'The "%s" key in the section "%s" failed validation\n' % (key, ', '.join(section_list))
+                    error_string += '\tThe key "%s" in the section "%s" failed validation\n' % (key, ', '.join(section_list))
                 else:
-                    logging.info('The following section was missing:%s \n' % ', '.join(section_list))
+                    logging.info('The following section was missing:%s \n' % (', '.join(section_list)) )
 
             logging.error(error_string)
 
