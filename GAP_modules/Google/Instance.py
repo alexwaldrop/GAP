@@ -180,7 +180,7 @@ class Instance(object):
         if len(commands_to_run):
             while len(commands_to_run) != 0:
                 proc_name, proc_cmd = commands_to_run.pop(0)
-                self.run_command(proc_name, proc_cmd)
+                self.processes[proc_name] = GoogleProcess(proc_cmd, instance_id=self.google_id, shell=True)
                 self.wait_process(proc_name)
 
         # Set as done resetting
