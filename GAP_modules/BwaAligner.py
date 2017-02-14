@@ -40,7 +40,7 @@ class BwaAligner(object):
         aligner_cmd = "%s mem -M -t %d %s %s %s" % (self.bwa, self.threads, self.ref, self.R1, self.R2)
 
         # Generating command for converting SAM to BAM
-        sam_to_bam_cmd  = "%s view -bS -@ %d -" % (self.samtools, self.threads)
+        sam_to_bam_cmd  = "%s view -uS -@ %d -" % (self.samtools, self.threads)
 
         # Generating the output path
         self.output_path = "%s/%s" % (self.temp_dir, self.sample_name)
