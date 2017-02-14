@@ -450,7 +450,7 @@ class Instance(object):
                         preempted = True
                         break
 
-                    time.sleep(3)
+                    time.sleep(6)
                     cycle_count += 1
 
                 # Checking if the instance got preempted
@@ -474,12 +474,12 @@ class Instance(object):
                 cycle_count = 0
                 while self.get_status() != Instance.AVAILABLE:
                     cycle_count += 1
-                    time.sleep(5)
+                    time.sleep(10)
 
                     if self.got_preempted():
                         self.reset()
 
-                    if cycle_count > 60:
+                    if cycle_count > 30:
                         self.reset()
 
             elif proc_name == "destroy":
