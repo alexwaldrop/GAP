@@ -13,3 +13,6 @@ from FastQC import FastQC
 from Trimmomatic import Trimmomatic
 
 from SamtoolsIndex import SamtoolsIndex
+
+from BAMChromosomeSplitter import BAMChromosomeSplitter
+from PicardMarkDuplicates import PicardMarkDuplicates
