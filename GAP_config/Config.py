@@ -25,6 +25,9 @@ class Config(object):
         # Validating the config file
         self.validate_config()
 
+        # Parse config
+        self.parse_config()
+
     def read_config(self):
 
         # Checking if the config file exists
@@ -66,3 +69,37 @@ class Config(object):
 
         if not self.valid:
             exit(1)
+
+    def parse_config(self):
+
+        # Obtaining genomic reference name
+        ref_name = self.config["sample"]["ref"]
+
+        # Checking if reference is defined
+        if ref_name not in self.config["references"]:
+            logging.error("Reference %s definition was not found in the config file." % ref_name)
+            exit(1)
+
+        # Obtaining reference definition
+        ref_dict = self.config["references"][ref_name]
+
+        # Adding reference path to paths dictionary
+        self.config["paths"]["ref"] = ref_dict["path"]
+
+        # Processing the chromosome list
+        chroms = list()
+        for chrom_set in ref_dict["chroms"]:
+            if "[" in chrom_set:
+                head = chrom_set.split("[")[0]
+                rang = chrom_set.split("[")[-1].split("]")[0]
+
+                # Splitting ranges in subranges
+                if "-" in rang:
+                    limits = [int(val) for val in rang.split("-")]
+                    chroms.extend( [head + str(i) for i in xrange(limits[0], limits[1] + 1)] )
+                else:
+                    chroms.append(head + rang)
+            else:
+                chroms.append(chrom_set)
+
+        self.config["sample"]["chrom_list"] = chroms

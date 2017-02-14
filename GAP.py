@@ -11,18 +11,9 @@ from GAP_modules import GoogleException
 config = None
 plat = None
 
-def create_config():
-    global config
-
-    # Generating the config object
-    config = Config("GAP_config/GAP.config").config
-
-    # Setting up the reference genome location
-    if config["sample"]["ref"] == "hg19":
-        config["paths"]["ref"] = "/ref/hg19/ucsc.hg19.fasta"
-
 def main():
     global plat
+    global config
 
     # Setting the format of the logs
     FORMAT = "[%(asctime)s] GAP_%(levelname)s: %(message)s"
@@ -31,7 +22,7 @@ def main():
     logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 
     # Creating logging
-    create_config()
+    config = Config("GAP_config/GAP.config").config
 
     # Setting the level of the logs
     if config["general"]["verbosity"] == 0:
