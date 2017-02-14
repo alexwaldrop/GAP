@@ -62,7 +62,8 @@ class Node(threading.Thread):
             try:
                 self.run_with_exception()
             except BaseException as e:
-                logging.error("(%s) Exception in executing thread: %s." % (self.server_name, e.message))
+                if e.message != "":
+                    logging.error("(%s) Exception in executing thread: %s." % (self.server_name, e.message))
                 self.exception_queue.put(sys.exc_info())
             else:
                 self.exception_queue.put(None)
@@ -208,7 +209,8 @@ class Node(threading.Thread):
                 self.run_normal()
 
         except BaseException as e:
-            logging.error("Exception in executing node with module '%s': %s." % (self.module_name, e.message))
+            if e.message != "":
+                logging.error("Exception in executing node with module '%s': %s." % (self.module_name, e.message))
             self.exception_queue.put(sys.exc_info())
         else:
             self.exception_queue.put(None)
