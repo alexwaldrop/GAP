@@ -18,7 +18,12 @@ class Trimmomatic(object):
         self.R1             = None
         self.R2             = None
         self.threads        = None
+
         self.output_path    = None
+        self.pipeline_output_path = None
+
+    def get_pipeline_output(self):
+        return self.pipeline_output_path
 
     def get_output(self):
         return self.output_path
@@ -50,8 +55,5 @@ class Trimmomatic(object):
         self.sample_data["R2_untrim"] = self.sample_data["R2"]
         self.sample_data["R1"] = R1_pair
         self.sample_data["R2"] = R2_pair
-
-        # Generating the output paths
-        self.output_path = list()
 
         return trim_cmd

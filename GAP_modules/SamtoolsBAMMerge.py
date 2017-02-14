@@ -21,7 +21,12 @@ class SamtoolsBAMMerge(object):
         self.inputs       = None
         self.nr_splits    = None
         self.sorted_input = None
+
         self.output_path  = None
+        self.pipeline_output_path = None
+
+    def get_pipeline_output(self):
+        return self.pipeline_output_path
 
     def get_output(self):
         return self.output_path

@@ -138,6 +138,7 @@ class Node(threading.Thread):
         self.platform.instances["main-server"].wait_process(split_job_name)
 
         self.split_outputs = self.split_obj.get_output()
+        self.set_pipeline_output(self.split_obj.get_pipeline_output())
 
         self.main_outputs = list()
 
@@ -151,7 +152,9 @@ class Node(threading.Thread):
             # Obtaining main command
             cmd = self.main_obj.get_command(split_id=split_id, **args)
 
+            # Obtaining outputs
             self.main_outputs.append(self.main_obj.get_output())
+            self.set_pipeline_output(self.main_obj.get_pipeline_output())
 
             # Checking if there is command to run
             if cmd is not None:
@@ -171,17 +174,7 @@ class Node(threading.Thread):
         self.platform.instances["main-server"].run_command(merge_job_name, cmd, log=False)
         self.platform.instances["main-server"].wait_process(merge_job_name)
 
-        self.merge_outputs = self.merge_obj.get_output()
-
-        # Ensuring the "outputs" key is present
-        if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = list()
-
-        # Marking for output
-        if isinstance(self.merge_outputs, list):
-            self.sample_data["outputs"].extend(self.merge_outputs)
-        else:
-            self.sample_data["outputs"].append(self.merge_outputs)
+        self.set_pipeline_output(self.merge_obj.get_pipeline_output())
 
     def run_normal(self):
 
@@ -190,17 +183,7 @@ class Node(threading.Thread):
         self.platform.instances["main-server"].run_command(self.module_name, cmd)
         self.platform.instances["main-server"].wait_process(self.module_name)
 
-        self.main_outputs = self.main_obj.get_output()
-
-        # Ensuring the "outputs" key is present
-        if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = list()
-
-        # Marking for output
-        if isinstance(self.main_outputs, list):
-            self.sample_data["outputs"].extend(self.main_outputs)
-        else:
-            self.sample_data["outputs"].append(self.main_outputs)
+        self.set_pipeline_output(self.main_obj.get_pipeline_output())
 
     def run(self):
 
@@ -219,6 +202,28 @@ class Node(threading.Thread):
             self.exception_queue.put(None)
         finally:
             self.complete = True
+
+    def set_pipeline_output(self, output):
+
+        def flatten(lst):
+            if isinstance(lst, list):
+                return [x for el in lst for x in flatten(el)]
+            else:
+                return [lst]
+
+        # Checking if there is output to set
+        if output is None:
+            return
+
+        # Ensuring the "outputs" key is present
+        if "outputs" not in self.sample_data:
+            self.sample_data["outputs"] = dict()
+
+        # Setting the output as pipeline output
+        if self.module_name in self.sample_data["outputs"]:
+            self.sample_data["outputs"][self.module_name].extend(flatten(output))
+        else:
+            self.sample_data["outputs"][self.module_name] = flatten(output)
 
     def finalize(self):
 

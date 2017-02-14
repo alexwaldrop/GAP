@@ -17,7 +17,12 @@ class FastQC(object):
         self.R1             = None
         self.R2             = None
         self.threads        = None
+
         self.output_path    = None
+        self.pipeline_output_path = None
+
+    def get_pipeline_output(self):
+        return self.pipeline_output_path
 
     def get_output(self):
         return self.output_path
@@ -38,5 +43,7 @@ class FastQC(object):
             fastq_filename = fastq_file.split("/")[-1].replace(".fastq.gz", "").replace(".fastq", "")
             self.output_path.append("%s/%s_fastqc.html" % (self.temp_dir, fastq_filename))
             self.output_path.append("%s/%s_fastqc.zip" % (self.temp_dir, fastq_filename))
+
+        self.pipeline_output_path = list(self.output_path)
 
         return fastqc_cmd

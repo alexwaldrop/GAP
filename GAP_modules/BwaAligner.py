@@ -23,7 +23,12 @@ class BwaAligner(object):
         self.R2             = None
         self.threads        = None
         self.split_id       = None
+
         self.output_path    = None
+        self.pipeline_output_path = None
+
+    def get_pipeline_output(self):
+        return self.pipeline_output_path
 
     def get_output(self):
         return self.output_path
@@ -48,6 +53,7 @@ class BwaAligner(object):
             self.output_path += "_%d.bam" % self.split_id
         else:
             self.output_path += ".bam"
+            self.sample_data["bam"] = self.output_path
 
         # Generating command for sorting BAM
         bam_sort_cmd = "%s sort -@ %d - -o %s" % (self.samtools, self.threads, self.output_path)
