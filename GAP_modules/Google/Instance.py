@@ -435,7 +435,7 @@ class Instance(object):
 
             else:
                 # Check if the process failed on a preempted instance
-                logging.debug("(%s) the instance id is %s and process name is %s" % (self.name, proc_obj.get_instance_id(), proc_name))
+                logging.debug("(%s) Process '%s' has failed on instance with id %s." % (self.name, proc_name, proc_obj.get_instance_id()))
 
                 # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
