@@ -134,7 +134,7 @@ class Node(threading.Thread):
 
         # Running the splitter
         cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
-        self.platform.instances["main-server"].run_command(split_job_name, cmd)
+        self.platform.instances["main-server"].run_command(split_job_name, cmd, log=False)
         self.platform.instances["main-server"].wait_process(split_job_name)
 
         self.split_outputs = self.split_obj.get_output()
@@ -165,7 +165,7 @@ class Node(threading.Thread):
         # Running the merger
         cmd = self.merge_obj.get_command( nr_splits=self.config["general"]["nr_splits"],
                                           inputs=self.main_outputs )
-        self.platform.instances["main-server"].run_command(merge_job_name, cmd)
+        self.platform.instances["main-server"].run_command(merge_job_name, cmd, log=False)
         self.platform.instances["main-server"].wait_process(merge_job_name)
 
         self.merge_outputs = self.merge_obj.get_output()
