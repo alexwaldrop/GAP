@@ -223,13 +223,25 @@ class GoogleCompute(object):
         cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/" % (sample_data["sample_name"])
         self.instances["main-server"].run_command("copyLogs", cmd)
 
-        if only_logs:
-            return
+        if not only_logs:
 
-        # Copying the output data
-        for i, output_path in enumerate(sample_data["outputs"]):
-            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/" % (output_path, sample_data["sample_name"])
-            self.instances["main-server"].run_command("copyOut_%d" % i, cmd)
+            # Copying the bam
+            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam" % (sample_data["bam"], sample_data["sample_name"], sample_data["sample_name"])
+            self.instances["main-server"].run_command("copyBAM", cmd)
+
+            # Copying the bam index
+            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam.bai" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
+            self.instances["main-server"].run_command("copyBAI", cmd)
+
+            # Copying the output data
+            for module_name, output_paths in sample_data["outputs"].iteritems():
+                if len(output_paths) == 1:
+                    cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/" % (output_paths[0], sample_data["sample_name"])
+                else:
+                    cmd = "gsutil -m cp -r $path gs://davelab_temp/outputs/%s/%s/" % (sample_data["sample_name"], module_name)
+                    cmd = "for path in %s; do %s & done" % (" ".join(output_paths), cmd)
+
+                self.instances["main-server"].run_command("copyOut_%s" % module_name, cmd)
 
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
