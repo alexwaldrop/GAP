@@ -347,6 +347,10 @@ class Instance(object):
                 logging.error("(%s) Process '%s' waited too long!" % (self.name, job_name))
                 raise GoogleException(self.name)
 
+        # Exclude for loops out of the logging system (syntax interference)
+        if "for " in command:
+            log = False
+
         if log:
             log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
             log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
