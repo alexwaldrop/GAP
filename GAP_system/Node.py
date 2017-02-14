@@ -143,20 +143,23 @@ class Node(threading.Thread):
 
         # Creating the split server threads
         split_servers = dict()
-        for split_id, paths in enumerate(self.split_outputs):
+        for split_id, args in enumerate(self.split_outputs):
 
             # Generating split server name
             server_name = "split%d-server" % split_id
 
             # Obtaining main command
-            cmd = self.main_obj.get_command(split_id=split_id, **paths)
+            cmd = self.main_obj.get_command(split_id=split_id, **args)
+
             self.main_outputs.append(self.main_obj.get_output())
 
-            # Creating SplitServer object
-            split_servers[server_name] = self.SplitServer(server_name, self.platform, main_job_name(split_id), cmd)
+            # Checking if there is command to run
+            if cmd is not None:
+                # Creating SplitServer object
+                split_servers[server_name] = self.SplitServer(server_name, self.platform, main_job_name(split_id), cmd)
 
-            # Starting split server work
-            split_servers[server_name].start()
+                # Starting split server work
+                split_servers[server_name].start()
 
         # Waiting for all the split processes to finish
         for server_thread in split_servers.itervalues():
