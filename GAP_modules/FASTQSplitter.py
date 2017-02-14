@@ -27,7 +27,7 @@ class FASTQSplitter(object):
         self.R1             = kwargs.get("R1",              self.sample_data["R1"])
         self.R2             = kwargs.get("R2",              self.sample_data["R2"])
         self.threads        = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
-        self.nr_splits      = kwargs.get("nr_splits",       2)
+        self.nr_splits      = kwargs.get("nr_splits",       self.config["general"]["nr_splits"])
 
         # Generating the commands
         cmds = list()
@@ -36,9 +36,9 @@ class FASTQSplitter(object):
         # Increment with 1, so that it includes the remaining reads (remainder after integer division)
         logging.info("Counting the number of reads in the FASTQ files.")
         if self.R1.endswith(".gz"):
-            cmds.append("nr_lines=$(( `pigz -p %d -d -k -c %s | wc -l` / (%d * 4) * 4 + 1))" % (self.threads, self.R1, self.nr_splits) )
+            cmds.append("nr_lines=$(( (`pigz -p %d -d -k -c %s | wc -l` / (%d * 4) + 1) * 4 ))" % (self.threads, self.R1, self.nr_splits) )
         else:
-            cmds.append("nr_lines=$(( `cat %s | wc -l` / (%d * 4) * 4 + 1))" % (self.R1, self.nr_splits) )
+            cmds.append("nr_lines=$(( (`cat %s | wc -l` / (%d * 4) + 1) * 4 ))" % (self.R1, self.nr_splits) )
 
         # Setting up the output paths
         self.output_path = [ { "R1" : "%s/%s_%02d" % (self.temp_dir, self.prefix[0], i),
