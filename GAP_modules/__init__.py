@@ -11,3 +11,5 @@ from FastQC import FastQC
 
 # Trimmomatic
 from Trimmomatic import Trimmomatic
+
+from SamtoolsIndex import SamtoolsIndex
