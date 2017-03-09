@@ -48,7 +48,7 @@ class SamtoolsBAMMerge(object):
 
         # Generating the merging command
         if self.sorted_input:
-            bam_merge_cmd = "%s merge -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(self.inputs))
+            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.samtools, self.threads, self.output_path, " ".join(self.inputs))
         else:
             bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, self.output_path, " ".join(self.inputs))
 

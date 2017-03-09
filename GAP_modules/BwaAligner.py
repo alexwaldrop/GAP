@@ -1,3 +1,5 @@
+import logging
+
 __main_class__= "BwaAligner"
 
 class BwaAligner(object):
@@ -33,6 +35,28 @@ class BwaAligner(object):
     def get_output(self):
         return self.output_path
 
+    def get_rg_header(self):
+        # Obtain the read header
+        cmd = "head -n 1 %s" % self.R1
+        out, err = self.sample_data["main-server"].run_command("fastq_header", cmd, log=False, get_output=True)
+        if err != "":
+            err_msg = "Could not obtain information for BwaAligner. "
+            err_msg += "\nThe following command was run: \n  %s" % cmd
+            err_msg += "\nThe following error appeared: \n  %s" % err
+            logging.error(err_msg)
+            exit(1)
+
+        # Generating the read group information
+        fastq_header_data = out.lstrip("@").strip("\n").split(":")
+        id = ":".join(fastq_header_data[0:4])
+        pu = fastq_header_data[-1]
+        sm = self.sample_data["sample_name"]
+        lb = self.sample_data["lib_name"]
+        pl = self.sample_data["seq_platform"]
+
+        # Generating the read group header
+        return "\\t".join( ["@RG", "ID:%s" % id, "PU:%s" % pu, "SM:%s" % sm, "LB:%s" % lb, "PL:%s" % pl] )
+
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
@@ -42,7 +66,7 @@ class BwaAligner(object):
         self.split_id           = kwargs.get("split_id",        None)
 
         # Generating command for alignment
-        aligner_cmd = "%s mem -M -t %d %s %s %s" % (self.bwa, self.threads, self.ref, self.R1, self.R2)
+        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s" % (self.bwa, self.get_rg_header(), self.threads, self.ref, self.R1, self.R2)
 
         # Generating command for converting SAM to BAM
         sam_to_bam_cmd  = "%s view -uS -@ %d -" % (self.samtools, self.threads)
