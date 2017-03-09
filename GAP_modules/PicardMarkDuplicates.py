@@ -47,6 +47,7 @@ class PicardMarkDuplicates(object):
         bam_prefix = self.bam.split(".")[0]
         bam_marked = "%s_marked.bam" % bam_prefix
         metrics    = "%s_metrics.txt" % bam_prefix
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem*4/5)
 
         # Generating the marking duplicates options
         mark_dup_opts = list()
@@ -60,7 +61,7 @@ class PicardMarkDuplicates(object):
         mark_dup_opts.append("TMP_DIR=%s" % self.temp_dir)
 
         # Generating command for marking duplicates
-        mark_dup_cmd = "%s -Xmx%dG -jar %s MarkDuplicates %s" % (self.java, self.mem*4/5, self.picard, " ".join(mark_dup_opts))
+        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
 
         # Generating the output path
         self.output_path = bam_marked
