@@ -30,7 +30,7 @@ class SamtoolsIndex(object):
         # Obtaining the arguments
         if "bam" not in self.sample_data:
             logging.error("BAM index could not be obtained as no bam was obtained.")
-            return
+            return None
         else:
             self.bam                = kwargs.get("bam",              self.sample_data["bam"])
 
@@ -39,6 +39,5 @@ class SamtoolsIndex(object):
 
         # Generating the output paths
         self.sample_data["bam_index"] = "%s.bai" % self.bam
-        self.output_path = []
 
         return index_cmd
