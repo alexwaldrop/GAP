@@ -57,7 +57,6 @@ class PicardMarkDuplicates(object):
         mark_dup_opts.append("REMOVE_DUPLICATES=FALSE")
         mark_dup_opts.append("VALIDATION_STRINGENCY=LENIENT")
         mark_dup_opts.append("MAX_RECORDS_IN_RAM=5000000")
-        mark_dup_opts.append("CREATE_INDEX=TRUE")
         mark_dup_opts.append("TMP_DIR=%s" % self.temp_dir)
 
         # Generating command for marking duplicates
