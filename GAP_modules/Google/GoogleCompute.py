@@ -190,6 +190,9 @@ class GoogleCompute(object):
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
 
+        # Memorize the main-server address in the sample data
+        sample_data["main-server"] = self.instances["main-server"]
+
     def create_split_server(self, server_name, nr_cpus=None, mem=None, **kwargs): #nr_cpus=None, mem=None, nr_local_ssd=1, is_preemptible=True):
 
         # Obtaining the cpus and memory that will actually be used

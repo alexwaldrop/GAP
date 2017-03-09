@@ -336,7 +336,7 @@ class Instance(object):
             self.processes["detach_disk_%s" % disk.name] =  GoogleProcess(" ".join(args), instance_id = self.google_id,
                                                                           stdout=devnull, stderr=devnull, shell=True)
 
-    def run_command(self, job_name, command, log=True, proc_wait=False):
+    def run_command(self, job_name, command, log=True, get_output=False, proc_wait=False):
 
         cycles_count = 0
         while self.get_status() != Instance.AVAILABLE:
@@ -369,10 +369,21 @@ class Instance(object):
         logging.info("(%s) Process '%s' started!" % (self.name, job_name))
         logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, command))
 
-        self.processes[job_name] = GoogleProcess(cmd, instance_id=self.google_id, shell=True)
+        # Generating process arguments
+        kwargs = dict()
+        kwargs["instance_id"] = self.google_id
+        kwargs["shell"] = True
+        if get_output:
+            kwargs["stdout"] = sp.PIPE
+            kwargs["stderr"] = sp.PIPE
 
-        if proc_wait:
+        self.processes[job_name] = GoogleProcess(cmd, **kwargs)
+
+        if get_output or proc_wait:
             self.wait_process(job_name)
+
+            if get_output:
+                return self.processes[job_name].communicate()
 
     def is_alive(self):
 
