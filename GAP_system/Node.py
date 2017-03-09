@@ -80,7 +80,7 @@ class Node(threading.Thread):
             # If running, or finished already, wait for possible exception to appear
             exc_info = self.exception_queue.get()
             if exc_info is not None:
-                raise exc_info[1]
+                raise exc_info[0], exc_info[1], exc_info[2]
 
 
     def __init__(self, config, platform, sample_data, module_name):
@@ -234,4 +234,4 @@ class Node(threading.Thread):
         # Raise an exception if required
         exc_info = self.exception_queue.get()
         if exc_info is not None:
-            raise exc_info[1]
+            raise exc_info[0], exc_info[1], exc_info[2]
