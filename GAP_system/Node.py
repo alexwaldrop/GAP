@@ -134,8 +134,9 @@ class Node(threading.Thread):
 
         # Running the splitter
         cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
-        self.platform.instances["main-server"].run_command(split_job_name, cmd, log=False)
-        self.platform.instances["main-server"].wait_process(split_job_name)
+        if cmd is not None:
+            self.platform.instances["main-server"].run_command(split_job_name, cmd, log=False)
+            self.platform.instances["main-server"].wait_process(split_job_name)
 
         self.split_outputs = self.split_obj.get_output()
         self.set_pipeline_output(self.split_obj.get_pipeline_output())
@@ -180,10 +181,14 @@ class Node(threading.Thread):
 
         cmd = self.main_obj.get_command()
 
+        self.set_pipeline_output(self.main_obj.get_pipeline_output())
+
+        if cmd is None:
+            logging.info("Module %s has generated no command." % self.module_name)
+            return None
+
         self.platform.instances["main-server"].run_command(self.module_name, cmd)
         self.platform.instances["main-server"].wait_process(self.module_name)
-
-        self.set_pipeline_output(self.main_obj.get_pipeline_output())
 
     def run(self):
 
