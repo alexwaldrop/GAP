@@ -16,3 +16,5 @@ from SamtoolsIndex import SamtoolsIndex
 
 from BAMChromosomeSplitter import BAMChromosomeSplitter
 from PicardMarkDuplicates import PicardMarkDuplicates
+
+from SamtoolsFlagstat import SamtoolsFlagstat
