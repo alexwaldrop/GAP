@@ -118,8 +118,7 @@ class Instance(object):
         args.append("--zone")
         args.append(self.zone)
 
-        with open(os.devnull, "w") as devnull:
-            self.processes["create"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+        self.processes["create"] = GoogleProcess(" ".join(args), stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
 
     def destroy(self):
 
@@ -140,8 +139,7 @@ class Instance(object):
         # Provide input to the command
         args[0:0] = ["yes", "2>/dev/null", "|"]
 
-        with open(os.devnull, "w") as devnull:
-            self.processes["destroy"] = GoogleProcess(" ".join(args), stdout=devnull, stderr=devnull, shell=True)
+        self.processes["destroy"] = GoogleProcess(" ".join(args), stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
 
     def reset(self):
 
@@ -347,32 +345,30 @@ class Instance(object):
                 logging.error("(%s) Process '%s' waited too long!" % (self.name, job_name))
                 raise GoogleException(self.name)
 
-        # Exclude for loops out of the logging system (syntax interference)
-        if "for " in command:
-            log = False
+        # Checking if logging is required
+        if "!LOG" in command:
 
-        if log:
-            log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
+            # Generating all the logging pipes
+            log_cmd_stdout = " >>/data/logs/%s.log" % job_name
             log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
+            log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
 
-            command = command.replace("; ", log_cmd_all + "; ")
-            command = command.replace(" && ", log_cmd_all + " && ")
-            command = command.replace(" & ", log_cmd_all + " & ")
-            command = command.replace(" | ", log_cmd_stderr + " | ")
-            if " > " in command:
-                command += " %s" % log_cmd_stderr
-            else:
-                command += " %s" % log_cmd_all
+            # Replacing the placeholders with the logging pipes
+            command = command.replace("!LOG1!", log_cmd_stdout)
+            command = command.replace("!LOG2!", log_cmd_stderr)
+            command = command.replace("!LOG3!", log_cmd_all)
 
         cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, command, self.zone)
 
-        logging.info("(%s) Process '%s' started!" % (self.name, job_name))
-        logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, command))
+        if log:
+            logging.info("(%s) Process '%s' started!" % (self.name, job_name))
+            logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, command))
 
         # Generating process arguments
         kwargs = dict()
         kwargs["instance_id"] = self.google_id
         kwargs["shell"] = True
+        kwargs["log"] = log
         if get_output:
             kwargs["stdout"] = sp.PIPE
             kwargs["stderr"] = sp.PIPE
@@ -434,6 +430,8 @@ class Instance(object):
 
             if proc_name == "create":
                 logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
+                out, err = proc_obj.communicate()
+                logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                 raise GoogleException(self.name)
 
             elif proc_name == "destroy":
@@ -442,11 +440,14 @@ class Instance(object):
                 out, _ = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
                 if len(out) != 0:
                     logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
+                    out, err = proc_obj.communicate()
+                    logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
             else:
                 # Check if the process failed on a preempted instance
-                logging.debug("(%s) Process '%s' has failed on instance with id %s." % (self.name, proc_name, proc_obj.get_instance_id()))
+                if proc_obj.log:
+                    logging.debug("(%s) Process '%s' has failed on instance with id %s." % (self.name, proc_name, proc_obj.get_instance_id()))
 
                 # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
@@ -468,13 +469,15 @@ class Instance(object):
                 if preempted:
                     self.reset()
                 else:
-                    logging.info("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                    if proc_obj.log:
+                        logging.info("(%s) Process '%s' failed!"  % (self.name, proc_name))
                     raise GoogleException(self.name)
 
         else:
 
             # Logging the process
-            logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
+            if proc_obj.log:
+                logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
 
             # Perform additional steps
             if proc_name == "create":

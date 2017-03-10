@@ -5,6 +5,7 @@ class GoogleProcess(sp.Popen):
     def __init__(self, args, **kwargs):
 
         self.instance_id = kwargs.pop("instance_id", None)
+        self.log = kwargs.pop("log", True)
 
         super(GoogleProcess, self).__init__(args, **kwargs)
 

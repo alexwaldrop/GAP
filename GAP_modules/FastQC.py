@@ -35,7 +35,7 @@ class FastQC(object):
         self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
 
         # Generating quality check command
-        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s" % (self.fastqc, self.threads, self.java, self.R1, self.R2)
+        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.fastqc, self.threads, self.java, self.R1, self.R2)
 
         # Generating the output paths
         self.output_path = list()

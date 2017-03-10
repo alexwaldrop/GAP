@@ -48,7 +48,7 @@ class Trimmomatic(object):
         phred       = "-phred33" if self.is_phred33 else "-phred64"
 
         # Generating command
-        trim_cmd = "java -jar %s PE -threads %d %s %s %s %s %s %s %s %s" % (self.trimmomatic_jar, self.threads, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps))
+        trim_cmd = "java -jar %s PE -threads %d %s %s %s %s %s %s %s %s !LOG3!" % (self.trimmomatic_jar, self.threads, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps))
 
         # Change the input data to correct one
         self.sample_data["R1_untrim"] = self.sample_data["R1"]

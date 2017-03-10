@@ -66,10 +66,10 @@ class BwaAligner(object):
         self.split_id           = kwargs.get("split_id",        None)
 
         # Generating command for alignment
-        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s" % (self.bwa, self.get_rg_header(), self.threads, self.ref, self.R1, self.R2)
+        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.bwa, self.get_rg_header(), self.threads, self.ref, self.R1, self.R2)
 
         # Generating command for converting SAM to BAM
-        sam_to_bam_cmd  = "%s view -uS -@ %d -" % (self.samtools, self.threads)
+        sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.samtools, self.threads)
 
         # Generating the output path
         self.output_path = "%s/%s" % (self.temp_dir, self.sample_name)
@@ -80,6 +80,6 @@ class BwaAligner(object):
             self.sample_data["bam"] = self.output_path
 
         # Generating command for sorting BAM
-        bam_sort_cmd = "%s sort -@ %d - -o %s" % (self.samtools, self.threads, self.output_path)
+        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.samtools, self.threads, self.output_path)
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)

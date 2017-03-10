@@ -173,18 +173,18 @@ class GoogleCompute(object):
 
         # Creating logging directory
         cmd = "mkdir -p /data/logs/"
-        self.instances["main-server"].run_command("createLogDir", cmd, log=False, proc_wait=True)
+        self.instances["main-server"].run_command("createLogDir", cmd, proc_wait=True)
 
         # Copying input data
         options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
-        cmd = "gsutil %s cp %s %s " % (options_fast, sample_data["R1_source"], sample_data["R1"])
+        cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, sample_data["R1_source"], sample_data["R1"])
         self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
 
-        cmd = "gsutil %s cp %s %s " % (options_fast, sample_data["R2_source"], sample_data["R2"])
+        cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, sample_data["R2_source"], sample_data["R2"])
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares
-        cmd = "gsutil %s cp -r gs://davelab_data/tools /data/ ; bash /data/tools/setup.sh" % (options_fast)
+        cmd = "gsutil %s cp -r gs://davelab_data/tools /data/ !LOG3! ; bash /data/tools/setup.sh" % (options_fast)
         self.instances["main-server"].run_command("copyTools", cmd)
 
         # Waiting for all the copying processes to be done
@@ -225,19 +225,19 @@ class GoogleCompute(object):
         if not only_logs:
 
             # Copying the bam
-            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam" % (sample_data["bam"], sample_data["sample_name"], sample_data["sample_name"])
+            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam !LOG3!" % (sample_data["bam"], sample_data["sample_name"], sample_data["sample_name"])
             self.instances["main-server"].run_command("copyBAM", cmd)
 
             # Copying the bam index
-            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam.bai" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
+            cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam.bai !LOG3!" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
             self.instances["main-server"].run_command("copyBAI", cmd)
 
             # Copying the output data
             for module_name, output_paths in sample_data["outputs"].iteritems():
                 if len(output_paths) == 1:
-                    cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/" % (output_paths[0], sample_data["sample_name"])
+                    cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/ !LOG3!" % (output_paths[0], sample_data["sample_name"])
                 else:
-                    cmd = "gsutil -m cp -r $path gs://davelab_temp/outputs/%s/%s/" % (sample_data["sample_name"], module_name)
+                    cmd = "gsutil -m cp -r $path gs://davelab_temp/outputs/%s/%s/ !LOG3!" % (sample_data["sample_name"], module_name)
                     cmd = "for path in %s; do %s & done" % (" ".join(output_paths), cmd)
 
                 self.instances["main-server"].run_command("copyOut_%s" % module_name, cmd)

@@ -61,7 +61,7 @@ class PicardMarkDuplicates(object):
         mark_dup_opts.append("TMP_DIR=%s" % self.temp_dir)
 
         # Generating command for marking duplicates
-        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
+        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
 
         # Generating the output path
         self.output_path = bam_marked
