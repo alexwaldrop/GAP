@@ -28,7 +28,7 @@ class Instance(object):
 
         self.instance_type      = kwargs.get("instance_type",    "n1-standard-1")
         self.is_server          = kwargs.get("is_server",        False)
-        self.boot_disk_size     = kwargs.get("boot_disk_size",   15)
+        self.boot_disk_size     = kwargs.get("boot_disk_size",   50)
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
         self.is_preemptible     = kwargs.get("is_preemptible",   False)
         self.zone               = kwargs.get("zone",             "us-east1-b")
