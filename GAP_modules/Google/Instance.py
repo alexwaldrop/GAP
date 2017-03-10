@@ -462,7 +462,7 @@ class Instance(object):
                         preempted = True
                         break
 
-                    time.sleep(6)
+                    time.sleep(20)
                     cycle_count += 1
 
                 # Checking if the instance got preempted
@@ -488,7 +488,7 @@ class Instance(object):
                 cycle_count = 0
                 while self.get_status() != Instance.AVAILABLE:
                     cycle_count += 1
-                    time.sleep(10)
+                    time.sleep(20)
 
                     if self.got_preempted():
                         self.reset()
