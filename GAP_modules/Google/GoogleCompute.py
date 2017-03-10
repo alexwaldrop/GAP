@@ -222,10 +222,6 @@ class GoogleCompute(object):
         if "outputs" not in sample_data:
             return None
 
-        # Copying the logs
-        cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/" % (sample_data["sample_name"])
-        self.instances["main-server"].run_command("copyLogs", cmd)
-
         if not only_logs:
 
             # Copying the bam
@@ -245,6 +241,10 @@ class GoogleCompute(object):
                     cmd = "for path in %s; do %s & done" % (" ".join(output_paths), cmd)
 
                 self.instances["main-server"].run_command("copyOut_%s" % module_name, cmd)
+
+        # Copying the logs
+        cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/" % (sample_data["sample_name"])
+        self.instances["main-server"].run_command("copyLogs", cmd)
 
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
