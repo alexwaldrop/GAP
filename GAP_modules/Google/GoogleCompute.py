@@ -184,7 +184,7 @@ class GoogleCompute(object):
         self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
 
         # Copying and configuring the softwares
-        cmd = "gsutil -m cp -r gs://davelab_data/tools /data/ ; bash /data/tools/setup.sh"
+        cmd = "gsutil %s cp -r gs://davelab_data/tools /data/ ; bash /data/tools/setup.sh" % (options_fast)
         self.instances["main-server"].run_command("copyTools", cmd)
 
         # Waiting for all the copying processes to be done
