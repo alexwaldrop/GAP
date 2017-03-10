@@ -20,3 +20,7 @@ from PicardMarkDuplicates import PicardMarkDuplicates
 from SamtoolsFlagstat import SamtoolsFlagstat
 
 from GATKBaseRecalibrator import GATKBaseRecalibrator
+
+from GATKHaplotypeCaller import GATKHaplotypeCaller
+from GATKReferenceSplitter import GATKReferenceSplitter
+from GATKCatVariants import GATKCatVariants
