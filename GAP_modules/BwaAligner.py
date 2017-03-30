@@ -36,6 +36,10 @@ class BwaAligner(object):
         return self.output_path
 
     def get_rg_header(self):
+
+        if "read_group_tag" in self.sample_data:
+            return self.sample_data["read_group_tag"]
+
         # Obtain the read header
         cmd = "head -n 1 %s" % self.R1
         out, err = self.sample_data["main-server"].run_command("fastq_header", cmd, log=False, get_output=True)
@@ -54,8 +58,10 @@ class BwaAligner(object):
         lb = self.sample_data["lib_name"]
         pl = self.sample_data["seq_platform"]
 
+        self.sample_data["read_group_tag"] = "\\t".join( ["@RG", "ID:%s" % id, "PU:%s" % pu, "SM:%s" % sm, "LB:%s" % lb, "PL:%s" % pl] )
+
         # Generating the read group header
-        return "\\t".join( ["@RG", "ID:%s" % id, "PU:%s" % pu, "SM:%s" % sm, "LB:%s" % lb, "PL:%s" % pl] )
+        return self.sample_data["read_group_tag"]
 
     def get_command(self, **kwargs):
 
