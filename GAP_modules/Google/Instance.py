@@ -78,7 +78,10 @@ class Instance(object):
         args.extend(["--local-ssd interface=scsi" for _ in xrange(self.nr_local_ssd)])
 
         args.append("--scopes")
-        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com=\"https://www.googleapis.com/auth/cloud-platform\"")
+        args.append("cloud-platform")
+
+        args.append("--service-account")
+        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com")
 
         args.append("--image")
         args.append("davelab-image")
