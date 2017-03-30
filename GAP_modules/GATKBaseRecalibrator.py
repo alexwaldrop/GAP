@@ -30,7 +30,7 @@ class GATKBaseRecalibrator(object):
     def get_output(self):
         return self.output_path
 
-    def get_chrom_locations(self, max_nr_reads=2*10**7):
+    def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
         # Obtaining the chromosome alignment information
         cmd = "samtools idxstats %s" % self.bam
@@ -45,17 +45,20 @@ class GATKBaseRecalibrator(object):
         # Analysing the output of idxstats to identify which chromosome location is needed we need
         chrom_list = list()
         total = 0
-        for line in out:
-            data = line.strip("\n").split()
+        for line in out.split("\n"):
+            if len(line) == 0:
+                continue
 
-            # If we reached the special chromosomes or the unaligned reads, get the all locations for analysis
+            data = line.split()
+
+            # If we reached the special chromosomes or the unaligned reads, get all the locations for analysis
             if data[0] not in self.sample_data["chrom_list"]:
                 break
 
             chrom_list.append(data[0])
             total += int(data[2])
 
-            # If we reached more than 20 million reads, then return the current available list
+            # If we reached more than maximum number reads, then return the current available list
             if total >= max_nr_reads:
                 return chrom_list
 
@@ -90,7 +93,8 @@ class GATKBaseRecalibrator(object):
         # Limit the number of reads processed
         chrom_list = self.get_chrom_locations()
         if chrom_list is not None:
-            opts.append("-L \"%s\"" % ",".join(chrom_list))
+            for chrom in chrom_list:
+                opts.append("-L \"%s\"" % chrom)
 
         # Generating command for base recalibration
         br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
