@@ -32,8 +32,7 @@ class Instance(object):
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
         self.is_preemptible     = kwargs.get("is_preemptible",   False)
         self.zone               = kwargs.get("zone",             "us-east1-b")
-        self.server_ip          = kwargs.get("server_ip",        "10.240.1.0")
-        self.server_port        = kwargs.get("server_port",      "27708")
+        self.ready_topic        = kwargs.get("ready_topic",      "ready")
         self.nr_local_ssd       = kwargs.get("nr_local_ssd",     0)
         self.start_up_script    = kwargs.get("start_up_script",  None)
         self.shutdown_script    = kwargs.get("shutdown_script",  None)
@@ -105,9 +104,7 @@ class Instance(object):
 
         metadata_args.append("is-nfs-server=%d" % self.is_server)
 
-        metadata_args.append("server-ip=%s" % self.server_ip)
-
-        metadata_args.append("server-port=%s" % self.server_port)
+        metadata_args.append("ready-topic=%s" % self.ready_topic)
 
         if self.main_server is None:
             metadata_args.append("is-child=0")
@@ -200,47 +197,6 @@ class Instance(object):
 
         with self.status_lock:
             return self.status
-
-    def got_preempted(self, instance_id=None):
-
-        # Nornmal instances cannot be preempted
-        if not self.is_preemptible:
-            return False
-
-        # If DEAD signal was received
-        if self.get_status() == Instance.DEAD:
-            return True
-
-        if instance_id is None:
-            # Check if google_id was obtained
-            cycle_count = 0
-            while self.google_id is None:
-                cycle_count += 1
-                time.sleep(2)
-
-                if cycle_count == 30:
-                    logging.error("(%s) Cannot find the instance preemptile status, because cannot obtain the google instance id!" % self.name)
-                    raise GoogleException(self.name)
-
-            instance_id = self.google_id
-
-        cmd_filter = "jsonPayload.resource.id=%d AND jsonPayload.event_subtype=compute.instances.preempted" % instance_id
-
-        cmd = "gcloud beta logging read \"%s\" --limit 1 --freshness=50d" % cmd_filter
-
-        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-
-        out, err = proc.communicate()
-
-        if len(err) != 0:
-            logging.error("(%s) Getting instance preemptible status failed with the following error: %s!" % (self.name, err))
-            raise GoogleException(self.name)
-
-        if len(out) == 0:
-            return False
-        else:
-            logging.debug("(%s) According to Google Logging, instance has been preempted!" % self.name)
-            return True
 
     def get_google_id(self):
 
@@ -455,17 +411,13 @@ class Instance(object):
                 # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
                 cycle_count = 1
-                while cycle_count < 20:
+                while cycle_count < 60:
 
                     if self.get_status() == Instance.DEAD:
                         preempted = True
                         break
 
-                    if self.got_preempted(proc_obj.get_instance_id()):
-                        preempted = True
-                        break
-
-                    time.sleep(20)
+                    time.sleep(2)
                     cycle_count += 1
 
                 # Checking if the instance got preempted
@@ -473,7 +425,7 @@ class Instance(object):
                     self.reset()
                 else:
                     if proc_obj.log:
-                        logging.info("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                        logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
                     raise GoogleException(self.name)
 
         else:
@@ -488,16 +440,27 @@ class Instance(object):
                 self.get_google_id()
 
                 # Waiting for instance to receive READY signal
-                cycle_count = 0
-                while self.get_status() != Instance.AVAILABLE:
+                preempted = False
+                completed = False
+                cycle_count = 1
+                while cycle_count < 150:
+
+                    if self.get_status() == Instance.AVAILABLE:
+                        completed = True
+                        break
+                    elif self.is_preemptible and self.get_status() == Instance.DEAD:
+                        preempted = True
+                        break
+
+                    time.sleep(2)
                     cycle_count += 1
-                    time.sleep(20)
 
-                    if self.got_preempted():
-                        self.reset()
-
-                    if cycle_count > 30:
-                        self.reset()
+                if preempted:
+                    self.reset()
+                elif not completed:
+                    if proc_obj.log:
+                        logging.error("(%s) Could not create instance!" % self.name)
+                    raise GoogleException(self.name)
 
             elif proc_name == "destroy":
                 self.set_status(Instance.OFF)

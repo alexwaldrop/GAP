@@ -1,56 +1,15 @@
 import os
 import subprocess as sp
 import logging
-import socket
-import threading
 
 from GAP_modules.Google import GoogleException
 from GAP_modules.Google import Instance
+from GAP_modules.Google import GoogleReadySubscriber
+from GAP_modules.Google import GooglePreemptedSubscriber
+from GAP_modules.Google import GooglePubSub
+from GAP_modules.Google import GoogleLogging
 
 class GoogleCompute(object):
-
-
-    class SocketReceiver(threading.Thread):
-
-        def __init__(self, ip, port, instances):
-            super(GoogleCompute.SocketReceiver, self).__init__()
-
-            self.server_ip = ip
-            self.server_port = port
-
-            self.instances = instances
-
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.socket.bind((self.server_ip, self.server_port))
-
-            self.listening = True
-
-            self.daemon = True
-
-        def run(self):
-
-            while self.listening:
-                data = self.socket.recv(1024)
-                logging.debug("Received the following message: %s" % data)
-                self.process_message(data)
-
-        def stop(self):
-
-            self.listening = False
-
-        def process_message(self, msg):
-
-            status, inst_name = msg.split(" ", 1)
-
-            if status == "READY":
-                logging.debug("(%s) READY signal received!" % inst_name)
-                self.instances[inst_name].set_status(Instance.AVAILABLE)
-                logging.info("(%s) Instance ready!" % inst_name)
-
-            elif status == "DEAD":
-                logging.debug("(%s) DEAD signal received!" % inst_name)
-                self.instances[inst_name].set_status(Instance.DEAD)
-
 
     def __init__(self, config):
         self.config         = config
@@ -63,10 +22,13 @@ class GoogleCompute(object):
 
         self.zone           = self.get_zone()
 
-        self.server_ip      = None
-        self.server_port    = None
-        self.socket         = None
-        self.create_socket()
+        self.pubsub         = GooglePubSub()
+        self.logging        = GoogleLogging()
+
+        self.ready_topic    = None
+
+        self.ready_subscriber   = None
+        self.preempt_subscriber = None
 
     def __del__(self):
 
@@ -121,14 +83,6 @@ class GoogleCompute(object):
 
         logging.info("Authentication to Google Cloud was successful.")
 
-    def create_socket(self):
-
-        self.server_ip = socket.gethostbyname(socket.gethostname())
-        self.server_port = 27708
-
-        self.socket = self.SocketReceiver(self.server_ip, self.server_port, self.instances)
-        self.socket.start()
-
     @staticmethod
     def get_zone():
 
@@ -140,6 +94,45 @@ class GoogleCompute(object):
         else:
             logging.info("No zone is specified in the local config file! 'us-east1-b' is selected by default!")
             return "us-east1-b"
+
+    def prepare_platform(self, sample_data):
+
+        # Generate variables
+        ready_topic = "%s_ready_topic" % sample_data["sample_name"]
+        ready_sub = "%s_ready_sub" % sample_data["sample_name"]
+        preempt_topic = "%s_preempted_topic" % sample_data["sample_name"]
+        preempt_sub = "%s_preempted_sub" % sample_data["sample_name"]
+        log_sink_name = "%s_preempted_sink" % sample_data["sample_name"]
+        log_sink_dest = "pubsub.googleapis.com/projects/davelab-gcloud/topics/%s" % preempt_topic
+        log_sink_filter = "jsonPayload.event_subtype:compute.instances.preempted"
+
+        # Create topics
+        logging.debug("Configuring Google Pub/Sub.")
+        self.pubsub.create_topic(ready_topic)
+        self.pubsub.create_topic(preempt_topic)
+        self.ready_topic = ready_topic
+
+        # Create subscrptions
+        self.pubsub.create_subscription(ready_sub, ready_topic)
+        self.pubsub.create_subscription(preempt_sub, preempt_topic)
+
+        logging.info("Google Pub/Sub configured.")
+
+        # Create preemption logging sink
+        logging.debug("Creating Google Stackdriver Logging sink to Google Pub/Sub.")
+        self.logging.create_sink(log_sink_name, log_sink_dest, log_filter=log_sink_filter)
+        logging.info("Stackdriver Logging sink to Google Pub/Sub created.")
+
+        # Initialize the subscribers
+        logging.debug("Starting the subscribers.")
+        self.ready_subscriber = GoogleReadySubscriber(ready_sub, self.instances)
+        self.preempt_subscriber = GooglePreemptedSubscriber(preempt_sub, self.instances)
+
+        # Start the subscribers
+        self.ready_subscriber.start()
+        self.preempt_subscriber.start()
+
+        logging.info("Google Cloud Platform is ready for analysis.")
 
     def prepare_data(self, sample_data, nr_cpus=None, mem=None, nr_local_ssd=3):
 
@@ -159,6 +152,7 @@ class GoogleCompute(object):
         kwargs["instance_type"]     = instance_type
         kwargs["is_preemptible"]     = False
         kwargs["is_server"]         = True
+        kwargs["ready_topic"]       = self.ready_topic
         kwargs["nr_local_ssd"]      = nr_local_ssd
         kwargs["instances"]         = self.instances
 
@@ -209,6 +203,7 @@ class GoogleCompute(object):
         kwargs["is_preemptible"]    = kwargs.get("is_preemptible", True)
         kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd", 0)
         kwargs["is_server"]         = False
+        kwargs["ready_topic"]       = self.ready_topic
         kwargs["instances"]         = self.instances
         kwargs["main_server"]       = "main-server"
 

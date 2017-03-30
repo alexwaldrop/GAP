@@ -36,6 +36,7 @@ def main():
 
     # Setting up the platform
     plat = Platform(config)
+    plat.prepare_platform(config["sample"])
     plat.prepare_data(config["sample"], nr_local_ssd=5)
 
     # Running the modules
