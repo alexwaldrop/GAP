@@ -74,8 +74,6 @@ class GATKBaseRecalibrator(object):
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
         recalib_report = "%s_BQSR.grp" % bam_prefix
-        recalib_bam = "%s_recalibrated.bam" % bam_prefix
-        recalib_bam_idx = "%s_recalibrated.bai" % bam_prefix
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem*4/5)
 
         # Generating the base recalibration options
@@ -99,21 +97,8 @@ class GATKBaseRecalibrator(object):
         # Generating command for base recalibration
         br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
-        # Generating the print reads options
-        opts = list()
-        opts.append("-I %s" % self.bam)
-        opts.append("-o %s" % recalib_bam)
-        opts.append("-nct %d" % self.threads)
-        opts.append("-R %s" % self.ref)
-        opts.append("-BQSR %s" % recalib_report)
-
-        # Generating command for recalibrating the BAM file
-        pr_cmd = "%s -Xmx%dG -jar %s -T PrintReads %s !LOG3!" % (self.java, self.mem * 4 / 5, self.GATK, " ".join(opts))
-
         # Generating the output path
-        self.sample_data["bam"] = recalib_bam
-        self.sample_data["bam_index"] = recalib_bam_idx
-        self.output_path = recalib_bam
+        self.sample_data["BQSR_report"] = recalib_report
         self.pipeline_output_path = recalib_report
 
-        return "%s && %s" % (br_cmd, pr_cmd)
+        return br_cmd
