@@ -59,5 +59,6 @@ if __name__ == "__main__":
     except GoogleException:
         logging.info("Now exiting!")
         plat.finalize(config["sample"], only_logs=True)
-        del plat
         raise
+    finally:
+        plat.clean_up()

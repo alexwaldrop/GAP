@@ -30,7 +30,9 @@ class GoogleCompute(object):
         self.ready_subscriber   = None
         self.preempt_subscriber = None
 
-    def __del__(self):
+    def clean_up(self):
+
+        logging.info("Cleaning up Google Cloud Platform.")
 
         if hasattr(self, "instances"):
 
@@ -64,6 +66,20 @@ class GoogleCompute(object):
                     disk_obj.wait_process("destroy")
                 except GoogleException:
                     logging.info("(%s) Could not destroy disk!" % disk_name)
+
+        if hasattr(self, "ready_subscriber"):
+            self.ready_subscriber.stop()
+
+        if hasattr(self, "preempt_subscriber"):
+            self.preempt_subscriber.stop()
+
+        if hasattr(self, "pubsub"):
+            self.pubsub.clean_up()
+
+        if hasattr(self, "logging"):
+            self.logging.clean_up()
+
+        logging.info("Clean up complete!")
 
     def authenticate(self):
 
