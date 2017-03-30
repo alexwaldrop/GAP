@@ -148,7 +148,7 @@ class Node(threading.Thread):
         for split_id, args in enumerate(self.split_outputs):
 
             # Generating split server name
-            server_name = "split%d-server" % split_id
+            server_name = "%s-split%d-server" % (self.module_name.lower(), split_id)
 
             # Obtaining main command
             cmd = self.main_obj.get_command(split_id=split_id, **args)
