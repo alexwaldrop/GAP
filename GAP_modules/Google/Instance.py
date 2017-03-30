@@ -6,8 +6,8 @@ import time
 import subprocess as sp
 from collections import OrderedDict
 
-from GoogleProcess import GoogleProcess
-from GoogleException import GoogleException
+from GAP_modules.Google import GoogleProcess
+from GAP_modules.Google import GoogleException
 
 class Instance(object):
 

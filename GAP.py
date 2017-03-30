@@ -4,8 +4,8 @@ import logging
 
 from GAP_config import Config
 from GAP_system import NodeManager
-from GAP_modules import GoogleCompute as Platform
-from GAP_modules import GoogleException
+from GAP_modules.Google import GoogleCompute as Platform
+from GAP_modules.Google import GoogleException
 
 # Initilizing global variables
 config = None

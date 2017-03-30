@@ -4,8 +4,8 @@ import logging
 import socket
 import threading
 
-from GoogleException import GoogleException
-from Instance import Instance
+from GAP_modules.Google import GoogleException
+from GAP_modules.Google import Instance
 
 class GoogleCompute(object):
 
