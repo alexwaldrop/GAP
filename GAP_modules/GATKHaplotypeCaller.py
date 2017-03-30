@@ -35,6 +35,10 @@ class GATKHaplotypeCaller(object):
         self.threads        = kwargs.get("cpus",              self.config["instance"]["nr_cpus"])
         self.mem            = kwargs.get("mem",               self.config["instance"]["mem"])
         self.split_id       = kwargs.get("split_id",          0)
+        if "BQSR_report" in self.sample_data:
+            self.BQSR = kwargs.get("BQSR_report",             self.sample_data["BQSR_report"])
+        else:
+            self.BQSR = kwargs.get("BQSR_report",             None)
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
@@ -48,6 +52,8 @@ class GATKHaplotypeCaller(object):
         opts.append("-nct %d" % self.threads)
         opts.append("-R %s" % self.ref)
         opts.append("-ERC GVCF")
+        if self.BQSR is not None:
+            opts.append("-BQSR %s" % self.BQSR)
 
         # Limit the locations to be processes
         if self.L is not None:
