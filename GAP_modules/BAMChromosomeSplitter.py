@@ -1,28 +1,20 @@
 import logging
 
+from GAP_interfaces import Splitter
+
 __main_class__ = "BAMChromosomeSplitter"
 
-class BAMChromosomeSplitter(object):
+class BAMChromosomeSplitter(Splitter):
 
     def __init__(self, config, sample_data):
+        super(BAMChromosomeSplitter, self).__init__()
+
         self.config = config
         self.sample_data = sample_data
 
         self.samtools = self.config["paths"]["samtools"]
 
-        self.temp_dir = self.config["general"]["temp_dir"]
-
-        self.R1 = None
-        self.R2 = None
-
-        self.output_path = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
+        self.bam = None
 
     def get_header(self):
         # Obtain the reference sequences IDs
@@ -82,9 +74,9 @@ class BAMChromosomeSplitter(object):
         cmds.append('%s view -u -f 4 %s > %s_unmaped.bam' % (self.samtools, self.bam, bam_prefix))
 
         # Setting up the output paths
-        self.output_path = [ {"bam": "%s_%s.bam" % (bam_prefix, chrom_name), "is_aligned":True} for chrom_name in chroms]
-        self.output_path.append({"bam": "%s_remains.bam" % bam_prefix, "is_aligned":True})
-        self.output_path.append({"bam": "%s_unmaped.bam" % bam_prefix, "is_aligned":False})
+        self.splits = [ {"bam": "%s_%s.bam" % (bam_prefix, chrom_name), "is_aligned":True} for chrom_name in chroms]
+        self.splits.append({"bam": "%s_remains.bam" % bam_prefix, "is_aligned":True})
+        self.splits.append({"bam": "%s_unmaped.bam" % bam_prefix, "is_aligned":False})
 
-        # Paralel split of the files
+        # Parallel split of the files
         return "%s ; wait" % " & ".join(cmds)

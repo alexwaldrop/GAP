@@ -2,11 +2,14 @@ import logging
 import hashlib
 import time
 
+from GAP_interfaces import Merger
+
 __main_class__ = "GATKCombineGVCF"
 
-class GATKCombineGVCF(object):
+class GATKCombineGVCF(Merger):
 
     def __init__(self, config, sample_data):
+        super(GATKCombineGVCF, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -22,14 +25,6 @@ class GATKCombineGVCF(object):
         self.inputs       = None
         self.nr_splits    = None
 
-        self.output_path  = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_command(self, **kwargs):
 
@@ -41,6 +36,7 @@ class GATKCombineGVCF(object):
 
         if self.inputs is None:
             logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
+            return None
 
         # Generating variables
         gvcf = "%s/%s_%s.g.vcf" % (self.temp_dir, self.sample_data["sample_name"], hashlib.md5(str(time.time())).hexdigest()[:5])
@@ -57,7 +53,6 @@ class GATKCombineGVCF(object):
         comb_cmd = "%s %s -jar %s -T CombineGVCFs %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Generating the output path
-        self.output_path = gvcf
-        self.sample_data["gvcf"] = self.output_path
+        self.final_output = gvcf
 
         return comb_cmd

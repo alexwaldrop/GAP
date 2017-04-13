@@ -1,10 +1,12 @@
 import logging
+from GAP_interfaces import Splitter
 
 __main_class__ = "FASTQSplitter"
 
-class FASTQSplitter(object):
+class FASTQSplitter(Splitter):
 
     def __init__(self, config, sample_data):
+        super(FASTQSplitter, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -15,16 +17,6 @@ class FASTQSplitter(object):
 
         self.R1          = None
         self.R2          = None
-        self.nr_splits   = None
-
-        self.output_path = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_nr_reads(self):
         # Obtain the number of lines in the FASTQ
@@ -61,8 +53,8 @@ class FASTQSplitter(object):
         nr_lines_per_split = reads_per_split * 4
 
         # Setting up the output paths
-        self.output_path = [ { "R1" : "%s/%s_%02d" % (self.temp_dir, self.prefix[0], i),
-                               "R2" : "%s/%s_%02d" % (self.temp_dir, self.prefix[1], i) } for i in xrange(self.nr_splits)]
+        self.splits = [{"R1": "%s/%s_%02d" % (self.temp_dir, self.prefix[0], i),
+                        "R2": "%s/%s_%02d" % (self.temp_dir, self.prefix[1], i)} for i in xrange(self.nr_splits)]
 
         # Splitting the files
         for prefix in self.prefix:

@@ -1,8 +1,12 @@
+from GAP_interfaces import Tool
+
 __main_class__ = "GATKPrintReads"
 
-class GATKPrintReads(object):
+class GATKPrintReads(Tool):
 
     def __init__(self, config, sample_data):
+        super(GATKPrintReads, self).__init__()
+
         self.config = config
         self.sample_data = sample_data
 
@@ -18,14 +22,6 @@ class GATKPrintReads(object):
         self.bam = None
         self.threads = None
 
-        self.output_path = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
@@ -76,6 +72,6 @@ class GATKPrintReads(object):
         if self.split_id is None:
             self.sample_data["bam"] = recalib_bam
             self.sample_data["bam_index"] = recalib_bam_idx
-        self.output_path = recalib_bam
+        self.output = recalib_bam
 
         return pr_cmd

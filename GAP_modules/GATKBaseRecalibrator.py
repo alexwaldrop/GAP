@@ -1,10 +1,14 @@
 import logging
 
+from GAP_interfaces import Tool
+
 __main_class__="GATKBaseRecalibrator"
 
-class GATKBaseRecalibrator(object):
+class GATKBaseRecalibrator(Tool):
 
     def __init__(self, config, sample_data):
+        super(GATKBaseRecalibrator, self).__init__()
+
         self.config = config
         self.sample_data = sample_data
 
@@ -21,14 +25,7 @@ class GATKBaseRecalibrator(object):
         self.bam = None
         self.threads = None
 
-        self.output_path = None
-        self.pipeline_output_path = None
 
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
@@ -99,6 +96,6 @@ class GATKBaseRecalibrator(object):
 
         # Generating the output path
         self.sample_data["BQSR_report"] = recalib_report
-        self.pipeline_output_path = recalib_report
+        self.final_output = recalib_report
 
         return br_cmd

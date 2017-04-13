@@ -1,8 +1,12 @@
+from GAP_interfaces import Tool
+
 __main_class__ = "GATKHaplotypeCaller"
 
-class GATKHaplotypeCaller(object):
+class GATKHaplotypeCaller(Tool):
 
     def __init__(self, config, sample_data):
+        super(GATKHaplotypeCaller, self).__init__()
+
         self.config = config
         self.sample_data = sample_data
 
@@ -18,14 +22,6 @@ class GATKHaplotypeCaller(object):
         self.bam = None
         self.threads = None
 
-        self.output_path = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
@@ -73,6 +69,9 @@ class GATKHaplotypeCaller(object):
         hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Create output path
-        self.output_path = gvcf
+        if self.split_id is None:
+            self.final_output = gvcf
+        else:
+            self.output = gvcf
 
         return hc_cmd

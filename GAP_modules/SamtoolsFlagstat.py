@@ -1,10 +1,13 @@
 import logging
 
+from GAP_interfaces import Tool
+
 __main_class__ = "SamtoolsFlagstat"
 
-class SamtoolsFlagstat(object):
+class SamtoolsFlagstat(Tool):
 
     def __init__(self, config, sample_data):
+        super(SamtoolsFlagstat, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -16,14 +19,7 @@ class SamtoolsFlagstat(object):
         self.can_split      = False
 
         self.bam            = None
-        self.output_path    = None
-        self.pipeline_output_path = None
 
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_command(self, **kwargs):
 
@@ -39,8 +35,7 @@ class SamtoolsFlagstat(object):
         # Generating indexing command
         flagstat_cmd = "%s flagstat %s > %s_flagstat.txt" % (self.samtools, self.bam, bam_prefix)
 
-        # Generating the output paths
-        self.output_path = "%s_flagstat.txt" % bam_prefix
-        self.pipeline_output_path = self.output_path
+        # Generating the output
+        self.final_output = "%s_flagstat.txt" % bam_prefix
 
         return flagstat_cmd

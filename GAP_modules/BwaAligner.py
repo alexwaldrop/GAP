@@ -1,10 +1,13 @@
 import logging
 
+from GAP_interfaces import Tool
+
 __main_class__= "BwaAligner"
 
-class BwaAligner(object):
+class BwaAligner(Tool):
     
     def __init__(self, config, sample_data):
+        super(BwaAligner, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -25,15 +28,6 @@ class BwaAligner(object):
         self.R2             = None
         self.threads        = None
         self.split_id       = None
-
-        self.output_path    = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_rg_header(self):
 
@@ -77,15 +71,15 @@ class BwaAligner(object):
         # Generating command for converting SAM to BAM
         sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.samtools, self.threads)
 
-        # Generating the output path
-        self.output_path = "%s/%s" % (self.temp_dir, self.sample_name)
+        # Generating the output
+        self.output = "%s/%s" % (self.temp_dir, self.sample_name)
         if self.split_id is not None:
-            self.output_path += "_%d.bam" % self.split_id
+            self.output += "_%d.bam" % self.split_id
         else:
-            self.output_path += ".bam"
-            self.sample_data["bam"] = self.output_path
+            self.output += ".bam"
+            self.sample_data["bam"] = self.output
 
         # Generating command for sorting BAM
-        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.samtools, self.threads, self.output_path)
+        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.samtools, self.threads, self.output)
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)

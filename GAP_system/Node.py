@@ -133,13 +133,16 @@ class Node(threading.Thread):
         merge_job_name  = "%s_merge" % self.module_name
 
         # Running the splitter
-        cmd = self.split_obj.get_command( nr_splits=self.config["general"]["nr_splits"] )
+        cmd = self.split_obj.get_command()
         if cmd is not None:
             self.platform.instances["main-server"].run_command(split_job_name, cmd)
             self.platform.instances["main-server"].wait_process(split_job_name)
 
-        self.split_outputs = self.split_obj.get_output()
-        self.set_pipeline_output(self.split_obj.get_pipeline_output())
+        # Obtaining the splits
+        self.split_outputs = self.split_obj.get_splits()
+
+        # Obtaining output that will be saved at the end of the pipeline
+        self.set_final_output(self.split_obj.get_final_output())
 
         self.main_outputs = list()
 
@@ -153,9 +156,11 @@ class Node(threading.Thread):
             # Obtaining main command
             cmd = self.main_obj.get_command(split_id=split_id, **args)
 
-            # Obtaining outputs
+            # Obtaining the main output
             self.main_outputs.append(self.main_obj.get_output())
-            self.set_pipeline_output(self.main_obj.get_pipeline_output())
+
+            # Obtaining output that will be saved at the end of the pipeline
+            self.set_final_output(self.main_obj.get_final_output())
 
             # Checking if there is command to run
             if cmd is not None:
@@ -170,18 +175,20 @@ class Node(threading.Thread):
             server_thread.wait()
 
         # Running the merger
-        cmd = self.merge_obj.get_command( nr_splits=self.config["general"]["nr_splits"],
-                                          inputs=self.main_outputs )
+        cmd = self.merge_obj.get_command(inputs=self.main_outputs)
         self.platform.instances["main-server"].run_command(merge_job_name, cmd)
         self.platform.instances["main-server"].wait_process(merge_job_name)
 
-        self.set_pipeline_output(self.merge_obj.get_pipeline_output())
+        # Obtaining output that will be saved at the end of the pipeline
+        self.set_final_output(self.merge_obj.get_final_output())
 
     def run_normal(self):
 
+        # Obtaining main command
         cmd = self.main_obj.get_command()
 
-        self.set_pipeline_output(self.main_obj.get_pipeline_output())
+        # Obtaining output that will be saved at the end of the pipeline
+        self.set_final_output(self.main_obj.get_final_output())
 
         if cmd is None:
             logging.info("Module %s has generated no command." % self.module_name)
@@ -208,7 +215,7 @@ class Node(threading.Thread):
         finally:
             self.complete = True
 
-    def set_pipeline_output(self, output):
+    def set_final_output(self, output):
 
         def flatten(lst):
             if isinstance(lst, list):

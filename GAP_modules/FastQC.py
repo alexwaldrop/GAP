@@ -1,8 +1,11 @@
+from GAP_interfaces import Tool
+
 __main_class__= "FastQC"
 
-class FastQC(object):
+class FastQC(Tool):
     
     def __init__(self, config, sample_data):
+        super(FastQC, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -18,15 +21,6 @@ class FastQC(object):
         self.R2             = None
         self.threads        = None
 
-        self.output_path    = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
-
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
@@ -38,12 +32,12 @@ class FastQC(object):
         fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.fastqc, self.threads, self.java, self.R1, self.R2)
 
         # Generating the output paths
-        self.output_path = list()
+        self.output = list()
         for fastq_file in [self.R1, self.R2]:
             fastq_filename = fastq_file.split("/")[-1].replace(".fastq.gz", "").replace(".fastq", "")
-            self.output_path.append("%s/%s_fastqc.html" % (self.temp_dir, fastq_filename))
-            self.output_path.append("%s/%s_fastqc.zip" % (self.temp_dir, fastq_filename))
+            self.output.append("%s/%s_fastqc.html" % (self.temp_dir, fastq_filename))
+            self.output.append("%s/%s_fastqc.zip" % (self.temp_dir, fastq_filename))
 
-        self.pipeline_output_path = list(self.output_path)
+        self.final_output = list(self.output)
 
         return fastqc_cmd

@@ -1,8 +1,12 @@
+from GAP_interfaces import Tool
+
 __main_class__ = "PicardMarkDuplicates"
 
-class PicardMarkDuplicates(object):
+class PicardMarkDuplicates(Tool):
 
     def __init__(self, config, sample_data):
+        super(PicardMarkDuplicates, self).__init__()
+
         self.config = config
         self.sample_data = sample_data
 
@@ -22,15 +26,6 @@ class PicardMarkDuplicates(object):
         self.threads        = None
         self.mem            = None
 
-        self.output_path    = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
-
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
@@ -40,8 +35,8 @@ class PicardMarkDuplicates(object):
         self.mem        = kwargs.get("mem",         self.config["instance"]["mem"])
 
         if not self.is_aligned:
-            self.output_path = self.bam
-            return
+            self.output = self.bam
+            return None
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
@@ -64,7 +59,10 @@ class PicardMarkDuplicates(object):
         mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
 
         # Generating the output path
-        self.output_path = bam_marked
-        self.pipeline_output_path = [metrics]
+        if self.split_id is None:
+            self.final_output = [bam_marked, metrics]
+        else:
+            self.output = bam_marked
+            self.final_output = metrics
 
         return mark_dup_cmd

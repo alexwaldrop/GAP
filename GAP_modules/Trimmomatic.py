@@ -1,8 +1,11 @@
+from GAP_interfaces import Tool
+
 __main_class__ = "Trimmomatic"
 
-class Trimmomatic(object):
+class Trimmomatic(Tool):
 
     def __init__(self, config, sample_data):
+        super(Trimmomatic, self).__init__()
 
         self.config = config
         self.sample_data = sample_data
@@ -18,15 +21,6 @@ class Trimmomatic(object):
         self.R1             = None
         self.R2             = None
         self.threads        = None
-
-        self.output_path    = None
-        self.pipeline_output_path = None
-
-    def get_pipeline_output(self):
-        return self.pipeline_output_path
-
-    def get_output(self):
-        return self.output_path
 
     def get_command(self, **kwargs):
 
