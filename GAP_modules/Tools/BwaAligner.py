@@ -48,13 +48,14 @@ class BwaAligner(Tool):
 
         # Generating the read group information
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
-        id = ":".join(fastq_header_data[0:4])
-        pu = fastq_header_data[-1]
-        sm = self.sample_data["sample_name"]
-        lb = self.sample_data["lib_name"]
-        pl = self.sample_data["seq_platform"]
+        rg_id = ":".join(fastq_header_data[0:4])        # Read Group ID
+        rg_pu = fastq_header_data[-1]                   # Read Group Platform Unit
+        rg_sm = self.sample_data["sample_name"]         # Read Group Sample
+        rg_lb = self.sample_data["lib_name"]            # Read Group Library ID
+        rg_pl = self.sample_data["seq_platform"]        # Read Group Platform used
 
-        self.sample_data["read_group_tag"] = "\\t".join( ["@RG", "ID:%s" % id, "PU:%s" % pu, "SM:%s" % sm, "LB:%s" % lb, "PL:%s" % pl] )
+        self.sample_data["read_group_tag"] = "\\t".join( ["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
+                                                          "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl] )
 
         # Generating the read group header
         return self.sample_data["read_group_tag"]
