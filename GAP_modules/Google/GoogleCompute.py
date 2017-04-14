@@ -68,10 +68,12 @@ class GoogleCompute(object):
                     logging.info("(%s) Could not destroy disk!" % disk_name)
 
         if hasattr(self, "ready_subscriber"):
-            self.ready_subscriber.stop()
+            if self.ready_subscriber is not None:
+                self.ready_subscriber.stop()
 
         if hasattr(self, "preempt_subscriber"):
-            self.preempt_subscriber.stop()
+            if self.preempt_subscriber is not None:
+                self.preempt_subscriber.stop()
 
         if hasattr(self, "pubsub"):
             self.pubsub.clean_up()
@@ -114,11 +116,11 @@ class GoogleCompute(object):
     def prepare_platform(self, sample_data):
 
         # Generate variables
-        ready_topic = "%s_ready_topic" % sample_data["sample_name"]
-        ready_sub = "%s_ready_sub" % sample_data["sample_name"]
-        preempt_topic = "%s_preempted_topic" % sample_data["sample_name"]
-        preempt_sub = "%s_preempted_sub" % sample_data["sample_name"]
-        log_sink_name = "%s_preempted_sink" % sample_data["sample_name"]
+        ready_topic = "ready_topic_%s" % sample_data["sample_name"]
+        ready_sub = "ready_sub_%s" % sample_data["sample_name"]
+        preempt_topic = "preempted_topic_%s" % sample_data["sample_name"]
+        preempt_sub = "preempted_sub_%s" % sample_data["sample_name"]
+        log_sink_name = "preempted_sink_%s" % sample_data["sample_name"]
         log_sink_dest = "pubsub.googleapis.com/projects/davelab-gcloud/topics/%s" % preempt_topic
         log_sink_filter = "jsonPayload.event_subtype:compute.instances.preempted"
 

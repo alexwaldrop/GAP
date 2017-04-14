@@ -148,12 +148,22 @@ class GoogleSubscriber(threading.Thread):
 
         while self.running:
 
-            msg, _ = GooglePubSub.get_message(self.subscription)
+            try:
+                msg, _ = GooglePubSub.get_message(self.subscription)
 
-            if msg is not None:
-                self.process_message(msg)
-            else:
-                time.sleep(2)
+                if msg is not None:
+                    self.process_message(msg)
+                else:
+                    time.sleep(2)
+
+            except BaseException, e:
+                if self.running:
+                    raise
+                else:
+                    if e.message != "":
+                        logging.debug("Google Subscriber was forcefully stopped. The following exception message was received: %s." % e.message)
+                    else:
+                        logging.debug("Google Subscriber was forcefully stopped.")
 
     def stop(self):
         self.running = False
