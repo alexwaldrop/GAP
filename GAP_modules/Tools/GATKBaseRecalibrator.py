@@ -14,6 +14,7 @@ class GATKBaseRecalibrator(Tool):
 
         self.java = self.config["paths"]["java"]
         self.GATK = self.config["paths"]["gatk"]
+        self.samtools = self.config["paths"]["samtools"]
 
         self.ref = self.config["paths"]["ref"]
         self.dbsnp = self.config["paths"]["dbsnp"]
@@ -30,7 +31,7 @@ class GATKBaseRecalibrator(Tool):
     def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
         # Obtaining the chromosome alignment information
-        cmd = "samtools idxstats %s" % self.bam
+        cmd = "%s idxstats %s" % (self.samtools, self.bam)
         out, err = self.sample_data["main-server"].run_command("bam_idxstats", cmd, log=False, get_output=True)
         if err != "":
             err_msg = "Could not obtain information for BaseRecalibrator. "
