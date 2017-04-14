@@ -15,8 +15,6 @@ class PicardMarkDuplicates(Tool):
 
         self.temp_dir       = self.config["general"]["temp_dir"]
 
-        self.sample_name    = self.sample_data["sample_name"]
-
         self.can_split      = True
         self.splitter       = "BAMChromosomeSplitter"
         self.merger         = "SamtoolsBAMMerge"
@@ -37,6 +35,7 @@ class PicardMarkDuplicates(Tool):
         self.mem        = kwargs.get("mem",         self.mem)
         self.split_id   = kwargs.get("split_id",    None)
 
+        # If the obtained bam contains unaligned reads, skip the process
         if not self.is_aligned:
             self.output = self.bam
             return None
@@ -55,7 +54,6 @@ class PicardMarkDuplicates(Tool):
         mark_dup_opts.append("ASSUME_SORTED=TRUE")
         mark_dup_opts.append("REMOVE_DUPLICATES=FALSE")
         mark_dup_opts.append("VALIDATION_STRINGENCY=LENIENT")
-        mark_dup_opts.append("MAX_RECORDS_IN_RAM=5000000")
 
         # Generating command for marking duplicates
         mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))

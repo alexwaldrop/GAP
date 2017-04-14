@@ -197,7 +197,7 @@ class Node(threading.Thread):
         self.set_final_output(self.main_obj.get_final_output())
 
         if cmd is None:
-            logging.info("Module %s has generated no command." % self.module_name)
+            logging.debug("Module %s has generated no command." % self.module_name)
             return None
 
         self.platform.instances["main-server"].run_command(self.module_name, cmd)

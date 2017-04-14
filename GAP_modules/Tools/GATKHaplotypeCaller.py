@@ -24,6 +24,11 @@ class GATKHaplotypeCaller(Tool):
         self.nr_cpus    = 8
         self.mem        = self.nr_cpus * 4 # 4GB/vCPU
 
+        self.bam = None
+        self.L = None
+        self.XL = None
+        self.BQSR = None
+        self.split_id = None
 
     def get_command(self, **kwargs):
         # Obtaining the arguments

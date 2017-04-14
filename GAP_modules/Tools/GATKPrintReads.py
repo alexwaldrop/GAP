@@ -24,6 +24,11 @@ class GATKPrintReads(Tool):
         self.nr_cpus    = 2
         self.mem        = 5
 
+        self.bam        = None
+        self.L          = None
+        self.XL         = None
+        self.BQSR       = None
+        self.split_id   = None
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
