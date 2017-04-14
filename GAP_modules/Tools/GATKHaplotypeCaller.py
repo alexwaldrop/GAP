@@ -40,7 +40,12 @@ class GATKHaplotypeCaller(Tool):
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
-        gvcf = "%s_%d.g.vcf" % (bam_prefix, self.split_id)
+        if self.split_id is not None:
+            gvcf = "%s_%d.g.vcf" % (bam_prefix, self.split_id)
+            idx = "%s.idx" % gvcf
+        else:
+            gvcf = "%s.g.vcf" % bam_prefix
+            idx = "%s.idx" % gvcf
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the haplotype caller options
@@ -72,7 +77,7 @@ class GATKHaplotypeCaller(Tool):
 
         # Create output path
         if self.split_id is None:
-            self.final_output = gvcf
+            self.final_output = [gvcf, idx]
         else:
             self.output = gvcf
 

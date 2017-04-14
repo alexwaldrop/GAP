@@ -39,6 +39,7 @@ class GATKCatVariants(Merger):
 
         # Generating variables
         gvcf = "%s/%s_%s.g.vcf" % (self.temp_dir, self.sample_data["sample_name"], hashlib.md5(str(time.time())).hexdigest()[:5])
+        idx = "%s.idx" % gvcf
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the combine options
@@ -52,6 +53,6 @@ class GATKCatVariants(Merger):
         comb_cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Generating the output path
-        self.final_output = gvcf
+        self.final_output = [gvcf, idx]
 
         return comb_cmd
