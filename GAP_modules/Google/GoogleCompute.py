@@ -248,6 +248,7 @@ class GoogleCompute(object):
             self.instances["main-server"].wait_all()
 
         # Copying the logs
-        cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/" % (sample_data["sample_name"])
-        self.instances["main-server"].run_command("copyLogs", cmd)
-        self.instances["main-server"].wait_process("copyLogs")
+        cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/ !LOG0!" % (sample_data["sample_name"])
+        if "main-server" in self.instances:
+            self.instances["main-server"].run_command("copyLogs", cmd)
+            self.instances["main-server"].wait_process("copyLogs")
