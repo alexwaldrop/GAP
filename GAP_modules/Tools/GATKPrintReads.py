@@ -19,8 +19,8 @@ class GATKPrintReads(Tool):
         self.splitter       = "GATKReferenceSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
-        self.bam = None
-        self.threads = None
+        self.nr_cpus    = 2
+        self.mem        = 5
 
 
     def get_command(self, **kwargs):
@@ -29,8 +29,8 @@ class GATKPrintReads(Tool):
         self.L              = kwargs.get("location",          None)
         self.XL             = kwargs.get("excluded_location", None)
         self.BQSR           = kwargs.get("BQSR_report",       self.sample_data["BQSR_report"])
-        self.threads        = kwargs.get("cpus",              self.config["instance"]["nr_cpus"])
-        self.mem            = kwargs.get("mem",               self.config["instance"]["mem"])
+        self.nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
+        self.mem            = kwargs.get("mem",               self.mem)
         self.split_id       = kwargs.get("split_id",          None)
 
         # Generating variables
@@ -47,7 +47,7 @@ class GATKPrintReads(Tool):
         opts = list()
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % recalib_bam)
-        opts.append("-nct %d" % self.threads)
+        opts.append("-nct %d" % self.nr_cpus)
         opts.append("-R %s" % self.ref)
         opts.append("-BQSR %s" % self.BQSR)
 

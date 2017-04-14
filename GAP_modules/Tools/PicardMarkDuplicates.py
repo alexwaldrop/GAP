@@ -21,18 +21,21 @@ class PicardMarkDuplicates(Tool):
         self.splitter       = "BAMChromosomeSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
+        self.nr_cpus        = 2
+        self.mem            = 10
+
         self.bam            = None
         self.is_aligned     = None
-        self.threads        = None
-        self.mem            = None
+        self.split_id       = None
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
         self.bam        = kwargs.get("bam",         self.sample_data["bam"])
         self.is_aligned = kwargs.get("is_aligned",  True)
-        self.threads    = kwargs.get("cpus",        self.config["instance"]["nr_cpus"])
-        self.mem        = kwargs.get("mem",         self.config["instance"]["mem"])
+        self.nr_cpus    = kwargs.get("nr_cpus",     self.nr_cpus)
+        self.mem        = kwargs.get("mem",         self.mem)
+        self.split_id   = kwargs.get("split_id",    None)
 
         if not self.is_aligned:
             self.output = self.bam

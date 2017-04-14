@@ -19,8 +19,8 @@ class GATKHaplotypeCaller(Tool):
         self.splitter       = "GATKReferenceSplitter"
         self.merger         = "GATKCatVariants"
 
-        self.bam = None
-        self.threads = None
+        self.nr_cpus    = 8
+        self.mem        = self.nr_cpus * 4 # 4GB/vCPU
 
 
     def get_command(self, **kwargs):
@@ -28,9 +28,9 @@ class GATKHaplotypeCaller(Tool):
         self.bam            = kwargs.get("bam",               self.sample_data["bam"])
         self.L              = kwargs.get("location",          None)
         self.XL             = kwargs.get("excluded_location", None)
-        self.threads        = kwargs.get("cpus",              self.config["instance"]["nr_cpus"])
-        self.mem            = kwargs.get("mem",               self.config["instance"]["mem"])
-        self.split_id       = kwargs.get("split_id",          0)
+        self.nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
+        self.mem            = kwargs.get("mem",               self.mem)
+        self.split_id       = kwargs.get("split_id",          None)
         if "BQSR_report" in self.sample_data:
             self.BQSR = kwargs.get("BQSR_report",             self.sample_data["BQSR_report"])
         else:
@@ -45,7 +45,7 @@ class GATKHaplotypeCaller(Tool):
         opts = list()
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % gvcf)
-        opts.append("-nct %d" % self.threads)
+        opts.append("-nct %d" % self.nr_cpus)
         opts.append("-R %s" % self.ref)
         opts.append("-ERC GVCF")
         if self.BQSR is not None:

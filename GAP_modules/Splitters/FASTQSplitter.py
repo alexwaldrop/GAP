@@ -15,13 +15,16 @@ class FASTQSplitter(Splitter):
 
         self.prefix = ["fastq_R1", "fastq_R2"]
 
+        self.nr_cpus     = self.config["platform"]["MS_nr_cpus"]
+        self.mem         = self.config["platform"]["MS_mem"]
+
         self.R1          = None
         self.R2          = None
 
     def get_nr_reads(self):
         # Obtain the number of lines in the FASTQ
         if self.R1.endswith(".gz"):
-            cmd = "pigz -p %d -d -k -c %s | wc -l" % (self.threads, self.R1)
+            cmd = "pigz -p %d -d -k -c %s | wc -l" % (self.nr_cpus, self.R1)
         else:
             cmd = "cat %s | wc -l" % self.R1
         out, err = self.sample_data["main-server"].run_command("fastq_count", cmd, log=False, get_output=True)
@@ -41,8 +44,8 @@ class FASTQSplitter(Splitter):
         # Obtaining the arguments
         self.R1             = kwargs.get("R1",              self.sample_data["R1"])
         self.R2             = kwargs.get("R2",              self.sample_data["R2"])
-        self.threads        = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
-        self.nr_splits      = kwargs.get("nr_splits",       self.config["general"]["nr_splits"])
+        self.nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
+        self.mem            = kwargs.get("mem",             self.mem)
 
         # Generating the commands
         cmds = list()
@@ -60,12 +63,12 @@ class FASTQSplitter(Splitter):
         for prefix in self.prefix:
             if "R1" in prefix:
                 if self.R1.endswith(".gz"):
-                    cmd = "pigz -p %d -d -k -c %s | split --suffix-length=2 --numeric-suffixes --lines=%d - %s/%s_" % (self.threads, self.R1, nr_lines_per_split, self.temp_dir, prefix)
+                    cmd = "pigz -p %d -d -k -c %s | split --suffix-length=2 --numeric-suffixes --lines=%d - %s/%s_" % (self.nr_cpus, self.R1, nr_lines_per_split, self.temp_dir, prefix)
                 else:
                     cmd = "split --suffix-length=2 --numeric-suffixes --lines=%d %s %s/%s_" % (nr_lines_per_split, self.R1, self.temp_dir, prefix)
             else:
                 if self.R2.endswith(".gz"):
-                    cmd = "pigz -p %d -d -k -c %s | split --suffix-length=2 --numeric-suffixes --lines=%d - %s/%s_" % (self.threads, self.R2, nr_lines_per_split, self.temp_dir, prefix)
+                    cmd = "pigz -p %d -d -k -c %s | split --suffix-length=2 --numeric-suffixes --lines=%d - %s/%s_" % (self.nr_cpus, self.R2, nr_lines_per_split, self.temp_dir, prefix)
                 else:
                     cmd = "split --suffix-length=2 --numeric-suffixes --lines=%d %s %s/%s_" % (nr_lines_per_split, self.R2, self.temp_dir, prefix)
             cmds.append(cmd)

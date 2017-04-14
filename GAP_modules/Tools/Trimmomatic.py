@@ -18,16 +18,19 @@ class Trimmomatic(Tool):
 
         self.can_split      = False
 
+        self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
+        self.mem            = self.config["platform"]["MS_mem"]
+
         self.R1             = None
         self.R2             = None
-        self.threads        = None
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
         self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
         self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
-        self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
+        self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
+        self.mem                = kwargs.get("mem",             self.mem)
 
         # Generating variables
         R1_pair     = "%s/R1_%s_trimmed.fastq" % (self.temp_dir, self.sample_data["sample_name"])
@@ -42,7 +45,7 @@ class Trimmomatic(Tool):
         phred       = "-phred33" if self.is_phred33 else "-phred64"
 
         # Generating command
-        trim_cmd = "java -jar %s PE -threads %d %s %s %s %s %s %s %s %s !LOG3!" % (self.trimmomatic_jar, self.threads, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps))
+        trim_cmd = "java -jar %s PE -threads %d %s %s %s %s %s %s %s %s !LOG3!" % (self.trimmomatic_jar, self.nr_cpus, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps))
 
         # Change the input data to correct one
         self.sample_data["R1_untrim"] = self.sample_data["R1"]

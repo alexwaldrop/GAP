@@ -17,19 +17,22 @@ class FastQC(Tool):
 
         self.can_split      = False
 
+        self.nr_cpus        = 2     # FASTQC requires 1 CPU per FASTQ file
+        self.mem            = 5     # FASTQC requires 250MB RAM per FASTQ file
+
         self.R1             = None
         self.R2             = None
-        self.threads        = None
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
         self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
         self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
-        self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
+        self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
+        self.mem                = kwargs.get("mem",             self.mem)
 
         # Generating quality check command
-        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.fastqc, self.threads, self.java, self.R1, self.R2)
+        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.fastqc, self.nr_cpus, self.java, self.R1, self.R2)
 
         # Generating the output paths
         self.output = list()

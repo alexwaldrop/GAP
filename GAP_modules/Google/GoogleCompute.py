@@ -150,30 +150,19 @@ class GoogleCompute(object):
 
         logging.info("Google Cloud Platform is ready for analysis.")
 
-    def prepare_data(self, sample_data, nr_cpus=None, mem=None, nr_local_ssd=3):
-
-        # Setting the arguments with default values
-        if nr_cpus is None:
-            nr_cpus = self.config["instance"]["nr_cpus"]
-        if mem is None:
-            mem = self.config["instance"]["mem"]
-
-        # Obtaining the cpus and memory that will actually be used
-        nr_cpus, mem, instance_type = Instance.get_type(nr_cpus, mem)
-        self.config["instance"]["nr_cpus"] = nr_cpus
-        self.config["instance"]["mem"] = mem
+    def prepare_data(self, sample_data, **kwargs):
 
         # Generating arguments dictionary
-        kwargs = dict()
-        kwargs["instance_type"]     = instance_type
-        kwargs["is_preemptible"]     = False
+        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",         self.config["platform"]["MS_nr_cpus"])
+        kwargs["mem"]               = kwargs.get("mem",             self.config["platform"]["MS_mem"])
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",    self.config["platform"]["MS_local_ssds"])
+        kwargs["is_preemptible"]    = False
         kwargs["is_server"]         = True
         kwargs["ready_topic"]       = self.ready_topic
-        kwargs["nr_local_ssd"]      = nr_local_ssd
         kwargs["instances"]         = self.instances
 
         # Create the main server
-        self.instances["main-server"] = Instance("main-server", nr_cpus, mem, **kwargs)
+        self.instances["main-server"] = Instance(self.config, "main-server", **kwargs)
         self.instances["main-server"].create()
         self.instances["main-server"].wait_process("create")
 
@@ -203,28 +192,29 @@ class GoogleCompute(object):
         # Memorize the main-server address in the sample data
         sample_data["main-server"] = self.instances["main-server"]
 
-    def create_split_server(self, server_name, nr_cpus=None, mem=None, **kwargs): #nr_cpus=None, mem=None, nr_local_ssd=1, is_preemptible=True):
-
-        # Obtaining the cpus and memory that will actually be used
-        if nr_cpus is None:
-            nr_cpus = self.config["instance"]["nr_cpus"]
-        if mem is None:
-            mem = self.config["instance"]["mem"]
-        nr_cpus, mem, instance_type = Instance.get_type(nr_cpus, mem)
-        self.config["instance"]["nr_cpus"] = nr_cpus
-        self.config["instance"]["mem"] = mem
+    def create_split_server(self, server_name, **kwargs):
 
         # Updating the kwargs
-        kwargs["instance_type"]     = instance_type
-        kwargs["is_preemptible"]    = kwargs.get("is_preemptible", True)
-        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd", 0)
+        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",         None)
+        kwargs["mem"]               = kwargs.get("mem",             None)
+
+        if kwargs["nr_cpus"] is None:
+            logging.error("(%s) Cannot create instance, because the required number of vCPUs has not been specified!" % server_name)
+            raise GoogleException(server_name)
+
+        if kwargs["mem"] is None:
+            logging.error("(%s) Cannot create instance, because the required amount of memory has not been specified!" % server_name)
+            raise GoogleException(server_name)
+
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",    0)
+        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",  True)
         kwargs["is_server"]         = False
         kwargs["ready_topic"]       = self.ready_topic
         kwargs["instances"]         = self.instances
         kwargs["main_server"]       = "main-server"
 
         # Creating the split servers
-        self.instances[server_name] = Instance(server_name, nr_cpus, mem, **kwargs)
+        self.instances[server_name] = Instance(self.config, server_name, **kwargs)
         self.instances[server_name].create()
 
     def finalize(self, sample_data, only_logs=False):

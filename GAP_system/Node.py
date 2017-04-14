@@ -150,9 +150,6 @@ class Node(threading.Thread):
         split_servers = dict()
         for split_id, args in enumerate(self.split_outputs):
 
-            # Generating split server name
-            server_name = "%s-split%d-server" % (self.module_name.lower(), split_id)
-
             # Obtaining main command
             cmd = self.main_obj.get_command(split_id=split_id, **args)
 
@@ -164,8 +161,17 @@ class Node(threading.Thread):
 
             # Checking if there is command to run
             if cmd is not None:
+
+                # Generating split server name
+                server_name = "%s-split%d-server" % (self.module_name.lower(), split_id)
+
+                # Obtaining required resources
+                kwargs = dict()
+                kwargs["nr_cpus"] = self.main_obj.get_nr_cpus()
+                kwargs["mem"] = self.main_obj.get_mem()
+
                 # Creating SplitServer object
-                split_servers[server_name] = self.SplitServer(server_name, self.platform, main_job_name(split_id), cmd)
+                split_servers[server_name] = self.SplitServer(server_name, self.platform, main_job_name(split_id), cmd, **kwargs)
 
                 # Starting split server work
                 split_servers[server_name].start()

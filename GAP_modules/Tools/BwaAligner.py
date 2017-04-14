@@ -24,9 +24,11 @@ class BwaAligner(Tool):
         self.splitter       = "FASTQSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
+        self.nr_cpus        = self.config["platform"]["max_nr_cpus"]    # BWA MEM can use as many CPUs as possible
+        self.mem            = max(10, self.nr_cpus)    # BWA MEM should not need more than 1 GB/CPU
+
         self.R1             = None
         self.R2             = None
-        self.threads        = None
         self.split_id       = None
 
     def get_rg_header(self):
@@ -62,14 +64,15 @@ class BwaAligner(Tool):
         # Obtaining the arguments
         self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
         self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
-        self.threads            = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
+        self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
+        self.mem                = kwargs.get("mem",             self.mem)
         self.split_id           = kwargs.get("split_id",        None)
 
         # Generating command for alignment
-        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.bwa, self.get_rg_header(), self.threads, self.ref, self.R1, self.R2)
+        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.bwa, self.get_rg_header(), self.nr_cpus, self.ref, self.R1, self.R2)
 
         # Generating command for converting SAM to BAM
-        sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.samtools, self.threads)
+        sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.samtools, self.nr_cpus)
 
         # Generating the output
         self.output = "%s/%s" % (self.temp_dir, self.sample_name)
@@ -80,6 +83,6 @@ class BwaAligner(Tool):
             self.sample_data["bam"] = self.output
 
         # Generating command for sorting BAM
-        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.samtools, self.threads, self.output)
+        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.samtools, self.nr_cpus, self.output)
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)

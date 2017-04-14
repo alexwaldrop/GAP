@@ -18,8 +18,10 @@ class SamtoolsIndex(Tool):
 
         self.can_split      = False
 
-        self.bam            = None
+        self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
+        self.mem            = self.config["platform"]["MS_mem"]
 
+        self.bam            = None
 
     def get_command(self, **kwargs):
 
@@ -29,6 +31,8 @@ class SamtoolsIndex(Tool):
             return None
         else:
             self.bam                = kwargs.get("bam",              self.sample_data["bam"])
+        self.nr_cpus                = kwargs.get("nr_cpus",          self.nr_cpus)
+        self.mem                    = kwargs.get("mem",              self.mem)
 
         # Generating indexing command
         index_cmd = "%s index %s" % (self.samtools, self.bam)

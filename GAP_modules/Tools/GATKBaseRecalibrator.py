@@ -22,10 +22,10 @@ class GATKBaseRecalibrator(Tool):
 
         self.can_split = False
 
+        self.nr_cpus = self.config["platform"]["MS_nr_cpus"]
+        self.mem = self.config["platform"]["MS_mem"]
+
         self.bam = None
-        self.threads = None
-
-
 
     def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
@@ -65,8 +65,8 @@ class GATKBaseRecalibrator(Tool):
     def get_command(self, **kwargs):
         # Obtaining the arguments
         self.bam            = kwargs.get("bam", self.sample_data["bam"])
-        self.threads        = kwargs.get("cpus", self.config["instance"]["nr_cpus"])
-        self.mem            = kwargs.get("mem", self.config["instance"]["mem"])
+        self.nr_cpus        = kwargs.get("nr_cpus", self.nr_cpus)
+        self.mem            = kwargs.get("mem", self.mem)
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
@@ -77,7 +77,7 @@ class GATKBaseRecalibrator(Tool):
         opts = list()
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % recalib_report)
-        opts.append("-nct %d" % self.threads)
+        opts.append("-nct %d" % self.nr_cpus)
         opts.append("-R %s" % self.ref)
         opts.append("-knownSites %s" % self.dbsnp)
         opts.append("-cov ReadGroupCovariate")

@@ -4,6 +4,7 @@ import math
 import os
 import time
 import subprocess as sp
+import requests
 from collections import OrderedDict
 
 from GAP_modules.Google import GoogleProcess
@@ -19,14 +20,19 @@ class Instance(object):
 
     MAX_STATUS  = 3     # Maximum status value possible
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    def __init__(self, config, name, **kwargs):
+
+        self.config = config
+        self.name = name
+
+        # Setting constants
+        self.MAX_NR_CPUS        = self.config["platform"]["max_nr_cpus"]
+        self.MAX_MEM            = self.config["platform"]["max_mem"]
+        self.MAX_RESET_COUNT    = self.config["platform"]["max_reset"]
 
         # Setting variables
-        self.name               = name
-        self.nr_cpus            = nr_cpus
-        self.mem                = mem
-
-        self.instance_type      = kwargs.get("instance_type",    "n1-standard-1")
+        self.nr_cpus            = kwargs.get("nr_cpus",          self.MAX_NR_CPUS)
+        self.mem                = kwargs.get("mem",              self.MAX_MEM)
         self.is_server          = kwargs.get("is_server",        False)
         self.boot_disk_size     = kwargs.get("boot_disk_size",   50)
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
@@ -38,13 +44,13 @@ class Instance(object):
         self.shutdown_script    = kwargs.get("shutdown_script",  None)
         self.instances          = kwargs.get("instances",        {})
         self.main_server        = kwargs.get("main_server",      None)
+        self.instance_type      = kwargs.get("instance_type",    self.get_inst_type())
 
         self.attached_disks     = list()
         self.processes          = OrderedDict()
 
         self.is_resetting       = False
         self.reset_count        = 0
-        self.MAX_RESET_COUNT    = 5
 
         # Setting the instance status
         self.status_lock        = threading.Lock()
@@ -57,6 +63,7 @@ class Instance(object):
         self.set_status(Instance.BUSY)
 
         logging.info("(%s) Process 'create' started!" % self.name)
+        logging.debug("(%s) Instance type is %s." % (self.name, self.instance_type))
 
         args = list()
 
@@ -85,8 +92,15 @@ class Instance(object):
         args.append("--image")
         args.append("davelab-image")
 
-        args.append("--machine-type")
-        args.append(self.instance_type)
+        if "custom" in self.instance_type:
+            args.append("--custom-cpu")
+            args.append(str(self.nr_cpus))
+
+            args.append("--custom-memory")
+            args.append(str(self.mem))
+        else:
+            args.append("--machine-type")
+            args.append(self.instance_type)
 
         if self.is_preemptible:
             args.append("--preemptible")
@@ -213,26 +227,37 @@ class Instance(object):
 
         logging.debug("(%s) Instance google ID obtained: %d." % (self.name, self.google_id))
 
-    @staticmethod
-    def get_type(nr_cpus, mem):
+    def get_inst_type(self):
 
-        # Treating special cases
-        if nr_cpus == 1:
-            if mem <= 0.6:
-                return 1, 0.6, "f1-micro"
-            if mem <= 1.7:
-                return 1, 1.7, "g1-small"
-            if mem <= 3.5:
-                return 1, 3.5, "n1-standard-1"
+        # Making sure the values are not higher than possibly available
+        if self.nr_cpus > self.MAX_NR_CPUS:
+            logging.error("(%s) Cannot provision an instance with %d vCPUs. Maximum is %d vCPUs." % (self.name, self.nr_cpus, self.MAX_NR_CPUS))
+            raise GoogleException(self.name)
+        if self.mem > self.MAX_MEM:
+            logging.error("(%s) Cannot provision an instance with %d GB RAM. Maximum is %d GB RAM." % (self.name, self.mem, self.MAX_MEM))
+            raise GoogleException(self.name)
 
-        # Defining instance type to mem/cpu ratios
+        # Obtaining prices from Google Cloud Platform
+        try:
+            price_json_url = "https://cloudpricingcalculator.appspot.com/static/data/pricelist.json"
+
+            # Disabling low levels of logging from module requests
+            logging.getLogger("requests").setLevel(logging.WARNING)
+
+            prices = requests.get(price_json_url).json()["gcp_price_list"]
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not obtain instance prices. The following error appeared: %s." % e.message)
+            raise
+
+        # Defining instance types to mem/cpu ratios
         ratio = dict()
         ratio["highcpu"] = 1.80 / 2
         ratio["standard"] = 7.50 / 2
         ratio["highmem"] = 13.00 / 2
 
-        # Identifying needed instance type
-        ratio_mem_cpu = mem * 1.0 / nr_cpus
+        # Identifying needed predefined instance type
+        ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
         if ratio_mem_cpu <= ratio["highcpu"]:
             instance_type = "highcpu"
         elif ratio_mem_cpu <= ratio["standard"]:
@@ -240,16 +265,58 @@ class Instance(object):
         else:
             instance_type = "highmem"
 
+        # Initializing predefined instance data
+        predef_inst = {}
+
         # Converting the number of cpus to the closest upper power of 2
-        nr_cpus = 2 ** math.ceil(math.log(nr_cpus, 2))
+        predef_inst["nr_cpus"] = 2 ** int(math.ceil(math.log(self.nr_cpus, 2)))
 
         # Computing the memory obtain on the instance
-        mem = nr_cpus * ratio[instance_type]
+        predef_inst["mem"] = predef_inst["nr_cpus"] * ratio[instance_type]
 
         # Setting the instance type name
-        inst_type_name = "n1-%s-%d" % (instance_type, nr_cpus)
+        predef_inst["type_name"] = "n1-%s-%d" % (instance_type, predef_inst["nr_cpus"])
 
-        return nr_cpus, mem, inst_type_name
+        # Obtaining the price of the predefined instance
+        if self.is_preemptible:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()]["us"]
+        else:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()]["us"]
+
+        # Initializing custom instance data
+        custom_inst = {}
+
+        # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
+        if self.nr_cpus != 1:
+            custom_inst["nr_cpus"] = self.nr_cpus + self.nr_cpus % 2
+
+        # Computing the memory as integer value in GB
+        custom_inst["mem"] = int(math.ceil(self.mem))
+
+        # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
+        custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+
+        # Generating custom instance name
+        custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
+
+        # Computing the price of a custom instance
+        if self.is_preemptible:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"]["us"]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"]["us"]
+        else:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"]["us"]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"]["us"]
+        custom_inst["price"] = custom_price_cpu * custom_inst["nr_cpus"] + custom_price_mem * custom_inst["mem"]
+
+        if predef_inst["price"] <= custom_inst["price"]:
+            self.nr_cpus = predef_inst["nr_cpus"]
+            self.mem = predef_inst["mem"]
+            return predef_inst["type_name"]
+        else:
+            self.nr_cpus = custom_inst["nr_cpus"]
+            self.mem = custom_inst["mem"]
+            return custom_inst["type_name"]
 
     def attach_disk(self, disk, read_only=True):
 

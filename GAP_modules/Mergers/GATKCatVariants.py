@@ -21,17 +21,17 @@ class GATKCatVariants(Merger):
 
         self.temp_dir = self.config["general"]["temp_dir"]
 
-        self.threads      = None
+        self.nr_cpus      = self.config["platform"]["MS_nr_cpus"]
+        self.mem          = self.config["platform"]["MS_mem"]
+
         self.inputs       = None
-        self.nr_splits    = None
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.threads        = kwargs.get("cpus",            self.config["instance"]["nr_cpus"])
         self.inputs         = kwargs.get("inputs",          None)
-        self.nr_splits      = kwargs.get("nr_splits",       2)
-        self.mem            = kwargs.get("mem",             self.config["instance"]["mem"])
+        self.nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
+        self.mem            = kwargs.get("mem",             self.mem)
 
         if self.inputs is None:
             logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
