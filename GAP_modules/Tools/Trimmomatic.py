@@ -37,10 +37,10 @@ class Trimmomatic(Tool):
         R1_unpair   = "%s/R1_%s_trimmed_unpaired.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         R2_pair     = "%s/R2_%s_trimmed.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         R2_unpair   = "%s/R2_%s_trimmed_unpaired.fastq" % (self.temp_dir, self.sample_data["sample_name"])
-        steps       = [ "ILLUMINACLIP:%s:2:30:7" % self.adapters,
+        steps       = [ "ILLUMINACLIP:%s:2:20:7:1:true" % self.adapters,
                         "LEADING:5",
                         "TRAILING:5",
-                        "SLIDINGWINDOW:4:20",
+                        "SLIDINGWINDOW:4:10",
                         "MINLEN:36" ]
         phred       = "-phred33" if self.is_phred33 else "-phred64"
 
