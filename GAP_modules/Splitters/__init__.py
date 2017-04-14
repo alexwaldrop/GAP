@@ -1,5 +1,5 @@
 from BAMChromosomeSplitter import BAMChromosomeSplitter
-from FASTQSplitter import FASTQSplitter
+from BwaFastqSplitter import BwaFastqSplitter
 from GATKReferenceSplitter import GATKReferenceSplitter
 
-__all__ = ["BAMChromosomeSplitter", "FASTQSplitter", "GATKReferenceSplitter"]
+__all__ = ["BAMChromosomeSplitter", "BwaFastqSplitter", "GATKReferenceSplitter"]

@@ -21,7 +21,7 @@ class BwaAligner(Tool):
         self.sample_name    = self.sample_data["sample_name"]
 
         self.can_split      = True
-        self.splitter       = "FASTQSplitter"
+        self.splitter       = "BwaFastqSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
         self.nr_cpus        = self.config["platform"]["max_nr_cpus"]    # BWA MEM can use as many CPUs as possible
