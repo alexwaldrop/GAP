@@ -71,7 +71,7 @@ class GATKBaseRecalibrator(Tool):
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
         recalib_report = "%s_BQSR.grp" % bam_prefix
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem*4/5)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem*4/5, self.temp_dir)
 
         # Generating the base recalibration options
         opts = list()

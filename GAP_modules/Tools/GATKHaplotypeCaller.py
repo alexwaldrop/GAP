@@ -15,6 +15,8 @@ class GATKHaplotypeCaller(Tool):
 
         self.ref = self.config["paths"]["ref"]
 
+        self.temp_dir = self.config["general"]["temp_dir"]
+
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
         self.merger         = "GATKCatVariants"
@@ -39,7 +41,7 @@ class GATKHaplotypeCaller(Tool):
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
         gvcf = "%s_%d.g.vcf" % (bam_prefix, self.split_id)
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem * 4 / 5)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the haplotype caller options
         opts = list()

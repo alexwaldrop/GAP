@@ -15,6 +15,8 @@ class GATKPrintReads(Tool):
 
         self.ref = self.config["paths"]["ref"]
 
+        self.temp_dir = self.config["general"]["temp_dir"]
+
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
         self.merger         = "SamtoolsBAMMerge"
@@ -41,7 +43,7 @@ class GATKPrintReads(Tool):
         else:
             recalib_bam = "%s_recalib_%d.bam" % (bam_prefix, self.split_id)
             recalib_bam_idx = "%s_recalib_%d.bai" % (bam_prefix, self.split_id)
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem * 4 / 5)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the haplotype caller options
         opts = list()

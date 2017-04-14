@@ -45,7 +45,7 @@ class PicardMarkDuplicates(Tool):
         bam_prefix = self.bam.split(".")[0]
         bam_marked = "%s_marked.bam" % bam_prefix
         metrics    = "%s_metrics.txt" % bam_prefix
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/data/tmp" % (self.mem*4/5)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem*4/5, self.temp_dir)
 
         # Generating the marking duplicates options
         mark_dup_opts = list()
@@ -56,7 +56,6 @@ class PicardMarkDuplicates(Tool):
         mark_dup_opts.append("REMOVE_DUPLICATES=FALSE")
         mark_dup_opts.append("VALIDATION_STRINGENCY=LENIENT")
         mark_dup_opts.append("MAX_RECORDS_IN_RAM=5000000")
-        mark_dup_opts.append("TMP_DIR=%s" % self.temp_dir)
 
         # Generating command for marking duplicates
         mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
