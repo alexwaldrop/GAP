@@ -375,11 +375,13 @@ class Instance(object):
         if "!LOG" in command:
 
             # Generating all the logging pipes
-            log_cmd_stdout = " >>/data/logs/%s.log" % job_name
+            log_cmd_null = " >>/dev/null 2>&1 "
+            log_cmd_stdout = " >>/data/logs/%s.log " % job_name
             log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
             log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
 
             # Replacing the placeholders with the logging pipes
+            command = command.replace("!LOG0!", log_cmd_null)
             command = command.replace("!LOG1!", log_cmd_stdout)
             command = command.replace("!LOG2!", log_cmd_stderr)
             command = command.replace("!LOG3!", log_cmd_all)
