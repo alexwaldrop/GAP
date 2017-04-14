@@ -34,10 +34,13 @@ class SamtoolsIndex(Tool):
         self.nr_cpus                = kwargs.get("nr_cpus",          self.nr_cpus)
         self.mem                    = kwargs.get("mem",              self.mem)
 
+        # Generate index name
+        bam_prefix = self.bam.split(".")[0]
+
         # Generating indexing command
-        index_cmd = "%s index %s" % (self.samtools, self.bam)
+        index_cmd = "%s index %s %s.bai" % (self.samtools, self.bam, bam_prefix)
 
         # Generating the output paths
-        self.sample_data["bam_index"] = "%s.bai" % self.bam
+        self.sample_data["bam_index"] = "%s.bai" % bam_prefix
 
         return index_cmd

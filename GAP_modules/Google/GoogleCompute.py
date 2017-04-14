@@ -230,7 +230,7 @@ class GoogleCompute(object):
 
             # Copying the bam index, if exists
             if "bam_index" in sample_data:
-                cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam.bai !LOG3!" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
+                cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bai !LOG3!" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
                 self.instances["main-server"].run_command("copyBAI", cmd)
 
             # Copying the output data, if exists
