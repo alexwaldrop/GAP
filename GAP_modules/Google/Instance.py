@@ -480,7 +480,8 @@ class Instance(object):
                 # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
                 cycle_count = 1
-                while cycle_count < 60:
+                # Waiting 30 minutes for the instance to be reported as preempted
+                while cycle_count < 900:
 
                     if self.get_status() == Instance.DEAD:
                         preempted = True
@@ -512,7 +513,8 @@ class Instance(object):
                 preempted = False
                 completed = False
                 cycle_count = 1
-                while cycle_count < 150:
+                # Waiting 30 minutes for the instance to be preempted
+                while cycle_count < 900:
 
                     if self.get_status() == Instance.AVAILABLE:
                         completed = True
