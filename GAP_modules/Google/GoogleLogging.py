@@ -22,8 +22,7 @@ class LogSink(object):
             self.get_serv_acct()
             self.grant_permission()
 
-    @staticmethod
-    def _run_cmd(cmd, err_msg=None):
+    def _run_cmd(self, cmd, err_msg=None):
 
         # Running and waiting for the command
         proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -31,7 +30,7 @@ class LogSink(object):
 
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
-            logging.error("Logging sink %s stopped working!")
+            logging.error("Logging sink %s stopped working!" % self.name)
             if err_msg is not None:
                 logging.error("%s. The following error appeared:\n    %s" % (err_msg, err))
             raise GoogleException()
