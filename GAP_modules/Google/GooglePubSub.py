@@ -3,7 +3,10 @@ import base64
 import json
 import threading
 import time
+import os
 import subprocess as sp
+from google.cloud import pubsub
+
 
 from GAP_modules.Google import GoogleException
 from GAP_modules.Google import Instance
@@ -85,6 +88,33 @@ class GooglePubSub(object):
         self._run_cmd(cmd, err_msg=err_msg)
 
         self.topics.remove(topic)
+
+    @staticmethod
+    def grant_write_permission(topic, client_json_keyfile, serv_acct):
+        #function used to grant write access to a service account (e.g. logging sink)
+        try:
+            #set google environmental variable
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = client_json_keyfile
+
+            #get pubsub client with default service account
+            client = pubsub.Client.from_service_account_json(client_json_keyfile)
+
+            #get subscription
+            topic = client.topic(topic)
+
+            #get IAM permissions for subscription
+            policy = topic.get_iam_policy()
+
+            #add service account as an editor of the policy
+            policy.editors.add(policy.service_account(serv_acct))
+
+            #set policy for subscription
+            topic.set_iam_policy(policy)
+
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not set Pub/Sub permissions for topic %s. The following error appeared: %s." % (topic, e.message))
+            raise
 
     @staticmethod
     def get_message(subscription):

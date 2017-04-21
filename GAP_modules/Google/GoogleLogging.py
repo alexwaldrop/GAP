@@ -6,21 +6,18 @@ from GAP_modules.Google import GoogleException
 
 class LogSink(object):
 
-    def __init__(self, sink_name, dest, log_filter="", unique_id=False):
+    def __init__(self, sink_name, dest, log_filter=""):
 
         self.name = sink_name
         self.dest = dest
 
         self.filter = log_filter
 
-        self.unique_id = unique_id
         self.serv_acct = None
 
         self.create()
 
-        if self.unique_id:
-            self.get_serv_acct()
-            self.grant_permission()
+        self.get_serv_acct()
 
     def _run_cmd(self, cmd, err_msg=None):
 
@@ -42,10 +39,7 @@ class LogSink(object):
         opts = list()
         opts.append("--quiet")
         opts.append("--no-user-output-enabled")
-        opts.append("--output-version-format=V2")
         opts.append("--log-filter=%s" % self.filter)
-        if not self.unique_id:
-            opts.append("--no-unique-writer-identity")
 
         cmd = "gcloud beta logging sinks create %s %s %s" % (self.name, self.dest, " ".join(opts))
         err_msg = "Could not create a logging sink on Google Stackdriver Logging"
@@ -54,9 +48,6 @@ class LogSink(object):
 
     def destroy(self):
 
-        if self.unique_id:
-            self.revoke_permission()
-
         cmd = "gcloud --quiet --no-user-output-enabled beta logging sinks delete %s" % self.name
         err_msg = "Could not destroy a logging sink on Google Stackdriver Logging"
 
@@ -64,39 +55,30 @@ class LogSink(object):
 
     def get_serv_acct(self):
 
-        cmd = "gcloud beta logging sinks describe --format=json %s"
+        cmd = "gcloud beta logging sinks describe --format=json %s" % (self.name)
         err_msg = "Could not obtain information about a logging sink"
 
         out = self._run_cmd(cmd, err_msg=err_msg)
 
-        self.serv_acct = json.loads(out)["writer_identity"]
-
-    def grant_permission(self):
-
-        cmd = "gcloud projects add-iam-policy-binding davelab-gcloud --member %s --role roles/pubsub.editor" % self.serv_acct
-        err_msg = "Could not grant permissions for the logging sink"
-
-        self._run_cmd(cmd, err_msg=err_msg)
-
-    def revoke_permission(self):
-
-        cmd = "gcloud project remove-iam-policy-binding davelab-gcloud --member %s --role roles/pubsub.editor" % self.serv_acct
-        err_msg = "Could not revoke permissions for the logging sink"
-
-        self._run_cmd(cmd, err_msg=err_msg)
+        self.serv_acct = json.loads(out)["writer_identity"].split(":")[1]
 
 
 class GoogleLogging(object):
 
     def __init__(self):
 
-        self.sinks = []
+        self.sinks = dict()
 
     def create_sink(self, sink_name, dest, log_filter=""):
-        self.sinks.append(LogSink(sink_name, dest, log_filter=log_filter))
+        self.sinks[sink_name] = LogSink(sink_name, dest, log_filter=log_filter)
+
+    def get_serv_acct(self, sink_name):
+        if sink_name not in self.sinks:
+            return None
+        return self.sinks[sink_name].serv_acct
 
     def clean_up(self):
 
         # Destroying all the Logging sinks
         for sink in self.sinks:
-            sink.destroy()
+            self.sinks[sink].destroy()
