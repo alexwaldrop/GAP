@@ -141,6 +141,14 @@ class GoogleCompute(object):
         self.logging.create_sink(log_sink_name, log_sink_dest, log_filter=log_sink_filter)
         logging.info("Stackdriver Logging sink to Google Pub/Sub created.")
 
+        #no need to create log-sink for ready topic. Startup-script MUST post directly to
+        #the topic upon startup completion otherwise instance will never get registered as 'ready'
+
+        #grant write permission to allow the preempted log sink to write to the preempted PubSub topic
+        self.pubsub.grant_write_permission(topic=preempt_topic,
+                                           client_json_keyfile=self.key_location,
+                                           serv_acct=self.logging.get_serv_acct(log_sink_name))
+
         # Initialize the subscribers
         logging.debug("Starting the subscribers.")
         self.ready_subscriber = GoogleReadySubscriber(ready_sub, self.instances)
