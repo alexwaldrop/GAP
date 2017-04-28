@@ -360,7 +360,7 @@ class Instance(object):
             self.processes["detach_disk_%s" % disk.name] =  GoogleProcess(" ".join(args), instance_id = self.google_id,
                                                                           stdout=devnull, stderr=devnull, shell=True)
 
-    def run_command(self, job_name, command, log=True, get_output=False, proc_wait=False):
+    def run_command(self, job_name, command, log=True, proc_wait=False):
 
         cycles_count = 0
         while self.get_status() != Instance.AVAILABLE:
@@ -397,17 +397,13 @@ class Instance(object):
         kwargs["instance_id"] = self.google_id
         kwargs["shell"] = True
         kwargs["log"] = log
-        if get_output:
-            kwargs["stdout"] = sp.PIPE
-            kwargs["stderr"] = sp.PIPE
+        kwargs["stdout"] = sp.PIPE
+        kwargs["stderr"] = sp.PIPE
 
         self.processes[job_name] = GoogleProcess(cmd, **kwargs)
 
-        if get_output or proc_wait:
+        if proc_wait:
             self.wait_process(job_name)
-
-            if get_output:
-                return self.processes[job_name].communicate()
 
     def is_alive(self):
 
@@ -439,6 +435,20 @@ class Instance(object):
             return False
 
         return self.processes[proc_name].is_done()
+
+
+    def get_proc_output(self, proc_name):
+        #wait for command to finish and return stdout, stderr using the Popen.Communicate()
+
+        #wait for process to complete
+        self.wait_process(proc_name)
+
+        #get process object
+        proc_obj = self.processes[proc_name]
+
+        #return values from communicate
+        return proc_obj.communicate()
+
 
     def wait_process(self, proc_name):
 
@@ -480,6 +490,16 @@ class Instance(object):
                 # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
                 cycle_count = 1
+
+                #determine if user error or preempted
+                out, err = proc_obj.communicate()
+                if "ERROR: (gcloud.compute.ssh)" not in err:
+                    #exit program if ssh error (from preemption) not found in error message
+                    if proc_obj.log:
+                        logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                    raise GoogleException(self.name)
+
+
                 # Waiting 30 minutes for the instance to be reported as preempted
                 while cycle_count < 900:
 

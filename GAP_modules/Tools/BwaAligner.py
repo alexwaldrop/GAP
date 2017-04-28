@@ -38,7 +38,9 @@ class BwaAligner(Tool):
 
         # Obtain the read header
         cmd = "head -n 1 %s" % self.R1
-        out, err = self.sample_data["main-server"].run_command("fastq_header", cmd, log=False, get_output=True)
+        self.sample_data["main-server"].run_command("fastq_header", cmd, log=False)
+        out, err = self.sample_data["main-server"].get_proc_output("fastq_header")
+
         if err != "":
             err_msg = "Could not obtain information for BwaAligner. "
             err_msg += "\nThe following command was run: \n  %s" % cmd
