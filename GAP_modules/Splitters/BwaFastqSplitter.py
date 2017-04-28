@@ -34,7 +34,10 @@ class BwaFastqSplitter(Splitter):
             cmd = "pigz -p %d -d -k -c %s | wc -l" % (self.nr_cpus, self.R1)
         else:
             cmd = "cat %s | wc -l" % self.R1
-        out, err = self.sample_data["main-server"].run_command("fastq_count", cmd, log=False, get_output=True)
+
+        self.sample_data["main-server"].run_command("fastq_count", cmd, log=False)
+        out, err = self.sample_data["main-server"].get_proc_output("fastq_count")
+
         if err != "":
             err_msg = "Could not obtain the number of reads in the FASTQ file. "
             err_msg += "\nThe following command was run: \n  %s " % cmd
