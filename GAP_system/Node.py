@@ -4,11 +4,20 @@ import threading
 import Queue
 import sys
 
-def initialize_module(module_name):
+def initialize_module(module_name, is_tool=False, is_splitter=False, is_merger=False):
 
     d = dict()
     d["module_name"] = module_name
-    d["module"] = importlib.import_module("GAP_modules.%s" % d["module_name"])
+
+    if is_tool:
+        d["module"] = importlib.import_module("GAP_modules.Tools.%s" % d["module_name"])
+    elif is_splitter:
+        d["module"] = importlib.import_module("GAP_modules.Splitters.%s" % d["module_name"])
+    elif is_merger:
+        d["module"] = importlib.import_module("GAP_modules.Mergers.%s" % d["module_name"])
+    else:
+        logging.error("Module %s could not be imported! Specify whether module is tool, splitter, or merger!")
+
     d["class_name"] = d["module"].__main_class__
     d["class"] = d["module"].__dict__[d["class_name"]]
 
@@ -96,7 +105,7 @@ class Node(threading.Thread):
 
         # Importing main module
         try:
-            self.main = initialize_module(module_name)
+            self.main = initialize_module(module_name, is_tool=True)
             self.main_obj = self.main["class"](self.config, self.sample_data)
         except ImportError:
             logging.error("Module %s cannot be imported!" % module_name)
@@ -106,14 +115,14 @@ class Node(threading.Thread):
         if self.main_obj.can_split:
 
             try:
-                self.split = initialize_module(self.main_obj.splitter)
+                self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
                 self.split_obj = self.split["class"](self.config, self.sample_data)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
 
             try:
-                self.merge = initialize_module(self.main_obj.merger)
+                self.merge = initialize_module(self.main_obj.merger, is_merger=True)
                 self.merge_obj = self.merge["class"](self.config, self.sample_data)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
