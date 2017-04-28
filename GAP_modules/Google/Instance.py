@@ -34,7 +34,7 @@ class Instance(object):
         self.nr_cpus            = kwargs.get("nr_cpus",          self.MAX_NR_CPUS)
         self.mem                = kwargs.get("mem",              self.MAX_MEM)
         self.is_server          = kwargs.get("is_server",        False)
-        self.boot_disk_size     = kwargs.get("boot_disk_size",   50)
+        self.boot_disk_size     = kwargs.get("boot_disk_size",   60)
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
         self.is_preemptible     = kwargs.get("is_preemptible",   False)
         self.zone               = kwargs.get("zone",             "us-east1-b")
