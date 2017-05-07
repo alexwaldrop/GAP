@@ -100,16 +100,20 @@ class GooglePubSub(object):
             client = pubsub.Client.from_service_account_json(client_json_keyfile)
 
             #get subscription
-            topic = client.topic(topic)
+            topic_obj = client.topic(topic)
 
             #get IAM permissions for subscription
-            policy = topic.get_iam_policy()
+            policy = topic_obj.get_iam_policy()
+
+            # Get the current list of editors
+            topic_editors = policy.get("roles/editor", [])
 
             #add service account as an editor of the policy
-            policy.editors.add(policy.service_account(serv_acct))
+            topic_editors.append(policy.service_account(serv_acct))
+            policy["roles/editor"] = topic_editors
 
             #set policy for subscription
-            topic.set_iam_policy(policy)
+            topic_obj.set_iam_policy(policy)
 
         except BaseException as e:
             if e.message != "":
