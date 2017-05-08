@@ -44,7 +44,7 @@ class Config(object):
             self.config = ConfigObj(self.config_file, configspec=self.config_spec_file)
         except:
             logging.error("Config parsing error! Invalid config file format.")
-            exit(1)
+            raise
 
     def validate_config(self):
 
