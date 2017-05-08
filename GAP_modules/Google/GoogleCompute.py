@@ -105,6 +105,23 @@ class GoogleCompute(object):
         if has_errors:
             raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
 
+    def check_output(self):
+        #check to make sure output bucket for final output is a valid google bucket address
+
+        logging.info("Checking pipeine output directory.")
+
+        output_dir = self.config["general"]["bucket_output_dir"]
+
+        #check to make sure string starts with gs://
+        if output_dir[0:5] != "gs://":
+            logging.error("Output directory specified in config does not begin with 'gs://': %s" % output_dir)
+            raise IOError("The output directory provided is not a valid google bucket directory string. Please check the error messages above!")
+
+        #make sure output bucket directory ends with '/'
+        output_dir = output_dir.rstrip('/')
+        self.config["general"]["bucket_output_dir"] = output_dir + "/"
+        print self.config["general"]["bucket_output_dir"]
+
     def prepare_platform(self, sample_data):
 
         # Generate variables
@@ -228,7 +245,7 @@ class GoogleCompute(object):
     def finalize(self, sample_data, only_logs=False):
 
         # Generate destination prefix
-        dest_dir = "gs://davelab_temp/outputs/%s" % sample_data["sample_name"]
+        dest_dir = self.config["general"]["bucket_output_dir"] + sample_data["sample_name"]
 
         # Copy final outputs
         if not only_logs:

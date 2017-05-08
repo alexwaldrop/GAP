@@ -42,6 +42,7 @@ def main():
 
     # Check I/O of the pipeline, before starting the pipeline
     plat.check_input(config["sample"])
+    plat.check_output()
     node_manager.check_nodes()
 
     # Setting up the platform
