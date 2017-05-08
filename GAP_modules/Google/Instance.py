@@ -182,7 +182,7 @@ class Instance(object):
         commands_to_run = list()
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
-            commands_to_run.append( (process_tuple[0], process_tuple[1].get_command()) )
+            commands_to_run.append( (process_tuple[0], process_tuple[1].get_command(), process_tuple[1].log) )
 
         # Recreating the instance
         self.create()
@@ -191,8 +191,9 @@ class Instance(object):
         # Rerunning all the commands
         if len(commands_to_run):
             while len(commands_to_run) != 0:
-                proc_name, proc_cmd = commands_to_run.pop(0)
-                self.processes[proc_name] = GoogleProcess(proc_cmd, instance_id=self.google_id, shell=True)
+                proc_name, proc_cmd, proc_log = commands_to_run.pop(0)
+
+                self.run_command(proc_name, proc_cmd, log=proc_log)
                 self.wait_process(proc_name)
 
         # Set as done resetting
@@ -394,11 +395,16 @@ class Instance(object):
 
         # Generating process arguments
         kwargs = dict()
-        kwargs["instance_id"] = self.google_id
-        kwargs["shell"] = True
-        kwargs["log"] = log
-        kwargs["stdout"] = sp.PIPE
-        kwargs["stderr"] = sp.PIPE
+
+        # GoogleProcess specific arguments
+        kwargs["instance_id"]   = self.google_id
+        kwargs["log"]           = log
+        kwargs["cmd"]           = command
+
+        # Popen specific arguments
+        kwargs["shell"]         = True
+        kwargs["stdout"]        = sp.PIPE
+        kwargs["stderr"]        = sp.PIPE
 
         self.processes[job_name] = GoogleProcess(cmd, **kwargs)
 
@@ -436,7 +442,6 @@ class Instance(object):
 
         return self.processes[proc_name].is_done()
 
-
     def get_proc_output(self, proc_name):
         #wait for command to finish and return stdout, stderr using the Popen.Communicate()
 
@@ -448,7 +453,6 @@ class Instance(object):
 
         #return values from communicate
         return proc_obj.communicate()
-
 
     def wait_process(self, proc_name):
 
