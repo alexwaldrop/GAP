@@ -19,7 +19,7 @@ class GoogleCompute(object):
 
         self.instances      = {}
 
-        self.zone           = self.get_zone()
+        self.zone           = self.config["platform"]["zone"]
 
         self.pubsub         = GooglePubSub()
         self.logging        = GoogleLogging()
@@ -82,18 +82,6 @@ class GoogleCompute(object):
             exit(1)
 
         logging.info("Authentication to Google Cloud was successful.")
-
-    @staticmethod
-    def get_zone():
-
-        p = sp.Popen(["gcloud config list 2>/dev/null | grep \"zone\""], stdout = sp.PIPE, stderr = sp.PIPE, shell = True)
-        output = p.communicate()[0]
-
-        if len(output) != 0:
-            return output.strip().split("=")[-1]
-        else:
-            logging.info("No zone is specified in the local config file! 'us-east1-b' is selected by default!")
-            return "us-east1-b"
 
     def prepare_platform(self, sample_data):
 

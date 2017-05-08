@@ -37,7 +37,7 @@ class Instance(object):
         self.boot_disk_size     = kwargs.get("boot_disk_size",   60)
         self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
         self.is_preemptible     = kwargs.get("is_preemptible",   False)
-        self.zone               = kwargs.get("zone",             "us-east1-b")
+        self.zone               = kwargs.get("zone",             self.config["platform"]["zone"])
         self.ready_topic        = kwargs.get("ready_topic",      "ready")
         self.nr_local_ssd       = kwargs.get("nr_local_ssd",     0)
         self.start_up_script    = kwargs.get("start_up_script",  None)
