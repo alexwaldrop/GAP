@@ -24,6 +24,11 @@ class GATKHaplotypeCaller(Tool):
         self.nr_cpus    = 8
         self.mem        = self.nr_cpus * 4 # 4GB/vCPU
 
+        self.input_keys             = ["bam"]
+        self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
+        self.output_keys            = ["gvcf", "gvcf_idx"]
+        self.splitted_output_keys   = ["gvcf", "gvcf_idx"]
+
         self.bam = None
         self.L = None
         self.XL = None
@@ -32,25 +37,21 @@ class GATKHaplotypeCaller(Tool):
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
-        self.bam            = kwargs.get("bam",               self.sample_data["bam"])
+        self.bam            = kwargs.get("bam",               None)
+        self.BQSR           = kwargs.get("BQSR_report",       None)
         self.L              = kwargs.get("location",          None)
         self.XL             = kwargs.get("excluded_location", None)
         self.nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
         self.mem            = kwargs.get("mem",               self.mem)
         self.split_id       = kwargs.get("split_id",          None)
-        if "BQSR_report" in self.sample_data:
-            self.BQSR = kwargs.get("BQSR_report",             self.sample_data["BQSR_report"])
-        else:
-            self.BQSR = kwargs.get("BQSR_report",             None)
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
         if self.split_id is not None:
             gvcf = "%s_%d.g.vcf" % (bam_prefix, self.split_id)
-            idx = "%s.idx" % gvcf
         else:
             gvcf = "%s.g.vcf" % bam_prefix
-            idx = "%s.idx" % gvcf
+        idx = "%s.idx" % gvcf
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the haplotype caller options
@@ -81,9 +82,8 @@ class GATKHaplotypeCaller(Tool):
         hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Create output path
-        if self.split_id is None:
-            self.final_output = [gvcf, idx]
-        else:
-            self.output = gvcf
+        self.output = dict()
+        self.output["gvcf"]     = gvcf
+        self.output["gvcf_idx"] = idx
 
         return hc_cmd

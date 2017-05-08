@@ -21,14 +21,17 @@ class Trimmomatic(Tool):
         self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
         self.mem            = self.config["platform"]["MS_mem"]
 
+        self.input_keys     = ["R1", "R2"]
+        self.output_keys    = ["R1", "R1_unpair", "R2", "R2_unpair", "trim_report"]
+
         self.R1             = None
         self.R2             = None
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.R1                 = kwargs.get("R1",              self.sample_data["R1"])
-        self.R2                 = kwargs.get("R2",              self.sample_data["R2"])
+        self.R1                 = kwargs.get("R1",              None)
+        self.R2                 = kwargs.get("R2",              None)
         self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
         self.mem                = kwargs.get("mem",             self.mem)
 
@@ -37,6 +40,7 @@ class Trimmomatic(Tool):
         R1_unpair   = "%s/R1_%s_trimmed_unpaired.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         R2_pair     = "%s/R2_%s_trimmed.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         R2_unpair   = "%s/R2_%s_trimmed_unpaired.fastq" % (self.temp_dir, self.sample_data["sample_name"])
+        out_file    = "%s/%s_trimmed_output.txt" % (self.temp_dir, self.sample_data["sample_name"])
         steps       = [ "ILLUMINACLIP:%s:2:20:7:1:true" % self.adapters,
                         "LEADING:5",
                         "TRAILING:5",
@@ -46,13 +50,15 @@ class Trimmomatic(Tool):
         jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (self.mem*4/5, self.temp_dir)
 
         # Generating command
-        trim_cmd = "java %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s !LOG3!" % (
-            jvm_options, self.trimmomatic_jar, self.nr_cpus, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps))
+        trim_cmd = "java %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
+            jvm_options, self.trimmomatic_jar, self.nr_cpus, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps), out_file)
 
         # Change the input data to correct one
-        self.sample_data["R1_untrim"] = self.sample_data["R1"]
-        self.sample_data["R2_untrim"] = self.sample_data["R2"]
-        self.sample_data["R1"] = R1_pair
-        self.sample_data["R2"] = R2_pair
+        self.output = dict()
+        self.output["R1"] = R1_pair
+        self.output["R1_unpair"] = R1_unpair
+        self.output["R2"] = R2_pair
+        self.output["R2_unpair"] = R2_unpair
+        self.output["trim_report"] = out_file
 
         return trim_cmd

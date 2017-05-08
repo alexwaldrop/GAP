@@ -83,6 +83,28 @@ class GoogleCompute(object):
 
         logging.info("Authentication to Google Cloud was successful.")
 
+    def check_input(self, sample_data):
+
+        if len(sample_data["gs_input"]) == 0:
+            logging.error("No input has been provided to the pipeline!")
+            raise IOError("No input has been provided to the pipeline!")
+
+        logging.info("Checking pipeline I/O.")
+
+        has_errors = False
+
+        for file_type, gs_file_path in sample_data["gs_input"].iteritems():
+            cmd = "gsutil ls %s" % gs_file_path
+            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            out, err = proc.communicate()
+
+            if len(err) != 0:
+                has_errors = True
+                logging.error("Input file %s could not be accessed. The following error appeared: %s!" % (file_type, err))
+
+        if has_errors:
+            raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
+
     def prepare_platform(self, sample_data):
 
         # Generate variables
@@ -146,25 +168,31 @@ class GoogleCompute(object):
         self.instances["main-server"].create()
         self.instances["main-server"].wait_process("create")
 
-        # Adding new paths
-        sample_data["R1"] = "/data/R1_%s.fastq.gz" % sample_data["sample_name"]
-        sample_data["R2"] = "/data/R2_%s.fastq.gz" % sample_data["sample_name"]
+        # Generate options for fast copying
+        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
 
-        # Creating logging directory
+        # Create logging directory
         cmd = "mkdir -p /data/logs/"
         self.instances["main-server"].run_command("createLogDir", cmd, proc_wait=True)
 
-        # Copying input data
-        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
-        cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, sample_data["R1_source"], sample_data["R1"])
-        self.instances["main-server"].run_command("copyFASTQ_R1", cmd)
-
-        cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, sample_data["R2_source"], sample_data["R2"])
-        self.instances["main-server"].run_command("copyFASTQ_R2", cmd)
-
-        # Copying and configuring the softwares
+        # Copy and configure tools binaries
         cmd = "gsutil %s cp -r gs://davelab_data/tools /data/ !LOG3! ; bash /data/tools/setup.sh" % options_fast
         self.instances["main-server"].run_command("copyTools", cmd)
+
+        # Copy the input files
+        sample_data["input"] = dict()
+        for (file_type, gs_file_path) in sample_data["gs_input"].iteritems():
+
+            # Generating local path
+            filename = gs_file_path.split("/")[-1]
+            local_file_path = "/data/%s" % filename
+
+            # Registering local path for later use
+            sample_data["input"][file_type] = local_file_path
+
+            # Copying the file to the main server
+            cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, gs_file_path, local_file_path)
+            self.instances["main-server"].run_command("copyInput_%s" % file_type, cmd)
 
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
@@ -199,34 +227,31 @@ class GoogleCompute(object):
 
     def finalize(self, sample_data, only_logs=False):
 
+        # Generate destination prefix
+        dest_dir = "gs://davelab_temp/outputs/%s" % sample_data["sample_name"]
+
+        # Copy final outputs
         if not only_logs:
 
-            # Copying the bam, if exists
-            if "bam" in sample_data:
-                cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bam !LOG3!" % (sample_data["bam"], sample_data["sample_name"], sample_data["sample_name"])
-                self.instances["main-server"].run_command("copyBAM", cmd)
+            if "final_output" in sample_data:
+                for module_name, outputs in sample_data["final_output"].iteritems():
+                    if len(outputs) == 0:
+                        continue
 
-            # Copying the bam index, if exists
-            if "bam_index" in sample_data:
-                cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/%s.bai !LOG3!" % (sample_data["bam_index"], sample_data["sample_name"], sample_data["sample_name"])
-                self.instances["main-server"].run_command("copyBAI", cmd)
+                    elif len(outputs) == 1:
+                        cmd = "gsutil -m cp -r %s %s/ !LOG3!" % (outputs[0], dest_dir)
 
-            # Copying the output data, if exists
-            if "outputs" in sample_data:
-                for module_name, output_paths in sample_data["outputs"].iteritems():
-                    if len(output_paths) == 1:
-                        cmd = "gsutil -m cp -r %s gs://davelab_temp/outputs/%s/ !LOG3!" % (output_paths[0], sample_data["sample_name"])
                     else:
-                        cmd = "gsutil -m cp -r $path gs://davelab_temp/outputs/%s/%s/ !LOG3!" % (sample_data["sample_name"], module_name)
-                        cmd = "for path in %s; do %s & done" % (" ".join(output_paths), cmd)
+                        cmd = "gsutil -m cp -r $path %s/%s/ !LOG3!" % (dest_dir, module_name)
+                        cmd = "for path in %s; do %s & done; wait" % (" ".join(outputs), cmd)
 
                     self.instances["main-server"].run_command("copyOut_%s" % module_name, cmd)
 
             # Waiting for all the copying processes to be done
             self.instances["main-server"].wait_all()
 
-        # Copying the logs
-        cmd = "gsutil -m cp -r /data/logs gs://davelab_temp/outputs/%s/ !LOG0!" % (sample_data["sample_name"])
+        # Copy the logs
+        cmd = "gsutil -m cp -r /data/logs %s/ !LOG0!" % dest_dir
         if "main-server" in self.instances:
             self.instances["main-server"].run_command("copyLogs", cmd)
             self.instances["main-server"].wait_process("copyLogs")

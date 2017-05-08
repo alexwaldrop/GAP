@@ -10,24 +10,37 @@ class GATKReferenceSplitter(Splitter):
         self.config = config
         self.sample_data = sample_data
 
+        self.input_keys     = ["bam"]
+        self.output_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
+
+        self.bam            = None
+        self.BQSR_report    = None
+
     def get_command(self, **kwargs):
+
+        self.bam            = kwargs.get("bam",         None)
+        self.BQSR_report    = kwargs.get("BQSR_report", None)
 
         chrom_list = self.sample_data["chrom_list"]
 
         # Setting up the splits
         # Process each chromosome separately and process the rest in one single run
-        self.splits = list()
+        self.output = list()
         for chrom in chrom_list:
-            self.splits.append(
+            self.output.append(
                 {
-                    "location": chrom,
-                    "excluded_location": None
+                    "bam":                  self.bam,
+                    "BQSR_report":          self.BQSR_report,
+                    "location":             chrom,
+                    "excluded_location":    None
                 }
             )
-        self.splits.append(
+        self.output.append(
             {
-                "location": None,
-                "excluded_location": chrom_list
+                "bam":                  self.bam,
+                "BQSR_report":          self.BQSR_report,
+                "location":             None,
+                "excluded_location":    chrom_list
             }
         )
 

@@ -34,13 +34,21 @@ def main():
     else:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    # Setting up the platform
+    # Create platform
     plat = Platform(config)
+
+    # Create Node Manager
+    node_manager = NodeManager(config, plat)
+
+    # Check I/O of the pipeline, before starting the pipeline
+    plat.check_input(config["sample"])
+    node_manager.check_nodes()
+
+    # Setting up the platform
     plat.prepare_platform(config["sample"])
     plat.prepare_data(config["sample"], nr_local_ssd=5)
 
     # Running the modules
-    node_manager = NodeManager(config, plat)
     node_manager.run()
 
     # Copy the final results to the bucket

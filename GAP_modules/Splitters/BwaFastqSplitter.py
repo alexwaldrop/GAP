@@ -25,6 +25,9 @@ class BwaFastqSplitter(Splitter):
         self.nr_cpus     = self.config["platform"]["MS_nr_cpus"]
         self.mem         = self.config["platform"]["MS_mem"]
 
+        self.input_keys  = ["R1", "R2"]
+        self.output_keys = ["R1", "R2", "nr_cpus"]
+
         self.R1          = None
         self.R2          = None
 
@@ -52,8 +55,8 @@ class BwaFastqSplitter(Splitter):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.R1             = kwargs.get("R1",              self.sample_data["R1"])
-        self.R2             = kwargs.get("R2",              self.sample_data["R2"])
+        self.R1             = kwargs.get("R1",              None)
+        self.R2             = kwargs.get("R2",              None)
         self.nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
         self.mem            = kwargs.get("mem",             self.mem)
 
@@ -88,9 +91,9 @@ class BwaFastqSplitter(Splitter):
         nr_cpus_needed = int(math.ceil(nr_reads * self.READ_LENGTH * 2 * 1.0 / self.ALIGN_SPEED))
 
         # Preparing the splits. All splits will require MAX_NR_CPUS, except the last one
-        self.splits = list()
+        self.output = list()
         for split_id in xrange(nr_splits-1):
-            self.splits.append(
+            self.output.append(
                 {
                     "R1" : "%s/%s_%02d" % (self.temp_dir, self.prefix[0], split_id),
                     "R2" : "%s/%s_%02d" % (self.temp_dir, self.prefix[1], split_id),
@@ -101,7 +104,7 @@ class BwaFastqSplitter(Splitter):
         # Adding the last split
         nr_cpus_remaining = nr_cpus_needed % self.MAX_NR_CPUS
         nr_cpus_remaining += nr_cpus_remaining % 2
-        self.splits.append(
+        self.output.append(
             {
                 "R1": "%s/%s_%02d" % (self.temp_dir, self.prefix[0], nr_splits-1),
                 "R2": "%s/%s_%02d" % (self.temp_dir, self.prefix[1], nr_splits-1),

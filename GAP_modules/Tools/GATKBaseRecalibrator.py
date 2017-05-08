@@ -12,21 +12,24 @@ class GATKBaseRecalibrator(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.java = self.config["paths"]["java"]
-        self.GATK = self.config["paths"]["gatk"]
-        self.samtools = self.config["paths"]["samtools"]
+        self.java           = self.config["paths"]["java"]
+        self.GATK           = self.config["paths"]["gatk"]
+        self.samtools       = self.config["paths"]["samtools"]
 
-        self.ref = self.config["paths"]["ref"]
-        self.dbsnp = self.config["paths"]["dbsnp"]
+        self.ref            = self.config["paths"]["ref"]
+        self.dbsnp          = self.config["paths"]["dbsnp"]
 
-        self.temp_dir = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["general"]["temp_dir"]
 
-        self.can_split = False
+        self.can_split      = False
 
-        self.nr_cpus = self.config["platform"]["MS_nr_cpus"]
-        self.mem = self.config["platform"]["MS_mem"]
+        self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
+        self.mem            = self.config["platform"]["MS_mem"]
 
-        self.bam = None
+        self.input_keys     = ["bam"]
+        self.output_keys    = ["BQSR_report"]
+
+        self.bam            = None
 
     def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
@@ -67,9 +70,9 @@ class GATKBaseRecalibrator(Tool):
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
-        self.bam            = kwargs.get("bam", self.sample_data["bam"])
-        self.nr_cpus        = kwargs.get("nr_cpus", self.nr_cpus)
-        self.mem            = kwargs.get("mem", self.mem)
+        self.bam            = kwargs.get("bam",         None)
+        self.nr_cpus        = kwargs.get("nr_cpus",     self.nr_cpus)
+        self.mem            = kwargs.get("mem",         self.mem)
 
         # Generating variables
         bam_prefix = self.bam.split(".")[0]
@@ -98,7 +101,7 @@ class GATKBaseRecalibrator(Tool):
         br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Generating the output path
-        self.sample_data["BQSR_report"] = recalib_report
-        self.final_output = recalib_report
+        self.output = dict()
+        self.output["BQSR_report"]  = recalib_report
 
         return br_cmd

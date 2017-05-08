@@ -23,7 +23,10 @@ class SamtoolsBAMMerge(Merger):
         self.nr_cpus      = self.config["platform"]["MS_nr_cpus"]
         self.mem          = self.config["platform"]["MS_mem"]
 
-        self.inputs       = None
+        self.input_keys   = ["bam"]
+        self.output_keys  = ["bam"]
+
+        self.bam_list     = None
         self.sorted_input = None
 
     def get_command(self, **kwargs):
@@ -31,20 +34,22 @@ class SamtoolsBAMMerge(Merger):
         # Obtaining the arguments
         self.nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
         self.mem            = kwargs.get("mem",             self.mem)
-        self.inputs         = kwargs.get("inputs",          None)
+        self.bam_list       = kwargs.get("bam",             None)
         self.sorted_input   = kwargs.get("sorted_input",    True)
 
-        if self.inputs is None:
+        if self.bam_list is None:
             logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
             return None
 
         # Generating the output
-        self.sample_data["bam"] = "%s/%s_%s.bam" % (self.temp_dir, self.sample_name, hashlib.md5(str(time.time())).hexdigest()[:5])
+        bam_output = "%s/%s_%s.bam" % (self.temp_dir, self.sample_name, hashlib.md5(str(time.time())).hexdigest()[:5])
+        self.output = dict()
+        self.output["bam"] = bam_output
 
         # Generating the merging command
         if self.sorted_input:
-            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.samtools, self.nr_cpus, self.sample_data["bam"], " ".join(self.inputs))
+            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.samtools, self.nr_cpus, bam_output, " ".join(self.bam_list))
         else:
-            bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, self.sample_data["bam"], " ".join(self.inputs))
+            bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, bam_output, " ".join(self.bam_list))
 
         return bam_merge_cmd

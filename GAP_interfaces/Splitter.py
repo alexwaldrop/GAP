@@ -1,25 +1,42 @@
-import logging
 import abc
 
+from GAP_interfaces import ABCMetaEnhanced
+
 class Splitter(object):
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = ABCMetaEnhanced
 
     def __init__(self):
-        self.splits = None
-        self.final_output = None
+        self.output = None
+
+        self.input_keys  = None
+        self.output_keys = None
+
+    def check_init(self):
+        cls_name = self.__class__.__name__
+
+        # Generate the set of keys that are required for a class instance
+        required_keys = {
+            "input_keys":   self.input_keys,
+            "output_keys":  self.output_keys,
+        }
+
+        # Check if class instance has initialized all the attributes
+        for (key_name, attribute) in required_keys.iteritems():
+            if attribute is None:
+                raise NotImplementedError(
+                    "In module %s, the attribute \"%s\" was not initialized!" % (cls_name, key_name))
+
+    def check_input(self, provided_keys):
+        return [ key for key in self.input_keys if key not in provided_keys ]
+
+    def define_output(self):
+        return self.output_keys
+
+    def get_output(self):
+        return self.output
 
     def get_nr_splits(self):
-        return len(self.get_splits())
-
-    def get_splits(self):
-        if self.splits is None:
-            logging.error("No splits data is defined! Please initialize the attribute \"nr_splits\" with the splits data!")
-            raise NotImplementedError("Splitter class does not have a required \"splits\" attribute!")
-
-        return self.splits
-
-    def get_final_output(self):
-        return self.final_output
+        return len(self.get_output())
 
     @abc.abstractmethod
     def get_command(self, **kwargs):

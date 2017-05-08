@@ -24,6 +24,11 @@ class GATKPrintReads(Tool):
         self.nr_cpus    = 2
         self.mem        = 5
 
+        self.input_keys             = ["bam", "BQSR_report"]
+        self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
+        self.output_keys            = ["bam"]
+        self.splitted_output_keys   = ["bam"]
+
         self.bam        = None
         self.L          = None
         self.XL         = None
@@ -32,10 +37,10 @@ class GATKPrintReads(Tool):
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
-        self.bam            = kwargs.get("bam",               self.sample_data["bam"])
+        self.bam            = kwargs.get("bam",               None)
         self.L              = kwargs.get("location",          None)
         self.XL             = kwargs.get("excluded_location", None)
-        self.BQSR           = kwargs.get("BQSR_report",       self.sample_data["BQSR_report"])
+        self.BQSR           = kwargs.get("BQSR_report",       None)
         self.nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
         self.mem            = kwargs.get("mem",               self.mem)
         self.split_id       = kwargs.get("split_id",          None)
@@ -44,10 +49,8 @@ class GATKPrintReads(Tool):
         bam_prefix = self.bam.split(".")[0]
         if self.split_id is None:
             recalib_bam = "%s_recalib.bam" % bam_prefix
-            recalib_bam_idx = "%s_recalib.bai" % bam_prefix
         else:
             recalib_bam = "%s_recalib_%d.bam" % (bam_prefix, self.split_id)
-            recalib_bam_idx = "%s_recalib_%d.bai" % (bam_prefix, self.split_id)
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
 
         # Generating the haplotype caller options
@@ -76,9 +79,7 @@ class GATKPrintReads(Tool):
         pr_cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
 
         # Create output path
-        if self.split_id is None:
-            self.sample_data["bam"] = recalib_bam
-            self.sample_data["bam_index"] = recalib_bam_idx
-        self.output = recalib_bam
+        self.output = dict()
+        self.output["bam"] = recalib_bam
 
         return pr_cmd

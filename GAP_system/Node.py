@@ -92,7 +92,7 @@ class Node(threading.Thread):
                 raise exc_info[0], exc_info[1], exc_info[2]
 
 
-    def __init__(self, config, platform, sample_data, module_name):
+    def __init__(self, config, platform, sample_data, module_name, final_output_keys):
         super(Node, self).__init__()
 
         self.daemon = True
@@ -111,8 +111,11 @@ class Node(threading.Thread):
             logging.error("Module %s cannot be imported!" % module_name)
             exit(1)
 
+        # Identify if the node is running in split mode
+        self.is_split_mode = self.main_obj.can_split and self.config["general"]["split"]
+
         # Importing splitter and merger:
-        if self.main_obj.can_split:
+        if self.is_split_mode:
 
             try:
                 self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
@@ -128,6 +131,9 @@ class Node(threading.Thread):
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
                 exit(1)
 
+        self.input_data = None
+        self.final_output_keys  = final_output_keys
+
         self.split_outputs = None
         self.main_outputs  = None
         self.merge_outputs = None
@@ -142,16 +148,14 @@ class Node(threading.Thread):
         merge_job_name  = "%s_merge" % self.module_name
 
         # Running the splitter
-        cmd = self.split_obj.get_command()
+        cmd = self.split_obj.get_command(**self.input_data)
+
         if cmd is not None:
             self.platform.instances["main-server"].run_command(split_job_name, cmd)
             self.platform.instances["main-server"].wait_process(split_job_name)
 
-        # Obtaining the splits
-        self.split_outputs = self.split_obj.get_splits()
-
-        # Obtaining output that will be saved at the end of the pipeline
-        self.set_final_output(self.split_obj.get_final_output())
+        # Obtaining the splitter outputs
+        self.split_outputs = self.split_obj.get_output()
 
         self.main_outputs = list()
 
@@ -164,9 +168,6 @@ class Node(threading.Thread):
 
             # Obtaining the main output
             self.main_outputs.append(self.main_obj.get_output())
-
-            # Obtaining output that will be saved at the end of the pipeline
-            self.set_final_output(self.main_obj.get_final_output())
 
             # Checking if there is command to run
             if cmd is not None:
@@ -189,21 +190,26 @@ class Node(threading.Thread):
         for server_thread in split_servers.itervalues():
             server_thread.wait()
 
+        # Convert the input to a dictionary of lists
+        merge_input = dict()
+        for key in self.main_outputs[0]:
+            merge_input[key] = [ main_output[key] for main_output in self.main_outputs]
+
         # Running the merger
-        cmd = self.merge_obj.get_command(inputs=self.main_outputs)
+        cmd = self.merge_obj.get_command(**merge_input)
         self.platform.instances["main-server"].run_command(merge_job_name, cmd)
         self.platform.instances["main-server"].wait_process(merge_job_name)
 
-        # Obtaining output that will be saved at the end of the pipeline
-        self.set_final_output(self.merge_obj.get_final_output())
+        # Obtaining the merger outputs
+        self.merge_outputs = self.merge_obj.get_output()
 
     def run_normal(self):
 
         # Obtaining main command
-        cmd = self.main_obj.get_command()
+        cmd = self.main_obj.get_command(**self.input_data)
 
         # Obtaining output that will be saved at the end of the pipeline
-        self.set_final_output(self.main_obj.get_final_output())
+        self.main_outputs = self.main_obj.get_output()
 
         if cmd is None:
             logging.debug("Module %s has generated no command." % self.module_name)
@@ -216,10 +222,12 @@ class Node(threading.Thread):
 
         try:
 
-            if self.main_obj.can_split and self.config["general"]["split"]:
+            if self.is_split_mode:
                 self.run_split()
             else:
                 self.run_normal()
+
+            self.set_final_output()
 
         except BaseException as e:
             if e.message != "":
@@ -230,27 +238,134 @@ class Node(threading.Thread):
         finally:
             self.complete = True
 
-    def set_final_output(self, output):
+    def check_input(self, input_keys):
 
-        def flatten(lst):
-            if isinstance(lst, list):
-                return [x for el in lst for x in flatten(el)]
-            else:
-                return [lst]
+        if self.is_split_mode:
 
-        # Checking if there is output to set
-        if output is None:
-            return
+            # Checking the splitter
+            not_found_keys      = self.split_obj.check_input(input_keys)
+            if not_found_keys:
+                return "The splitter expected the following input keys: %s!" % " ".join(not_found_keys)
 
-        # Ensuring the "outputs" key is present
-        if "outputs" not in self.sample_data:
-            self.sample_data["outputs"] = dict()
+            # Checking the main object
+            split_output_keys   = self.split_obj.define_output()
+            not_found_keys      = self.main_obj.check_input(split_output_keys, splitted=True)
+            if not_found_keys:
+                return "The following input keys were expected from the splitter: %s!" % " ".join(not_found_keys)
 
-        # Setting the output as pipeline output
-        if self.module_name in self.sample_data["outputs"]:
-            self.sample_data["outputs"][self.module_name].extend(flatten(output))
+            # Checking the merger
+            main_output_keys    = self.main_obj.define_output(splitted=True)
+            not_found_keys      = self.merge_obj.check_input(main_output_keys)
+            if not_found_keys:
+                return "The merger expected the following input keys: %s!" % " ".join(not_found_keys)
+
         else:
-            self.sample_data["outputs"][self.module_name] = flatten(output)
+            not_found_keys      = self.main_obj.check_input(input_keys)
+            if not_found_keys:
+                return "The following input keys were expected: %s" % " ".join(not_found_keys)
+
+        # Input is correct
+        return None
+
+    def check_output(self, output_keys):
+
+        # If empty set of output keys are required, no need to check output anymore
+        if len(output_keys) == 0:
+            return None
+
+        output_keys_list = list()
+
+        if self.is_split_mode:
+
+            output_keys_list.extend(self.split_obj.define_output())
+            output_keys_list.extend(self.main_obj.define_output())
+            output_keys_list.extend(self.merge_obj.define_output())
+
+        else:
+
+            output_keys_list.extend(self.main_obj.define_output())
+
+        not_found = list()
+        for key in output_keys:
+            if key not in output_keys_list:
+                not_found.append(key)
+
+        if not_found:
+            return "The following keys could not be found in the output: %s" % " ".join(not_found)
+        else:
+            return None
+
+    def define_output(self):
+        if self.is_split_mode:
+            return self.merge_obj.define_output()
+        else:
+            return self.main_obj.define_output()
+
+    def set_input(self, input_list):
+
+        # Convert from list of dictionary to dictionary of lists
+        input_data = dict()
+        for input_dict in input_list:
+            for key in input_dict:
+
+                # Initialize the input_data
+                if key not in input_data:
+                    input_data[key] = list()
+
+                # Add value to the input data
+                input_data[key].append( input_dict[key] )
+
+        # Each list of one element, will be converted to the element
+        self.input_data = dict()
+        for key in input_data:
+            if len(input_data[key]) == 1:
+                self.input_data[key] = input_data[key][0]
+            else:
+                self.input_data[key] = input_data[key]
+
+        logging.debug("Module %s has received the following input: %s" % (self.module_name, self.input_data))
+
+    def get_output(self):
+        if self.is_split_mode:
+            return self.merge_outputs
+        else:
+            return self.main_outputs
+
+    def set_final_output(self):
+
+        # Initialize the final output in the sample_data
+        if "final_output" not in self.sample_data:
+            self.sample_data["final_output"] = dict()
+
+        # Check if the module is already in the final_output
+        if self.module_name not in self.sample_data["final_output"]:
+            self.sample_data["final_output"][self.module_name] = list()
+
+        # Get every key that is first found in the merger output or the splits output
+        for key in self.final_output_keys:
+
+            # Add all the paths to the final output depending on the running method
+            if self.is_split_mode:
+
+                # Search the key in the merger output
+                if key in self.merge_outputs:
+                    self.sample_data["final_output"][self.module_name].append( self.merge_outputs[key] )
+
+                # Search the key in the main object output
+                elif key in self.main_outputs[0]:
+                    for main_output in self.main_outputs:
+                        self.sample_data["final_output"][self.module_name].append( main_output[key] )
+
+                # Search the key in the splitter output
+                elif key in self.split_outputs[0]:
+                    for split_output in self.split_outputs:
+                        self.sample_data["final_output"][self.module_name].append( split_output[key] )
+
+            else:
+
+                # Search the key in the main object output
+                if key in self.main_outputs:
+                    self.sample_data["final_output"][self.module_name].append( self.main_outputs[key] )
 
     def finalize(self):
 

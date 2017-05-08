@@ -26,10 +26,15 @@ class PicardMarkDuplicates(Tool):
         self.is_aligned     = None
         self.split_id       = None
 
+        self.input_keys             = ["bam"]
+        self.splitted_input_keys    = ["bam", "is_aligned"]
+        self.output_keys            = ["bam", "MD_report"]
+        self.splitted_output_keys   = ["bam", "MD_report"]
+
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.bam        = kwargs.get("bam",         self.sample_data["bam"])
+        self.bam        = kwargs.get("bam",         None)
         self.is_aligned = kwargs.get("is_aligned",  True)
         self.nr_cpus    = kwargs.get("nr_cpus",     self.nr_cpus)
         self.mem        = kwargs.get("mem",         self.mem)
@@ -37,7 +42,9 @@ class PicardMarkDuplicates(Tool):
 
         # If the obtained bam contains unaligned reads, skip the process
         if not self.is_aligned:
-            self.output = self.bam
+            self.output = dict()
+            self.output["bam"] = self.bam
+            self.output["MD_report"] = ""
             return None
 
         # Generating variables
@@ -59,10 +66,8 @@ class PicardMarkDuplicates(Tool):
         mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
 
         # Generating the output path
-        if self.split_id is None:
-            self.final_output = [bam_marked, metrics]
-        else:
-            self.output = bam_marked
-            self.final_output = metrics
+        self.output = dict()
+        self.output["bam"] = bam_marked
+        self.output["MD_report"] = metrics
 
         return mark_dup_cmd

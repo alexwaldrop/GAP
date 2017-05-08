@@ -21,26 +21,26 @@ class SamtoolsIndex(Tool):
         self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
         self.mem            = self.config["platform"]["MS_mem"]
 
+        self.input_keys     = ["bam"]
+        self.output_keys    = ["bam_idx"]
+
         self.bam            = None
 
     def get_command(self, **kwargs):
 
-        # Obtaining the arguments
-        if "bam" not in self.sample_data:
-            logging.error("BAM index could not be obtained as no bam was obtained.")
-            return None
-        else:
-            self.bam                = kwargs.get("bam",              self.sample_data["bam"])
+        self.bam                    = kwargs.get("bam",              None)
         self.nr_cpus                = kwargs.get("nr_cpus",          self.nr_cpus)
         self.mem                    = kwargs.get("mem",              self.mem)
 
         # Generate index name
         bam_prefix = self.bam.split(".")[0]
+        bam_index = "%s.bai" % bam_prefix
 
         # Generating indexing command
-        index_cmd = "%s index %s %s.bai" % (self.samtools, self.bam, bam_prefix)
+        index_cmd = "%s index %s %s" % (self.samtools, self.bam, bam_index)
 
         # Generating the output paths
-        self.sample_data["bam_index"] = "%s.bai" % bam_prefix
+        self.output = dict()
+        self.output["bam_idx"] = bam_index
 
         return index_cmd
