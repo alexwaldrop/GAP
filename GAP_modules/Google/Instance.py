@@ -46,7 +46,6 @@ class Instance(object):
         self.main_server        = kwargs.get("main_server",      None)
         self.instance_type      = kwargs.get("instance_type",    self.get_inst_type())
 
-        self.attached_disks     = list()
         self.processes          = OrderedDict()
 
         self.is_resetting       = False
@@ -319,14 +318,14 @@ class Instance(object):
             self.mem = custom_inst["mem"]
             return custom_inst["type_name"]
 
-    def attach_disk(self, disk, read_only=True):
+    def attach_disk(self, disk_name, read_only=True):
 
         args = list()
 
         args.append("gcloud compute instances attach-disk %s" % self.name)
 
         args.append("--disk")
-        args.append(disk.name)
+        args.append(disk_name)
 
         args.append("--mode")
         if read_only:
@@ -337,28 +336,24 @@ class Instance(object):
         args.append("--zone")
         args.append(self.zone)
 
-        self.attached_disks.append(disk)
-
         with open(os.devnull, "w") as devnull:
-            self.processes["attach_disk_%s" % disk.name] = GoogleProcess(" ".join(args), instance_id=self.google_id,
+            self.processes["attach_disk_%s" % disk_name] = GoogleProcess(" ".join(args), instance_id=self.google_id,
                                                                          stdout=devnull, stderr=devnull, shell=True)
 
-    def detach_disk(self, disk):
+    def detach_disk(self, disk_name):
 
         args = list()
 
         args.append("gcloud compute instances detach-disk %s" % self.name)
 
         args.append("--disk")
-        args.append(disk.name)
+        args.append(disk_name)
 
         args.append("--zone")
         args.append(self.zone)
 
-        self.attached_disks.remove(disk)
-
         with open(os.devnull, "w") as devnull:
-            self.processes["detach_disk_%s" % disk.name] =  GoogleProcess(" ".join(args), instance_id = self.google_id,
+            self.processes["detach_disk_%s" % disk_name] =  GoogleProcess(" ".join(args), instance_id = self.google_id,
                                                                           stdout=devnull, stderr=devnull, shell=True)
 
     def run_command(self, job_name, command, log=True, proc_wait=False):

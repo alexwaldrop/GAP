@@ -2,7 +2,6 @@ from GoogleException import GoogleException
 from GoogleProcess import GoogleProcess
 
 from Instance import Instance
-from Disk import Disk
 
 from GoogleLogging import GoogleLogging
 
@@ -13,7 +12,7 @@ from GooglePubSub import GooglePubSub
 from GoogleCompute import GoogleCompute
 
 __all__ =["GoogleException", "GoogleProcess",
-          "Instance", "Disk",
+          "Instance",
           "GoogleLogging",
           "GoogleReadySubscriber", "GooglePreemptedSubscriber", "GooglePubSub",
           "GoogleCompute"]

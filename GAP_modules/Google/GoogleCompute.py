@@ -18,7 +18,6 @@ class GoogleCompute(object):
         self.authenticate()
 
         self.instances      = {}
-        self.disks          = {}
 
         self.zone           = self.get_zone()
 
@@ -49,23 +48,6 @@ class GoogleCompute(object):
                     instance_obj.wait_process("destroy")
                 except GoogleException:
                     logging.info("(%s) Could not destroy instance!" % instance_name)
-
-        if hasattr(self, "disks"):
-
-            # Destroying all the disks
-            for disk_name, disk_obj in self.disks.iteritems():
-                if disk_obj.processes.get("destroy") is None:
-                    try:
-                        disk_obj.destroy()
-                    except GoogleException:
-                        logging.info("(%s) Could not destroy disk!" % disk_name)
-
-            # Waiting for the disks to be destroyed
-            for disk_name, disk_obj in self.disks.iteritems():
-                try:
-                    disk_obj.wait_process("destroy")
-                except GoogleException:
-                    logging.info("(%s) Could not destroy disk!" % disk_name)
 
         if hasattr(self, "ready_subscriber"):
             if self.ready_subscriber is not None:
