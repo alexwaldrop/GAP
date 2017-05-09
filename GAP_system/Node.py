@@ -138,7 +138,7 @@ class Node(threading.Thread):
         self.main_outputs  = None
         self.merge_outputs = None
 
-        self.complete      = False
+        self.finished      = False
 
     def run_split(self):
 
@@ -236,7 +236,7 @@ class Node(threading.Thread):
         else:
             self.exception_queue.put(None)
         finally:
-            self.complete = True
+            self.finished = True
 
     def check_input(self, input_keys):
 

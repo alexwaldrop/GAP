@@ -77,7 +77,7 @@ class NodeManager(object):
                     continue
 
                 # Check if tool has finished running
-                if self.nodes[tool_id].complete:
+                if self.nodes[tool_id].finished:
                     self.nodes[tool_id].finalize()
                     logging.info("Module '%s' has finished!" % self.modules[tool_id])
                     completed.append(tool_id)
@@ -93,7 +93,7 @@ class NodeManager(object):
                 # Check if all the required tools are complete
                 ready = True
                 for required_tool_id in self.requires[tool_id]:
-                    if required_tool_id != "main_input" and not self.nodes[required_tool_id].complete:
+                    if required_tool_id != "main_input" and required_tool_id not in completed:
                         ready = False
                         break
 
