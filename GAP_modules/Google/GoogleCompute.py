@@ -1,6 +1,7 @@
 import os
 import subprocess as sp
 import logging
+import json
 
 from GAP_modules.Google import GoogleException
 from GAP_modules.Google import Instance
@@ -14,20 +15,50 @@ class GoogleCompute(object):
     def __init__(self, config):
         self.config         = config
 
-        self.key_location   = "keys/Davelab_GAP_key.json"
+        # Get google access fields from JSON file
+        self.key_location   = self.config["platform"]["service_account_key_file"]
+        self.service_acct   = self.get_info_from_key_file(self.key_location, "client_email")
+        self.google_project = self.get_info_from_key_file(self.key_location, "project_id")
+
+        # Use authentication key file to gain acces to google cloud project using Oauth2 authentication
         self.authenticate()
 
+        # Dictionary of instances managed by the platform
         self.instances      = {}
 
+        # Google compute zone
         self.zone           = self.config["platform"]["zone"]
 
+        # Standardize formatting of directories specified in config
+        self.config["general"]["instance_wrk_dir"]  = self.format_dir(self.config["general"]["instance_wrk_dir"])
+        self.config["general"]["instance_log_dir"]  = self.format_dir(self.config["general"]["instance_log_dir"])
+        self.config["general"]["instance_tmp_dir"]  = self.format_dir(self.config["general"]["instance_tmp_dir"])
+        self.config["general"]["bucket_output_dir"] = self.format_dir(self.config["general"]["bucket_output_dir"])
+
+        # Set common directories as attributes so we don't have to type massively long variable names
+        self.wrk_dir            = self.config["general"]["instance_wrk_dir"]
+        self.log_dir            = self.config["general"]["instance_log_dir"]
+        self.tmp_dir            = self.config["general"]["instance_tmp_dir"]
+        self.bucket_output_dir  = self.config["general"]["bucket_output_dir"]
+
+        # Check to make sure bucket output directory is a valid google bucket directory
+        self.check_output_dir()
+
+        # Check to make sure startup/shutdown scripts exist on bucket
+        self.check_startup_shutdown_scripts()
+
+        # Create clients for using Google PubSub and Google Stackdriver Logging
         self.pubsub         = GooglePubSub()
         self.logging        = GoogleLogging()
 
-        self.ready_topic    = None
-
+        # Name of PubSub topic/subscription for posting instance creation status updates
+        self.ready_topic        = None
         self.ready_subscriber   = None
+
+        # Name of PubSub topic/subsription for posting instance preemption status updates
+        self.preempt_topic      = None
         self.preempt_subscriber = None
+
 
     def clean_up(self):
 
@@ -83,44 +114,6 @@ class GoogleCompute(object):
 
         logging.info("Authentication to Google Cloud was successful.")
 
-    def check_input(self, sample_data):
-
-        if len(sample_data["gs_input"]) == 0:
-            logging.error("No input has been provided to the pipeline!")
-            raise IOError("No input has been provided to the pipeline!")
-
-        logging.info("Checking pipeline I/O.")
-
-        has_errors = False
-
-        for file_type, gs_file_path in sample_data["gs_input"].iteritems():
-            cmd = "gsutil ls %s" % gs_file_path
-            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-            out, err = proc.communicate()
-
-            if len(err) != 0:
-                has_errors = True
-                logging.error("Input file %s could not be accessed. The following error appeared: %s!" % (file_type, err))
-
-        if has_errors:
-            raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
-
-    def check_output(self):
-        #check to make sure output bucket for final output is a valid google bucket address
-
-        logging.info("Checking pipeline output directory.")
-
-        output_dir = self.config["general"]["bucket_output_dir"]
-
-        #check to make sure string starts with gs://
-        if output_dir[0:5] != "gs://":
-            logging.error("Output directory specified in config does not begin with 'gs://': %s" % output_dir)
-            raise IOError("The output directory provided is not a valid google bucket directory string. Please check the error messages above!")
-
-        #make sure output bucket directory ends with '/'
-        output_dir = output_dir.rstrip('/')
-        self.config["general"]["bucket_output_dir"] = "%s/" % output_dir
-
     def prepare_platform(self, sample_data):
 
         # Generate variables
@@ -129,14 +122,15 @@ class GoogleCompute(object):
         preempt_topic = "preempted_topic_%s" % sample_data["sample_name"]
         preempt_sub = "preempted_sub_%s" % sample_data["sample_name"]
         log_sink_name = "preempted_sink_%s" % sample_data["sample_name"]
-        log_sink_dest = "pubsub.googleapis.com/projects/davelab-gcloud/topics/%s" % preempt_topic
+        log_sink_dest = "pubsub.googleapis.com/projects/%s/topics/%s" % (self.google_project, preempt_topic)
         log_sink_filter = "jsonPayload.event_subtype:compute.instances.preempted"
 
         # Create topics
         logging.debug("Configuring Google Pub/Sub.")
         self.pubsub.create_topic(ready_topic)
         self.pubsub.create_topic(preempt_topic)
-        self.ready_topic = ready_topic
+        self.ready_topic   = ready_topic
+        self.preempt_topic = preempt_topic
 
         # Create subscrptions
         self.pubsub.create_subscription(ready_sub, ready_topic)
@@ -171,13 +165,22 @@ class GoogleCompute(object):
     def prepare_data(self, sample_data, **kwargs):
 
         # Generating arguments dictionary
-        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",         self.config["platform"]["MS_nr_cpus"])
-        kwargs["mem"]               = kwargs.get("mem",             self.config["platform"]["MS_mem"])
-        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",    self.config["platform"]["MS_local_ssds"])
-        kwargs["is_preemptible"]    = False
-        kwargs["is_server"]         = True
-        kwargs["ready_topic"]       = self.ready_topic
-        kwargs["instances"]         = self.instances
+        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",             self.config["platform"]["MS_nr_cpus"])
+        kwargs["mem"]               = kwargs.get("mem",                 self.config["platform"]["MS_mem"])
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        self.config["platform"]["MS_local_ssds"])
+        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",      False)
+        kwargs["is_server"]         = kwargs.get("is_server",           True)
+        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
+        kwargs["instances"]         = kwargs.get("instances",           self.instances)
+        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
+        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
+        kwargs["zone"]              = kwargs.get("zone",                self.zone)
+        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
+        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
+        kwargs["start_up_script"]   = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
+        kwargs["shutdown_script"]   = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
+        kwargs["instance_log_dir"]  = kwargs.get("instance_log_dir",    self.log_dir)
+
 
         # Create the main server
         self.instances["main-server"] = Instance(self.config, "main-server", **kwargs)
@@ -187,12 +190,16 @@ class GoogleCompute(object):
         # Generate options for fast copying
         options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
 
+        # Create tmp directory
+        cmd = "mkdir -p %s" % self.tmp_dir
+        self.instances["main-server"].run_command("createTmpDir", cmd, proc_wait=True)
+
         # Create logging directory
-        cmd = "mkdir -p /data/logs/"
+        cmd = "mkdir -p %s" % self.log_dir
         self.instances["main-server"].run_command("createLogDir", cmd, proc_wait=True)
 
         # Copy and configure tools binaries
-        cmd = "gsutil %s cp -r gs://davelab_data/tools /data/ !LOG3! ; bash /data/tools/setup.sh" % options_fast
+        cmd = "gsutil %s cp -r gs://davelab_data/tools %s !LOG3! ; bash %stools/setup.sh" % (options_fast, self.wrk_dir, self.wrk_dir)
         self.instances["main-server"].run_command("copyTools", cmd)
 
         # Copy the input files
@@ -201,7 +208,7 @@ class GoogleCompute(object):
 
             # Generating local path
             filename = gs_file_path.split("/")[-1]
-            local_file_path = "/data/%s" % filename
+            local_file_path = "%s%s" % (self.wrk_dir, filename)
 
             # Registering local path for later use
             sample_data["input"][file_type] = local_file_path
@@ -230,12 +237,20 @@ class GoogleCompute(object):
             logging.error("(%s) Cannot create instance, because the required amount of memory has not been specified!" % server_name)
             raise GoogleException(server_name)
 
-        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",    0)
-        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",  True)
-        kwargs["is_server"]         = False
-        kwargs["ready_topic"]       = self.ready_topic
-        kwargs["instances"]         = self.instances
-        kwargs["main_server"]       = "main-server"
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        0)
+        kwargs["is_server"]         = kwargs.get("is_server",           False)
+        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
+        kwargs["instances"]         = kwargs.get("instances",           self.instances)
+        kwargs["main_server"]       = kwargs.get("main_server",         "main-server")
+        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
+        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
+        kwargs["zone"]              = kwargs.get("zone",                self.zone)
+        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
+        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
+        kwargs["start_up_script"]   = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
+        kwargs["shutdown_script"]   = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
+        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",      self.config["platform"]["is_split_preemptible"])
+        kwargs["instance_log_dir"]  = kwargs.get("instance_log_dir",    self.log_dir)
 
         # Creating the split servers
         self.instances[server_name] = Instance(self.config, server_name, **kwargs)
@@ -244,7 +259,7 @@ class GoogleCompute(object):
     def finalize(self, sample_data, only_logs=False):
 
         # Generate destination prefix
-        dest_dir = "%s%s" % (self.config["general"]["bucket_output_dir"], sample_data["sample_name"])
+        dest_dir = os.path.join(self.bucket_output_dir, sample_data["sample_name"])
 
         # Copy final outputs
         if not only_logs:
@@ -267,7 +282,92 @@ class GoogleCompute(object):
             self.instances["main-server"].wait_all()
 
         # Copy the logs
-        cmd = "gsutil -m cp -r /data/logs %s/ !LOG0!" % dest_dir
+        cmd = "gsutil -m cp -r %s %s/ !LOG0!" % (self.log_dir, dest_dir)
         if "main-server" in self.instances:
             self.instances["main-server"].run_command("copyLogs", cmd)
             self.instances["main-server"].wait_process("copyLogs")
+
+    def check_input(self, sample_data):
+        # Check to see if input data exists on google bucket
+        if len(sample_data["gs_input"]) == 0:
+            logging.error("No input has been provided to the pipeline!")
+            raise IOError("No input has been provided to the pipeline!")
+
+        logging.info("Checking pipeline I/O.")
+
+        has_errors = False
+
+        for file_type, gs_file_path in sample_data["gs_input"].iteritems():
+            cmd = "gsutil ls %s" % gs_file_path
+            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            out, err = proc.communicate()
+
+            if len(err) != 0:
+                has_errors = True
+                logging.error("Input file %s could not be accessed. The following error appeared: %s!" % (file_type, err))
+
+        if has_errors:
+            raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
+
+    def check_startup_shutdown_scripts(self):
+
+        # Checks to see if startup/shutdown scripts exists on google bucket
+        logging.info("Checking existence of startup/shutdown scripts.")
+
+        startup_script  = self.config["platform"]["start_up_script"]
+        shutdown_script = self.config["platform"]["shutdown_script"]
+
+        if startup_script is not None:
+            if not self.bucket_file_exists(startup_script):
+                logging.error("Start-up script not found on Google Bucket system: %s" % startup_script)
+                raise IOError("Startup script could not be located on google bucket system. Please check the error messages above!")
+
+        if shutdown_script is not None:
+            if not self.bucket_file_exists(shutdown_script):
+                logging.error("Shutdown script not found on Google Bucket system: %s" % shutdown_script)
+                raise IOError("Shutdown script could not be located on google bucket system. Please check the error messages above!")
+
+    def check_output_dir(self):
+
+        # Check to make sure output bucket for final output is a valid google bucket address
+        logging.info("Checking pipeline output directory.")
+
+        # Check to make sure string starts with gs://
+        if self.bucket_output_dir[0:5] != "gs://":
+            logging.error("Output directory specified in config does not begin with 'gs://': %s" % self.bucket_output_dir)
+            raise IOError("The output directory provided is not a valid google bucket directory string. Please check the error messages above!")
+
+    def get_info_from_key_file(self, key_file, info_header):
+        # Parse JSON service account key file and return email address associated with account
+        logging.info("Extracting %s from JSON key file." % info_header)
+
+        if not os.path.exists(key_file):
+            logging.error("Authentication key was not found!")
+            exit(1)
+
+        # Parse json into dictionary
+        with open(key_file) as kf:
+            key_data = json.load(kf)
+
+        # Check to make sure correct key is present in dictionary
+        if info_header not in key_data:
+            logging.error(
+                "'%s' field missing from authentication key file: %s. Check to make sure key exists in file or that file is valid google key file!" % (info_header, key_file))
+            exit(1)
+
+        return key_data[info_header]
+
+    def format_dir(self, dir):
+        # Takes a directory path as a parameter and returns standard-formatted directory string '/this/is/my/dir/'
+        return dir.rstrip("/") + "/"
+
+    def bucket_file_exists(self, bucket_file):
+        # Returns true if bucket file exists, false otherwise
+
+        cmd = "gsutil ls %s" % bucket_file
+        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+
+        if len(err) != 0:
+            return False
+        return True

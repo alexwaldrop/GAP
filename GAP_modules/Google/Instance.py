@@ -45,6 +45,9 @@ class Instance(object):
         self.instances          = kwargs.get("instances",        {})
         self.main_server        = kwargs.get("main_server",      None)
         self.instance_type      = kwargs.get("instance_type",    self.get_inst_type())
+        self.service_acct       = kwargs.get("service_acct",     self.config["general"]["service_account"])
+        self.instance_log_dir   = kwargs.get("instance_log_dir", self.config["general"]["instance_log_dir"])
+        self.disk_image         = kwargs.get("disk_image",       self.config["platform"]["disk_image"])
 
         self.processes          = OrderedDict()
 
@@ -86,10 +89,10 @@ class Instance(object):
         args.append("cloud-platform")
 
         args.append("--service-account")
-        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com")
+        args.append(str(self.service_acct))
 
         args.append("--image")
-        args.append("davelab-image")
+        args.append(str(self.disk_image))
 
         if "custom" in self.instance_type:
             args.append("--custom-cpu")
@@ -106,14 +109,10 @@ class Instance(object):
 
         metadata_args = list()
         if self.start_up_script is not None:
-            metadata_args.append("startup-script-url=gs://davelab_data/scripts/%s" % self.start_up_script)
-        else:
-            metadata_args.append("startup-script-url=gs://davelab_data/scripts/startup.sh")
+            metadata_args.append("startup-script-url=%s" % self.start_up_script)
 
         if self.shutdown_script is not None:
-            metadata_args.append("shutdown-script-url=gs://davelab_data/scripts/%s" % self.shutdown_script)
-        else:
-            metadata_args.append("shutdown-script-url=gs://davelab_data/scripts/shutdown.sh")
+            metadata_args.append("shutdown-script-url=%s" % self.shutdown_script)
 
         metadata_args.append("is-nfs-server=%d" % self.is_server)
 
@@ -372,9 +371,10 @@ class Instance(object):
 
             # Generating all the logging pipes
             log_cmd_null = " >>/dev/null 2>&1 "
-            log_cmd_stdout = " >>/data/logs/%s.log " % job_name
-            log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
-            log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
+            log_file     = os.path.join(self.instance_log_dir, "%s.log" % job_name)
+            log_cmd_stdout = " >>%s " % (log_file)
+            log_cmd_stderr = " 2>>%s " % (log_file)
+            log_cmd_all = " >>%s 2>&1 " % (log_file)
 
             # Replacing the placeholders with the logging pipes
             command = command.replace("!LOG0!", log_cmd_null)
