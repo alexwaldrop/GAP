@@ -225,14 +225,17 @@ class GoogleCompute(object):
         self.instances[server_name] = Instance(self.config, server_name, **kwargs)
         self.instances[server_name].create()
 
-    def finalize(self, sample_data, only_logs=False):
+    def finalize(self, sample_data):
 
         # Generate destination prefix
         dest_dir = "gs://davelab_temp/outputs/%s" % sample_data["sample_name"]
 
-        # Copy final outputs
-        if not only_logs:
+        # Nothing to copy if the main-server does not exist
+        if "main-server" not in self.instances:
+            return
 
+        # Copy the available final_outputs
+        try:
             if "final_output" in sample_data:
                 for module_name, outputs in sample_data["final_output"].iteritems():
                     if len(outputs) == 0:
@@ -247,11 +250,22 @@ class GoogleCompute(object):
 
                     self.instances["main-server"].run_command("copyOut_%s" % module_name, cmd)
 
-            # Waiting for all the copying processes to be done
-            self.instances["main-server"].wait_all()
+                self.instances["main-server"].wait_all()
+
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not copy the final output to the bucket! The following error appeared: %s." % e.message)
+            else:
+                logging.error("Could not copy the final output to the bucket!")
 
         # Copy the logs
-        cmd = "gsutil -m cp -r /data/logs %s/ !LOG0!" % dest_dir
-        if "main-server" in self.instances:
+        try:
+            cmd = "gsutil -m cp -r /data/logs %s/ !LOG0!" % dest_dir
             self.instances["main-server"].run_command("copyLogs", cmd)
             self.instances["main-server"].wait_process("copyLogs")
+
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not copy the logs to the bucket! The following error appeared: %s." % e.message)
+            else:
+                logging.error("Could not copy the logs to the bucket!")
