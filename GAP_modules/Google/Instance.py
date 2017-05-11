@@ -496,6 +496,7 @@ class Instance(object):
                     #exit program if ssh error (from preemption) not found in error message
                     if proc_obj.log:
                         logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
 
@@ -515,6 +516,7 @@ class Instance(object):
                 else:
                     if proc_obj.log:
                         logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
         else:
