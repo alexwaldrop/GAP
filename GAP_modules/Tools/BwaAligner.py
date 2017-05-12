@@ -12,11 +12,11 @@ class BwaAligner(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.bwa            = self.config["paths"]["bwa"]
-        self.samtools       = self.config["paths"]["samtools"]
+        self.bwa            = self.config["paths"]["tools"]["bwa"]
+        self.samtools       = self.config["paths"]["tools"]["samtools"]
         self.ref            = self.config["paths"]["ref"]
 
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.sample_name    = self.sample_data["sample_name"]
 

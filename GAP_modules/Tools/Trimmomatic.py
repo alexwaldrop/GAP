@@ -10,11 +10,11 @@ class Trimmomatic(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.trimmomatic_jar    = self.config["paths"]["trimmomatic"]
-        self.adapters           = self.config["paths"]["adapters"]
+        self.trimmomatic_jar    = self.config["paths"]["tools"]["trimmomatic"]
+        self.adapters           = self.config["paths"]["resources"]["adapters"]
         self.is_phred33         = self.sample_data["phred33"]
 
-        self.temp_dir           = self.config["general"]["temp_dir"]
+        self.temp_dir           = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 

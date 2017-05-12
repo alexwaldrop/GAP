@@ -12,7 +12,7 @@ class BAMChromosomeSplitter(Splitter):
         self.config = config
         self.sample_data = sample_data
 
-        self.samtools = self.config["paths"]["samtools"]
+        self.samtools = self.config["paths"]["tools"]["samtools"]
 
         self.nr_cpus     = self.config["platform"]["MS_nr_cpus"]
         self.mem         = self.config["platform"]["MS_mem"]

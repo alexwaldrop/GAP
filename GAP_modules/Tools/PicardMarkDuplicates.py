@@ -10,10 +10,10 @@ class PicardMarkDuplicates(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.picard         = self.config["paths"]["picard"]
-        self.java           = self.config["paths"]["java"]
+        self.picard         = self.config["paths"]["tools"]["picard"]
+        self.java           = self.config["paths"]["tools"]["java"]
 
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = True
         self.splitter       = "BAMChromosomeSplitter"

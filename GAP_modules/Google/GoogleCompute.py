@@ -36,16 +36,19 @@ class GoogleCompute(object):
         self.config["general"]["bucket_output_dir"] = self.format_dir(self.config["general"]["bucket_output_dir"])
 
         # Set common directories as attributes so we don't have to type massively long variable names
-        self.wrk_dir            = self.config["general"]["instance_wrk_dir"]
-        self.log_dir            = self.config["general"]["instance_log_dir"]
-        self.tmp_dir            = self.config["general"]["instance_tmp_dir"]
-        self.bucket_output_dir  = self.config["general"]["bucket_output_dir"]
-
         # Check to make sure bucket output directory is a valid google bucket directory
         self.check_output_dir()
 
         # Check to make sure startup/shutdown scripts exist on bucket
         self.check_startup_shutdown_scripts()
+        self.wrk_dir                = self.config["paths"]["instance_wrk_dir"]
+        self.log_dir                = self.config["paths"]["instance_log_dir"]
+        self.tmp_dir                = self.config["paths"]["instance_tmp_dir"]
+        self.tool_dir               = self.config["paths"]["instance_tool_dir"]
+        self.resource_dir           = self.config["paths"]["instance_resource_dir"]
+        self.bucket_tool_dir        = self.config["paths"]["bucket_tool_dir"]
+        self.bucket_resource_dir    = self.config["paths"]["bucket_resource_dir"]
+        self.bucket_output_dir      = self.config["paths"]["bucket_output_dir"]
 
         # Create clients for using Google PubSub and Google Stackdriver Logging
         self.pubsub         = GooglePubSub()
@@ -237,20 +240,20 @@ class GoogleCompute(object):
             logging.error("(%s) Cannot create instance, because the required amount of memory has not been specified!" % server_name)
             raise GoogleException(server_name)
 
-        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        0)
-        kwargs["is_server"]         = kwargs.get("is_server",           False)
-        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
-        kwargs["instances"]         = kwargs.get("instances",           self.instances)
-        kwargs["main_server"]       = kwargs.get("main_server",         "main-server")
-        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
-        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
-        kwargs["zone"]              = kwargs.get("zone",                self.zone)
-        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
-        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
+        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["split_boot_disk_size"])
+        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["split_disk_image"])
         kwargs["start_up_script"]   = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
         kwargs["shutdown_script"]   = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
         kwargs["is_preemptible"]    = kwargs.get("is_preemptible",      self.config["platform"]["is_split_preemptible"])
+        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
+        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
+        kwargs["instances"]         = kwargs.get("instances",           self.instances)
+        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
+        kwargs["zone"]              = kwargs.get("zone",                self.zone)
         kwargs["instance_log_dir"]  = kwargs.get("instance_log_dir",    self.log_dir)
+        kwargs["main_server"]       = kwargs.get("main_server",         "main-server")
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        0)
+        kwargs["is_server"]         = kwargs.get("is_server",           False)
 
         # Creating the split servers
         self.instances[server_name] = Instance(self.config, server_name, **kwargs)

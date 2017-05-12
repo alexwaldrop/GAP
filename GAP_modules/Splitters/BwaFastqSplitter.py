@@ -13,7 +13,7 @@ class BwaFastqSplitter(Splitter):
         self.config = config
         self.sample_data = sample_data
 
-        self.temp_dir = self.config["general"]["temp_dir"]
+        self.temp_dir = self.config["paths"]["instance_tmp_dir"]
 
         self.prefix = ["fastq_R1", "fastq_R2"]
 

@@ -10,10 +10,10 @@ class FastQC(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.fastqc         = self.config["paths"]["fastqc"]
-        self.java           = self.config["paths"]["java"]
+        self.fastqc         = self.config["paths"]["tools"]["fastqc"]
+        self.java           = self.config["paths"]["tools"]["java"]
 
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 

@@ -14,9 +14,9 @@ class SamtoolsBAMMerge(Merger):
         self.config = config
         self.sample_data = sample_data
 
-        self.samtools     = self.config["paths"]["samtools"]
+        self.samtools     = self.config["paths"]["tools"]["samtools"]
 
-        self.temp_dir     = self.config["general"]["temp_dir"]
+        self.temp_dir     = self.config["paths"]["instance_tmp_dir"]
 
         self.sample_name  = self.sample_data["sample_name"]
 

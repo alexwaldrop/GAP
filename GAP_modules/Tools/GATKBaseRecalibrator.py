@@ -12,14 +12,14 @@ class GATKBaseRecalibrator(Tool):
         self.config = config
         self.sample_data = sample_data
 
-        self.java           = self.config["paths"]["java"]
-        self.GATK           = self.config["paths"]["gatk"]
-        self.samtools       = self.config["paths"]["samtools"]
+        self.java           = self.config["paths"]["tools"]["java"]
+        self.GATK           = self.config["paths"]["tools"]["gatk"]
+        self.samtools       = self.config["paths"]["tools"]["samtools"]
 
         self.ref            = self.config["paths"]["ref"]
-        self.dbsnp          = self.config["paths"]["dbsnp"]
+        self.dbsnp          = self.config["paths"]["resources"]["dbsnp"]
 
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 
