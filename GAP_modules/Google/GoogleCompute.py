@@ -341,6 +341,22 @@ class GoogleCompute(object):
             logging.error("Output directory specified in config does not begin with 'gs://': %s" % self.bucket_output_dir)
             raise IOError("The output directory provided is not a valid google bucket directory string. Please check the error messages above!")
 
+    def check_disk_image(self, disk_image_name, boot_disk_size, disk_image_type):
+        # Checks to make sure that disk image exists and is smaller than a given boot disk size
+
+        # Get disk image info
+        disk_image_info = self.get_disk_image_info(disk_image_name, disk_image_type)
+
+        # Get size of disk image
+        disk_image_size = int(disk_image_info["diskSizeGb"])
+
+        # Resize boot disk if it's smaller than image size
+        if boot_disk_size < disk_image_size:
+            logging.error("%s disk image (%s) is larger (%dGB) than the requested size of the boot disk (%dGB). Increase size of %s boot disk in config!"
+                          %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
+            raise IOError("%s disk image (%s) is larger (%dGB) than the requested size of the boot disk (%dGB). Increase size of %s boot disk in config!"
+                          %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
+
     def get_info_from_key_file(self, key_file, info_header):
         # Parse JSON service account key file and return email address associated with account
         logging.info("Extracting %s from JSON key file." % info_header)
