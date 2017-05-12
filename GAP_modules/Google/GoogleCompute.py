@@ -376,6 +376,24 @@ class GoogleCompute(object):
             return False
         return True
 
+    def get_disk_image_info(self, disk_image_name, disk_image_type):
+        # Returns information about a disk image for a project. Throws error if it doesn't exist.
+        logging.info("Checking existence of %s disk image: %s." % (disk_image_type, disk_image_name))
+
+        cmd = "gcloud compute images list --format=json"
+        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+ 
+        # Load results into json
+        disk_images = json.loads(out.rstrip())
+        for disk_image in disk_images:
+            if disk_image["name"] == disk_image_name:
+                return disk_image
+
+        # Throw error if disk image can't be found in project
+        logging.error("Unable to find %s disk image: %s" % (disk_image_type, disk_image_name))
+        raise IOError("Unable to find disk image %s. Please check error messages above for details!" % disk_image_name)
+ 
     def is_google_bucket_path(self, filename):
         # Returns true if file path conforms to Google Bucket style. False otherwise.
         return filename[0:5] == "gs://"
