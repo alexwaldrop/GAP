@@ -332,8 +332,12 @@ class GoogleCompute(object):
         # Check to make sure output bucket for final output is a valid google bucket address
         logging.info("Checking pipeline output directory.")
 
+        if self.bucket_output_dir is None:
+            logging.error("No bucket output directory specified in the config! Please specify one.")
+            raise IOError("No bucket output directory specified int he config! Please specify one.")
+
         # Check to make sure string starts with gs://
-        if self.bucket_output_dir[0:5] != "gs://":
+        if not self.is_google_bucket_path(self.bucket_output_dir):
             logging.error("Output directory specified in config does not begin with 'gs://': %s" % self.bucket_output_dir)
             raise IOError("The output directory provided is not a valid google bucket directory string. Please check the error messages above!")
 
@@ -371,3 +375,8 @@ class GoogleCompute(object):
         if len(err) != 0:
             return False
         return True
+
+    def is_google_bucket_path(self, filename):
+        # Returns true if file path conforms to Google Bucket style. False otherwise.
+        return filename[0:5] == "gs://"
+
