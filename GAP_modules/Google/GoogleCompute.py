@@ -29,11 +29,8 @@ class GoogleCompute(object):
         # Google compute zone
         self.zone           = self.config["platform"]["zone"]
 
-        # Standardize formatting of directories specified in config
-        self.config["general"]["instance_wrk_dir"]  = self.format_dir(self.config["general"]["instance_wrk_dir"])
-        self.config["general"]["instance_log_dir"]  = self.format_dir(self.config["general"]["instance_log_dir"])
-        self.config["general"]["instance_tmp_dir"]  = self.format_dir(self.config["general"]["instance_tmp_dir"])
-        self.config["general"]["bucket_output_dir"] = self.format_dir(self.config["general"]["bucket_output_dir"])
+        # Standardize formatting of directory paths
+        self.format_dirs()
 
         # Set common directories as attributes so we don't have to type massively long variable names
         # Check to make sure bucket output directory is a valid google bucket directory
@@ -359,6 +356,15 @@ class GoogleCompute(object):
                           %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
             raise IOError("%s disk image (%s) is larger (%dGB) than the requested size of the boot disk (%dGB). Increase size of %s boot disk in config!"
                           %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
+
+    def format_dirs(self):
+        # Standardize formatting of directories specified in config
+        for path in self.config["paths"]:
+            # Check to make sure path is a string and not a hash (i.e. the tool/resource sublists)
+            if isinstance(self.config["paths"][path], basestring) and (path != "ref"):
+                # Check to make sure the option hasn't been set to an empty string
+                if self.config["paths"][path] is not None:
+                    self.config["paths"][path] = self.format_dir(self.config["paths"][path])
 
     def get_info_from_key_file(self, key_file, info_header):
         # Parse JSON service account key file and return email address associated with account
