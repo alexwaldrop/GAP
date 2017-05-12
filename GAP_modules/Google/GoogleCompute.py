@@ -20,7 +20,7 @@ class GoogleCompute(object):
         self.service_acct   = self.get_info_from_key_file(self.key_location, "client_email")
         self.google_project = self.get_info_from_key_file(self.key_location, "project_id")
 
-        # Use authentication key file to gain acces to google cloud project using Oauth2 authentication
+        # Use authentication key file to gain access to google cloud project using Oauth2 authentication
         self.authenticate()
 
         # Dictionary of instances managed by the platform
@@ -50,10 +50,9 @@ class GoogleCompute(object):
         self.ready_topic        = None
         self.ready_subscriber   = None
 
-        # Name of PubSub topic/subsription for posting instance preemption status updates
+        # Name of PubSub topic/subscription for posting instance preemption status updates
         self.preempt_topic      = None
         self.preempt_subscriber = None
-
 
     def clean_up(self):
 
@@ -109,6 +108,23 @@ class GoogleCompute(object):
 
         logging.info("Authentication to Google Cloud was successful.")
 
+    def prepare_platform(self, sample_data, **kwargs):
+        # Takes sample data and initializes a GoogleCompute Platform ready for analysis
+
+        # Pre-launch check to make sure platform configurations are valid
+        # A) Check input files, tools, resources, startup/shutdown scripts specified in config exist on bucket
+        # B) Check output directory a valid google bucket path
+        self.check_platform_before_launch(sample_data)
+
+        # Init pubsub/logging clients for monitoring instances status
+        self.prepare_pubsub_logging(sample_data)
+
+        # Init instance and transfer input data, tools, etc.
+        self.prepare_main_server(sample_data, **kwargs)
+
+        # Check that all the tools, resources specified in the config actually exist on the main server
+        self.check_platform_after_launch()
+
     def prepare_pubsub_logging(self, sample_data):
 
         # Generate variables
@@ -157,66 +173,92 @@ class GoogleCompute(object):
 
         logging.info("Google Cloud Platform is ready for analysis.")
 
-    def prepare_data(self, sample_data, **kwargs):
+    def prepare_main_server(self, sample_data, **kwargs):
 
-        # Generating arguments dictionary
-        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",             self.config["platform"]["MS_nr_cpus"])
-        kwargs["mem"]               = kwargs.get("mem",                 self.config["platform"]["MS_mem"])
-        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        self.config["platform"]["MS_local_ssds"])
-        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",      False)
-        kwargs["is_server"]         = kwargs.get("is_server",           True)
-        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
-        kwargs["instances"]         = kwargs.get("instances",           self.instances)
-        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
-        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
-        kwargs["zone"]              = kwargs.get("zone",                self.zone)
-        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
-        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
-        kwargs["start_up_script"]   = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
-        kwargs["shutdown_script"]   = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
-        kwargs["instance_log_dir"]  = kwargs.get("instance_log_dir",    self.log_dir)
+        # Create main server and wait for it to start
+        self.create_main_server(**kwargs)
 
+        # Initialize directory structure on the instance
+        self.prepare_env()
 
-        # Create the main server
-        self.instances["main-server"] = Instance(self.config, "main-server", **kwargs)
-        self.instances["main-server"].create()
-        self.instances["main-server"].wait_process("create")
+        # Copy tools, resources, input data from bucket to instance
+        self.prepare_data(sample_data)
 
-        # Generate options for fast copying
-        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+        # Memorize the main-server address in the sample data
+        sample_data["main-server"] = self.instances["main-server"]
 
-        # Create tmp directory
-        cmd = "mkdir -p %s" % self.tmp_dir
-        self.instances["main-server"].run_command("createTmpDir", cmd, proc_wait=True)
+    def prepare_env(self):
+        # Create directory structure on main instance
+
+        # Create working directory
+        cmd = "mkdir -p %s" % self.wrk_dir
+        self.instances["main-server"].run_command("createWrkDir", cmd, proc_wait=True)
 
         # Create logging directory
         cmd = "mkdir -p %s" % self.log_dir
         self.instances["main-server"].run_command("createLogDir", cmd, proc_wait=True)
 
-        # Copy and configure tools binaries
-        cmd = "gsutil %s cp -r gs://davelab_data/tools %s !LOG3! ; bash %stools/setup.sh" % (options_fast, self.wrk_dir, self.wrk_dir)
-        self.instances["main-server"].run_command("copyTools", cmd)
+        # Create tmp directory
+        cmd = "mkdir -p %s" % self.tmp_dir
+        self.instances["main-server"].run_command("createTmpDir", cmd, proc_wait=True)
 
-        # Copy the input files
+        # Create tool directory
+        cmd = "mkdir -p %s" % self.tool_dir
+        self.instances["main-server"].run_command("createToolDir", cmd, proc_wait=True)
+
+        # Create resource directory
+        cmd = "mkdir -p %s" % self.resource_dir
+        self.instances["main-server"].run_command("createTmpDir", cmd, proc_wait=True)
+
+        # Waiting for all directory creation processes to be done
+        self.instances["main-server"].wait_all()
+
+    def prepare_data(self, sample_data):
+        # Transfer tools, resources, and input data from bucket to main server
+
+        # Generate options for fast copying
+        options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+
+        # Copy tool folder from bucket if necessary
+        if self.bucket_tool_dir is not None:
+
+            cmd = "gsutil %s cp -r %s* %s !LOG3!" % (options_fast, self.bucket_tool_dir, self.tool_dir)
+            self.instances["main-server"].run_command("copyTools", cmd)
+
+            #update tools paths to reflect their location on the main server
+            self.config["paths"]["tools"] = self.update_paths(self.config["paths"]["tools"],
+                                                              source_dir=self.bucket_tool_dir,
+                                                              dest_dir=self.tool_dir)
+        # Copy resource folder from bucket if necessary
+        if self.bucket_resource_dir is not None:
+
+            cmd = "gsutil %s cp -r %s* %s !LOG3!" % (options_fast, self.bucket_resource_dir, self.resource_dir)
+            self.instances["main-server"].run_command("copyResources", cmd)
+
+            #update resources paths to reflect their location on the main server
+            self.config["paths"]["resources"] = self.update_paths(self.config["paths"]["resources"],
+                                                                  source_dir=self.bucket_resource_dir,
+                                                                  dest_dir=self.resource_dir)
+        # Copy input files to main server and update paths to reflect their location on main server
         sample_data["input"] = dict()
         for (file_type, gs_file_path) in sample_data["gs_input"].iteritems():
-
-            # Generating local path
+            # Update new filename
             filename = gs_file_path.split("/")[-1]
             local_file_path = "%s%s" % (self.wrk_dir, filename)
 
             # Registering local path for later use
             sample_data["input"][file_type] = local_file_path
 
-            # Copying the file to the main server
-            cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, gs_file_path, local_file_path)
+            # Copy to main server
+            cmd = "gsutil %s cp %s %s !LOG3!" % (options_fast, gs_file_path, self.wrk_dir)
             self.instances["main-server"].run_command("copyInput_%s" % file_type, cmd)
 
         # Waiting for all the copying processes to be done
         self.instances["main-server"].wait_all()
 
-        # Memorize the main-server address in the sample data
-        sample_data["main-server"] = self.instances["main-server"]
+        #change permissions on everything to read/write/execute access after everything has been copied
+        cmd = "sudo chmod -R 777 %s !LOG3!" % self.wrk_dir
+        self.instances["main-server"].run_command("changeDirPermissions", cmd, proc_wait=True)
 
     def create_main_server(self, **kwargs):
 
@@ -476,6 +518,10 @@ class GoogleCompute(object):
                 if self.config["paths"][path] is not None:
                     self.config["paths"][path] = self.format_dir(self.config["paths"][path])
 
+    def format_dir(self, dir):
+        # Takes a directory path as a parameter and returns standard-formatted directory string '/this/is/my/dir/'
+        return dir.rstrip("/") + "/"
+
     def get_info_from_key_file(self, key_file, info_header):
         # Parse JSON service account key file and return email address associated with account
         logging.info("Extracting %s from JSON key file." % info_header)
@@ -496,21 +542,6 @@ class GoogleCompute(object):
 
         return key_data[info_header]
 
-    def format_dir(self, dir):
-        # Takes a directory path as a parameter and returns standard-formatted directory string '/this/is/my/dir/'
-        return dir.rstrip("/") + "/"
-
-    def bucket_file_exists(self, bucket_file):
-        # Returns true if bucket file exists, false otherwise
-
-        cmd = "gsutil ls %s" % bucket_file
-        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        out, err = proc.communicate()
-
-        if len(err) != 0:
-            return False
-        return True
-
     def get_disk_image_info(self, disk_image_name, disk_image_type):
         # Returns information about a disk image for a project. Throws error if it doesn't exist.
         logging.info("Checking existence of %s disk image: %s." % (disk_image_type, disk_image_name))
@@ -518,7 +549,7 @@ class GoogleCompute(object):
         cmd = "gcloud compute images list --format=json"
         proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         out, err = proc.communicate()
- 
+
         # Load results into json
         disk_images = json.loads(out.rstrip())
         for disk_image in disk_images:
@@ -528,7 +559,7 @@ class GoogleCompute(object):
         # Throw error if disk image can't be found in project
         logging.error("Unable to find %s disk image: %s" % (disk_image_type, disk_image_name))
         raise IOError("Unable to find disk image %s. Please check error messages above for details!" % disk_image_name)
- 
+
     def is_google_bucket_path(self, filename):
         # Returns true if file path conforms to Google Bucket style. False otherwise.
         return filename[0:5] == "gs://"
