@@ -109,7 +109,7 @@ class GoogleCompute(object):
 
         logging.info("Authentication to Google Cloud was successful.")
 
-    def prepare_platform(self, sample_data):
+    def prepare_pubsub_logging(self, sample_data):
 
         # Generate variables
         ready_topic = "ready_topic_%s" % sample_data["sample_name"]
