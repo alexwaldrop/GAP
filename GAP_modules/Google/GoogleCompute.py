@@ -36,8 +36,6 @@ class GoogleCompute(object):
         # Check to make sure bucket output directory is a valid google bucket directory
         self.check_output_dir()
 
-        # Check to make sure startup/shutdown scripts exist on bucket
-        self.check_startup_shutdown_scripts()
         self.wrk_dir                = self.config["paths"]["instance_wrk_dir"]
         self.log_dir                = self.config["paths"]["instance_log_dir"]
         self.tmp_dir                = self.config["paths"]["instance_tmp_dir"]
@@ -309,23 +307,10 @@ class GoogleCompute(object):
         if has_errors:
             raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
 
-    def check_startup_shutdown_scripts(self):
 
-        # Checks to see if startup/shutdown scripts exists on google bucket
-        logging.info("Checking existence of startup/shutdown scripts.")
 
-        startup_script  = self.config["platform"]["start_up_script"]
-        shutdown_script = self.config["platform"]["shutdown_script"]
 
-        if startup_script is not None:
-            if not self.bucket_file_exists(startup_script):
-                logging.error("Start-up script not found on Google Bucket system: %s" % startup_script)
-                raise IOError("Startup script could not be located on google bucket system. Please check the error messages above!")
 
-        if shutdown_script is not None:
-            if not self.bucket_file_exists(shutdown_script):
-                logging.error("Shutdown script not found on Google Bucket system: %s" % shutdown_script)
-                raise IOError("Shutdown script could not be located on google bucket system. Please check the error messages above!")
 
     def check_output_dir(self):
 
