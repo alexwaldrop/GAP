@@ -114,3 +114,9 @@ class NodeManager(object):
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
+
+    def update(self):
+        logging.info("Updating graph after transferring data/tools/resources from bucket to instance.")
+        # Updates node graph with values from a new config
+        self.generate_graph()
+        self.check_nodes()
