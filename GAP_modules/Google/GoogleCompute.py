@@ -33,9 +33,6 @@ class GoogleCompute(object):
         self.format_dirs()
 
         # Set common directories as attributes so we don't have to type massively long variable names
-        # Check to make sure bucket output directory is a valid google bucket directory
-        self.check_output_dir()
-
         self.wrk_dir                = self.config["paths"]["instance_wrk_dir"]
         self.log_dir                = self.config["paths"]["instance_log_dir"]
         self.tmp_dir                = self.config["paths"]["instance_tmp_dir"]
@@ -285,32 +282,117 @@ class GoogleCompute(object):
             self.instances["main-server"].run_command("copyLogs", cmd)
             self.instances["main-server"].wait_process("copyLogs")
 
-    def check_input(self, sample_data):
-        # Check to see if input data exists on google bucket
+    def check_platform_before_launch(self, sample_data):
+        # Checks to see whether files specified in the config actually exist and are properly formatted
+
+        # Check to see if disk image exists and is larger than requested boot disk size
+        self.check_disk_image(self.config["platform"]["disk_image"], self.config["platform"]["boot_disk_size"], "Main-Server")
+
+        # Check to see if split disk image exists and is larger than requested split boot disk
+        self.check_disk_image(self.config["platform"]["split_disk_image"], self.config["platform"]["split_boot_disk_size"], "Split-Server")
+
+        # Check startup script
+        if self.config["platform"]["start_up_script"] is not None:
+            self.check_bucket_file_exists(self.config["platform"]["start_up_script"], "Startup script")
+
+        # Check shutdown script
+        if self.config["platform"]["shutdown_script"] is not None:
+            self.check_bucket_file_exists(self.config["platform"]["shutdown_script"], "Shutdown script")
+
+        # Check tool directory and that all tools on the cloud actually appear in the directory
+        if self.bucket_tool_dir is not None:
+            self.check_bucket_file_exists(self.bucket_tool_dir, "Tool directory")
+            self.check_bucket_files_exist(self.config["paths"]["tools"], path_type="Tools", target_bucket=self.bucket_tool_dir)
+
+        # Check resource directory and that all resources on the cloud actually appear in the directory
+        if self.bucket_resource_dir is not None:
+            self.check_bucket_file_exists(self.bucket_resource_dir, "Resources directory")
+            self.check_bucket_files_exist(self.config["paths"]["resources"], path_type="Resources", target_bucket=self.bucket_resource_dir)
+
+        # Check to make sure input files exist on bucket
         if len(sample_data["gs_input"]) == 0:
             logging.error("No input has been provided to the pipeline!")
             raise IOError("No input has been provided to the pipeline!")
+        self.check_bucket_files_exist(sample_data["gs_input"], path_type="Sample Input")
 
-        logging.info("Checking pipeline I/O.")
+        # Check to make sure output directory is a properly formatted google bucket path
+        self.check_output_dir()
 
-        has_errors = False
+    def check_platform_after_launch(self):
+        # Checks to see whether resource/tool files specified in the config actually exist on the instance
 
-        for file_type, gs_file_path in sample_data["gs_input"].iteritems():
-            cmd = "gsutil ls %s" % gs_file_path
-            proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-            out, err = proc.communicate()
+        # Check tools files to see whether they exist on main server
+        for file_type, file_path in self.config["paths"]["tools"].iteritems():
+            # Check to see if bucket file actually exists
+            self.check_instance_file_exists(file_path, file_type)
 
-            if len(err) != 0:
-                has_errors = True
-                logging.error("Input file %s could not be accessed. The following error appeared: %s!" % (file_type, err))
+        # Check resources files to see whether they exist on main server
+        for file_type, file_path in self.config["paths"]["resources"].iteritems():
+            # Check to see if bucket file actually exists
+            self.check_instance_file_exists(file_path, file_type)
+            # Remove wildcard character.
+            # This will only be the case for index files which share a basename that needs to be passed to a specific tool.
+            # As an example, Bowtie2 or BWA accepts an index basename instead of the complete name of all index files needed to run the tool
+            self.config["paths"]["resources"][file_type] = file_path.rstrip("*")
 
-        if has_errors:
-            raise IOError("The input provided to the pipeline has multiple errors. Please check the error messages above!")
+        # Wait for all processes to finish
+        self.instances["main-server"].wait_all()
 
+    def check_bucket_files_exist(self, file_dict, path_type, target_bucket=None):
+        # Checks to see whether all files in file_dict exist on the bucket
+        # Optionally check whether all files are in the same bucket (default: None)
+        # Ignores files that begin with '/' as it assumes these files will be present on the the instance
+        # Throws error if either condition is not satisfied and the group name variable is used in the error message
+        for file_type, gs_file_path in file_dict.iteritems():
 
+            if target_bucket is None:
+                self.check_bucket_file_exists(gs_file_path, file_type)
 
+            else:
+                # add directory to filepath if relative path given
+                if not (self.is_google_bucket_path(gs_file_path) or gs_file_path.startswith("/")):
+                    gs_file_path = os.path.join(target_bucket, gs_file_path)
 
+                # Check to see if tool path is on google bucket
+                if self.is_google_bucket_path(gs_file_path):
 
+                    # Check to see if bucket file actually exists
+                    self.check_bucket_file_exists(gs_file_path, file_type)
+
+                    # Check to see that tool is actually found in the tool bucket specified
+                    if not gs_file_path.startswith(target_bucket):
+                        # Raise exception if file exists but isn't found in the tools bucket specified in the config
+                        logging.error(
+                            "'%s' is present on the bucket (%s) but is not located in the %s bucket specified in the config (%s). Try copying the file(s) to the %s bucket."
+                            % (file_type, gs_file_path, path_type, target_bucket, path_type))
+                        raise IOError(
+                            "Tool '%s' is present on the bucket but is not located in the tools bucket specified in the config. Please check the error messages above!"
+                            % file_type)
+
+    def check_bucket_file_exists(self, filename, filetype):
+        # Checks to see whether a file exists on the google storage. Throws error otherwise specifying the type of bucket that doesn't exist
+        logging.info("Checking existence of '%s' on bucket." % filetype)
+
+        cmd = "gsutil ls %s" %filename
+        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+
+        if len(err) != 0:
+            logging.error("%s could not be located on bucket: %s. Please provide a valid filepath in the config file." % (filetype, filename))
+            raise IOError("%s could not be located on bucket: %s. Please check the error messages above!" % (filetype, filename))
+
+    def check_instance_file_exists(self, filename, filetype):
+        # Checks to see whether file exists on the main server. Throws and error otherwise specifying the type of file that doesn't exist
+        logging.info("Checking existence of %s on main instance." % filetype)
+
+        #run ls command to see if file exists
+        cmd = "ls %s" % filename
+        self.instances["main-server"].run_command("checkExists_%s" % filetype, cmd)
+        out, err = self.instances["main-server"].get_proc_output("checkExists_%s" % filetype)
+
+        if len(err) != 0:
+            logging.error("'%s' was not found on the instance: %s!" % (filetype, filename))
+            raise IOError("%s was not found on the instance.")
 
     def check_output_dir(self):
 
@@ -341,6 +423,25 @@ class GoogleCompute(object):
                           %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
             raise IOError("%s disk image (%s) is larger (%dGB) than the requested size of the boot disk (%dGB). Increase size of %s boot disk in config!"
                           %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
+
+    def update_paths(self, file_dict, source_dir, dest_dir):
+        # Takes a dict <file_type, file_path> as an argument and returns the updated name for each element assuming it is being
+        # Transferred from the source to the dest directory
+        updated_paths = dict()
+
+        for file_type, file_path in file_dict.iteritems():
+
+            # Add source_prefix to filepath if relative path given
+            if not (self.is_google_bucket_path(file_path) or file_path.startswith("/")):
+                file_path = os.path.join(source_dir, file_path)
+
+            # Update tool path if transferred from bucket to instance
+            if file_path.startswith(source_dir):
+                updated_paths[file_type] = file_path.replace(source_dir, dest_dir)
+            else:
+                updated_paths[file_type] = file_path
+
+        return updated_paths
 
     def format_dirs(self):
         # Standardize formatting of directories specified in config
