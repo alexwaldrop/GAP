@@ -218,6 +218,30 @@ class GoogleCompute(object):
         # Memorize the main-server address in the sample data
         sample_data["main-server"] = self.instances["main-server"]
 
+    def create_main_server(self, **kwargs):
+
+        # Generating arguments dictionary
+        kwargs["nr_cpus"]           = kwargs.get("nr_cpus",             self.config["platform"]["MS_nr_cpus"])
+        kwargs["mem"]               = kwargs.get("mem",                 self.config["platform"]["MS_mem"])
+        kwargs["nr_local_ssd"]      = kwargs.get("nr_local_ssd",        self.config["platform"]["MS_local_ssds"])
+        kwargs["boot_disk_size"]    = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
+        kwargs["disk_image"]        = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
+        kwargs["start_up_script"]   = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
+        kwargs["shutdown_script"]   = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
+        kwargs["is_boot_disk_ssd"]  = kwargs.get("is_boot_disk_ssd",    self.config["platform"]["is_boot_disk_ssd"])
+        kwargs["ready_topic"]       = kwargs.get("ready_topic",         self.ready_topic)
+        kwargs["instances"]         = kwargs.get("instances",           self.instances)
+        kwargs["service_acct"]      = kwargs.get("service_acct",        self.service_acct)
+        kwargs["zone"]              = kwargs.get("zone",                self.zone)
+        kwargs["instance_log_dir"]  = kwargs.get("instance_log_dir",    self.log_dir)
+        kwargs["is_preemptible"]    = kwargs.get("is_preemptible",      False)
+        kwargs["is_server"]         = kwargs.get("is_server",           True)
+
+        # Create the main server
+        self.instances["main-server"] = Instance(self.config, "main-server", **kwargs)
+        self.instances["main-server"].create()
+        self.instances["main-server"].wait_process("create")
+
     def create_split_server(self, server_name, **kwargs):
 
         # Updating the kwargs
