@@ -38,6 +38,7 @@ class GoogleCompute(object):
         self.tmp_dir                = self.config["paths"]["instance_tmp_dir"]
         self.tool_dir               = self.config["paths"]["instance_tool_dir"]
         self.resource_dir           = self.config["paths"]["instance_resource_dir"]
+        self.bin_dir                = self.config["paths"]["instance_bin_dir"]
         self.bucket_tool_dir        = self.config["paths"]["bucket_tool_dir"]
         self.bucket_resource_dir    = self.config["paths"]["bucket_resource_dir"]
         self.bucket_output_dir      = self.config["paths"]["bucket_output_dir"]
@@ -210,6 +211,10 @@ class GoogleCompute(object):
         cmd = "mkdir -p %s" % self.resource_dir
         self.instances["main-server"].run_command("createTmpDir", cmd, proc_wait=True)
 
+        # Create bin directory
+        cmd = "mkdir -p %s" % self.bin_dir
+        self.instances["main-server"].run_command("createBinDir", cmd, proc_wait=True)
+
         # Waiting for all directory creation processes to be done
         self.instances["main-server"].wait_all()
 
@@ -229,6 +234,14 @@ class GoogleCompute(object):
             self.config["paths"]["tools"] = self.update_paths(self.config["paths"]["tools"],
                                                               source_dir=self.bucket_tool_dir,
                                                               dest_dir=self.tool_dir)
+
+        # Make symbolic links in the bin directory for all exectuables
+        for tool_type, tool_path in self.config["paths"]["tools"].iteritems():
+            basename = tool_path.split("/")[-1]
+            link_name = os.path.join(self.bin_dir, basename)
+            cmd = "ln -s %s %s" % (tool_path, link_name)
+            self.instances["main-server"].run_command("softlink_%s" % tool_type, cmd)
+
         # Copy resource folder from bucket if necessary
         if self.bucket_resource_dir is not None:
 
