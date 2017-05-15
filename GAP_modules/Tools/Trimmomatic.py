@@ -11,6 +11,7 @@ class Trimmomatic(Tool):
         self.sample_data = sample_data
 
         self.trimmomatic_jar    = self.config["paths"]["trimmomatic"]
+        self.java               = self.config["paths"]["java"]
         self.adapters           = self.config["paths"]["adapters"]
         self.is_phred33         = self.sample_data["phred33"]
 
@@ -50,8 +51,9 @@ class Trimmomatic(Tool):
         jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (self.mem*4/5, self.temp_dir)
 
         # Generating command
-        trim_cmd = "java %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
-            jvm_options, self.trimmomatic_jar, self.nr_cpus, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps), out_file)
+        trim_cmd = "%s %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
+            self.java, jvm_options, self.trimmomatic_jar, self.nr_cpus, phred,
+            self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps), out_file)
 
         # Change the input data to correct one
         self.output = dict()
