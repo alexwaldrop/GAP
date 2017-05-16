@@ -256,13 +256,16 @@ class Instance(object):
         ratio["highmem"] = 13.00 / 2
 
         # Identifying needed predefined instance type
-        ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
-        if ratio_mem_cpu <= ratio["highcpu"]:
-            instance_type = "highcpu"
-        elif ratio_mem_cpu <= ratio["standard"]:
+        if self.nr_cpus == 1:
             instance_type = "standard"
         else:
-            instance_type = "highmem"
+            ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
+            if ratio_mem_cpu <= ratio["highcpu"]:
+                instance_type = "highcpu"
+            elif ratio_mem_cpu <= ratio["standard"]:
+                instance_type = "standard"
+            else:
+                instance_type = "highmem"
 
         # Initializing predefined instance data
         predef_inst = {}
@@ -288,13 +291,18 @@ class Instance(object):
         # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
         if self.nr_cpus != 1:
             custom_inst["nr_cpus"] = self.nr_cpus + self.nr_cpus % 2
+        else:
+            custom_inst["nr_cpus"] = 1
 
         # Computing the memory as integer value in GB
         custom_inst["mem"] = int(math.ceil(self.mem))
 
         # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
         custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
-        custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        if self.nr_cpus != 1:
+            custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        else:
+            custom_inst["mem"] = min(1, custom_inst["mem"])
 
         # Generating custom instance name
         custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
