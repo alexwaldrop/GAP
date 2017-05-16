@@ -382,6 +382,11 @@ class Instance(object):
             command = command.replace("!LOG2!", log_cmd_stderr)
             command = command.replace("!LOG3!", log_cmd_all)
 
+        # Replace single quotes in the command so they can be correctly interpreted by the shell
+        # Helpful for running awk or sed commands which need to contain single quotes
+        # Idea from http://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
+        command = command.replace("'", "'\"'\"'")
+
         cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, command, self.zone)
 
         if log:
