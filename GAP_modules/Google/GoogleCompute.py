@@ -471,7 +471,7 @@ class GoogleCompute(object):
 
         if len(err) != 0:
             logging.error("'%s' was not found on the instance: %s!" % (filetype, filename))
-            raise IOError("%s was not found on the instance.")
+            raise IOError("%s was not found on the instance." % filename)
 
     def check_output_dir(self):
 
