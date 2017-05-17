@@ -1,3 +1,4 @@
+import os
 from GAP_interfaces import Tool
 
 __main_class__ = "SummaryMerge"
@@ -25,11 +26,11 @@ class SummaryMerge(Tool):
         sample_name    = kwargs.get("sample_name", self.config["sample"]["sample_name"])
 
         # Set name of output file
-        output = os.path.join(self.wrk_dir)
-        output = "%s.trimsummary.txt" % input.split(".")[0]
+        output = os.path.join(self.wrk_dir, "%s.qc_summary.txt" % sample_name)
 
-        # Generating command to parse Trimmomatic log for trimming stats
-        cmd = "%s trimmomatic -i %s > %s" % (self.tools["qc_parser"], input, output)
+        # Generating command to merge QC summary output files from two or more QCParser modules
+        cmd = "%s merge -i %s --sample %s > %s" % \
+              (self.tools["qc_parser"], " ".join(summary_files), sample_name, output)
 
         # Generating the output
         self.output = dict()
