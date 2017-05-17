@@ -9,8 +9,6 @@ class GATKBaseRecalibrator(Tool):
     def __init__(self, config, sample_data):
         super(GATKBaseRecalibrator, self).__init__(config, sample_data)
 
-        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
-
         self.can_split      = False
 
         self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
@@ -22,12 +20,10 @@ class GATKBaseRecalibrator(Tool):
         self.req_tools      = ["gatk", "java", "samtools"]
         self.req_resources  = ["ref", "dbsnp"]
 
-        self.bam            = None
-
-    def get_chrom_locations(self, max_nr_reads=2.5*10**7):
+    def get_chrom_locations(self, bam, max_nr_reads=2.5*10**7):
 
         # Obtaining the chromosome alignment information
-        cmd = "%s idxstats %s" % (self.tools["samtools"], self.bam)
+        cmd = "%s idxstats %s" % (self.tools["samtools"], bam)
         self.sample_data["main-server"].run_command("bam_idxstats", cmd, log=False)
         out, err = self.sample_data["main-server"].get_proc_output("bam_idxstats")
 
@@ -63,20 +59,20 @@ class GATKBaseRecalibrator(Tool):
 
     def get_command(self, **kwargs):
         # Obtaining the arguments
-        self.bam            = kwargs.get("bam",         None)
-        self.nr_cpus        = kwargs.get("nr_cpus",     self.nr_cpus)
-        self.mem            = kwargs.get("mem",         self.mem)
+        bam            = kwargs.get("bam",         None)
+        nr_cpus        = kwargs.get("nr_cpus",     self.nr_cpus)
+        mem            = kwargs.get("mem",         self.mem)
 
         # Generating variables
-        bam_prefix = self.bam.split(".")[0]
+        bam_prefix = bam.split(".")[0]
         recalib_report = "%s_BQSR.grp" % bam_prefix
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem*4/5, self.temp_dir)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, self.tmp_dir)
 
         # Generating the base recalibration options
         opts = list()
-        opts.append("-I %s" % self.bam)
+        opts.append("-I %s" % bam)
         opts.append("-o %s" % recalib_report)
-        opts.append("-nct %d" % self.nr_cpus)
+        opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % self.resources["ref"])
         opts.append("-knownSites %s" % self.resources["dbsnp"])
         opts.append("-cov ReadGroupCovariate")
@@ -85,7 +81,7 @@ class GATKBaseRecalibrator(Tool):
         opts.append("-cov ContextCovariate")
 
         # Limit the number of reads processed
-        chrom_list = self.get_chrom_locations()
+        chrom_list = self.get_chrom_locations(bam)
         if chrom_list is not None:
             for chrom in chrom_list:
                 opts.append("-L \"%s\"" % chrom)

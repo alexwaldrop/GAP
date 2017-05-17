@@ -13,13 +13,10 @@ class GATKReferenceSplitter(Splitter):
         self.req_tools      = []
         self.req_resources  = []
 
-        self.bam            = None
-        self.BQSR_report    = None
-
     def get_command(self, **kwargs):
 
-        self.bam            = kwargs.get("bam",         None)
-        self.BQSR_report    = kwargs.get("BQSR_report", None)
+        bam            = kwargs.get("bam",         None)
+        BQSR_report    = kwargs.get("BQSR_report", None)
 
         chrom_list = self.sample_data["chrom_list"]
 
@@ -29,16 +26,16 @@ class GATKReferenceSplitter(Splitter):
         for chrom in chrom_list:
             self.output.append(
                 {
-                    "bam":                  self.bam,
-                    "BQSR_report":          self.BQSR_report,
+                    "bam":                  bam,
+                    "BQSR_report":          BQSR_report,
                     "location":             chrom,
                     "excluded_location":    None
                 }
             )
         self.output.append(
             {
-                "bam":                  self.bam,
-                "BQSR_report":          self.BQSR_report,
+                "bam":                  bam,
+                "BQSR_report":          BQSR_report,
                 "location":             None,
                 "excluded_location":    chrom_list
             }

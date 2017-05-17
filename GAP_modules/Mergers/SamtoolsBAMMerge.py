@@ -11,12 +11,8 @@ class SamtoolsBAMMerge(Merger):
     def __init__(self, config, sample_data):
         super(SamtoolsBAMMerge, self).__init__(config, sample_data)
 
-        self.temp_dir     = self.config["paths"]["instance_tmp_dir"]
-
-        self.sample_name  = self.sample_data["sample_name"]
-
-        self.nr_cpus      = self.config["platform"]["MS_nr_cpus"]
-        self.mem          = self.config["platform"]["MS_mem"]
+        self.nr_cpus      = self.main_server_nr_cpus
+        self.mem          = self.main_server_mem
 
         self.input_keys   = ["bam"]
         self.output_keys  = ["bam"]
@@ -24,30 +20,28 @@ class SamtoolsBAMMerge(Merger):
         self.req_tools      = ["samtools"]
         self.req_resources  = []
 
-        self.bam_list     = None
-        self.sorted_input = None
+        self.sample_name  = self.sample_data["sample_name"]
 
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
-        self.mem            = kwargs.get("mem",             self.mem)
-        self.bam_list       = kwargs.get("bam",             None)
-        self.sorted_input   = kwargs.get("sorted_input",    True)
+        nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
+        bam_list       = kwargs.get("bam",             None)
+        sorted_input   = kwargs.get("sorted_input",    True)
 
-        if self.bam_list is None:
+        if bam_list is None:
             logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
             return None
 
         # Generating the output
-        bam_output = "%s/%s_%s.bam" % (self.temp_dir, self.sample_name, hashlib.md5(str(time.time())).hexdigest()[:5])
+        bam_output = "%s/%s_%s.bam" % (self.tmp_dir, self.sample_name, hashlib.md5(str(time.time())).hexdigest()[:5])
         self.output = dict()
         self.output["bam"] = bam_output
 
         # Generating the merging command
-        if self.sorted_input:
-            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], self.nr_cpus, bam_output, " ".join(self.bam_list))
+        if sorted_input:
+            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], nr_cpus, bam_output, " ".join(bam_list))
         else:
-            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], bam_output, " ".join(self.bam_list))
+            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], bam_output, " ".join(bam_list))
 
         return bam_merge_cmd

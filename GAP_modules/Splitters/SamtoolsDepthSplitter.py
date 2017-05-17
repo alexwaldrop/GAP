@@ -13,11 +13,9 @@ class SamtoolsDepthSplitter(Splitter):
         self.req_tools      = []
         self.req_resources  = []
 
-        self.bam            = None
-
     def get_command(self, **kwargs):
 
-        self.bam   = kwargs.get("bam",         None)
+        bam   = kwargs.get("bam",         None)
 
         chrom_list = self.sample_data["chrom_list"]
 
@@ -27,7 +25,7 @@ class SamtoolsDepthSplitter(Splitter):
         for chrom in chrom_list:
             self.output.append(
                 {
-                    "bam":                  self.bam,
+                    "bam":                  bam,
                     "location":             chrom,
                 }
             )

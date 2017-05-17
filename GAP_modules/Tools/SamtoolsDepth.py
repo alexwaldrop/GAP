@@ -28,43 +28,42 @@ class SamtoolsDepth(Tool):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.bam        = kwargs.get("bam",         None)
-        self.chrm       = kwargs.get("location",    None)
-        self.split_id   = kwargs.get("split_id",    None)
-        self.target_bed = kwargs.get("target_bed",  self.config["paths"]["resources"]["target_bed"])
-        self.samtools   = kwargs.get("samtools",    self.tools["samtools"])
-        self.bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
-        self.target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
+        bam        = kwargs.get("bam",         None)
+        chrm       = kwargs.get("location",    None)
+        split_id   = kwargs.get("split_id",    None)
+        samtools   = kwargs.get("samtools",    self.tools["samtools"])
+        bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
+        target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
 
-        bam_prefix = self.bam.split(".")[0]
+        bam_prefix = bam.split(".")[0]
 
         #generate names of output files
-        if self.split_id is None:
+        if split_id is None:
             #case: no splitting
             output_bam = "%s.depth.txt" % bam_prefix
 
-            if self.target_bed is None:
+            if target_bed is None:
                 #case: do not subset by target bedfile
-                final_cmd = "%s depth -a %s > %s !LOG2!" % (self.samtools, self.bam, output_bam)
+                final_cmd = "%s depth -a %s > %s !LOG2!" % (samtools, bam, output_bam)
             else:
                 #case: subset samtools depth output by target bedfile
                 #samtools depth command
-                depth_cmd = "%s depth -a %s" % (self.samtools, self.bam)
+                depth_cmd = "%s depth -a %s" % (samtools, bam)
 
                 #append commands for subsetting to target depth
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, self.target_bed)
+                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, target_bed, bedtools)
         else:
             #case: split by chromosome
-            output_bam = "%s.%d.depth.txt" % (bam_prefix, self.split_id)
+            output_bam = "%s.%d.depth.txt" % (bam_prefix, split_id)
 
-            if self.target_bed is None:
+            if target_bed is None:
                 #case: get depth for all positions (WGS)
-                final_cmd = "%s depth -r %s -a %s > %s !LOG2!" % (self.samtools, self.chrm, self.bam, output_bam)
+                final_cmd = "%s depth -r %s -a %s > %s !LOG2!" % (samtools, chrm, bam, output_bam)
 
             else:
                 #case: get depth at positions specified by target bedfile (Exome, TargetCapture)
-                depth_cmd = "%s depth -r %s -a %s !LOG2!" % (self.samtools, self.chrm, self.bam)
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, self.target_bed)
+                depth_cmd = "%s depth -r %s -a %s !LOG2!" % (samtools, chrm, bam)
+                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, target_bed, bedtools)
 
         # Set name of output file
         self.output = dict()
@@ -72,14 +71,14 @@ class SamtoolsDepth(Tool):
 
         return final_cmd
 
-    def get_samtools_depth_bed_command(self, output_bam, target_bed):
+    def get_samtools_depth_bed_command(self, output_bam, target_bed, bedtools):
         #returns command for subsetting samtools depth output based on a target bed file
 
         # convert depth output to bedfile
         depth_2_bed_cmd = "awk 'BEGIN{OFS=\"\\t\"}{print $1,$2,$2+1,$3}' !LOG2!"
 
         # intersect depth file with target region bed file
-        intersect_bed_cmd = "%s intersect -a %s -b stdin -sorted -wb !LOG2!" % (self.bedtools, target_bed)
+        intersect_bed_cmd = "%s intersect -a %s -b stdin -sorted -wb !LOG2!" % (bedtools, target_bed)
 
         # convert output bed to samtools depth output
         bed_2_depth_cmd = "cut -f 4,5,7 > %s !LOG2!" % (output_bam)

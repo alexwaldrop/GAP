@@ -7,18 +7,12 @@ class PicardMarkDuplicates(Tool):
     def __init__(self, config, sample_data):
         super(PicardMarkDuplicates, self).__init__(config, sample_data)
 
-        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
-
         self.can_split      = True
         self.splitter       = "BAMChromosomeSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
         self.nr_cpus        = 2
         self.mem            = 10
-
-        self.bam            = None
-        self.is_aligned     = None
-        self.split_id       = None
 
         self.input_keys             = ["bam"]
         self.splitted_input_keys    = ["bam", "is_aligned"]
@@ -31,28 +25,26 @@ class PicardMarkDuplicates(Tool):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.bam        = kwargs.get("bam",         None)
-        self.is_aligned = kwargs.get("is_aligned",  True)
-        self.nr_cpus    = kwargs.get("nr_cpus",     self.nr_cpus)
-        self.mem        = kwargs.get("mem",         self.mem)
-        self.split_id   = kwargs.get("split_id",    None)
+        bam        = kwargs.get("bam",         None)
+        is_aligned = kwargs.get("is_aligned",  True)
+        mem        = kwargs.get("mem",         self.mem)
 
         # If the obtained bam contains unaligned reads, skip the process
-        if not self.is_aligned:
+        if not is_aligned:
             self.output = dict()
-            self.output["bam"] = self.bam
+            self.output["bam"] = bam
             self.output["MD_report"] = ""
             return None
 
         # Generating variables
-        bam_prefix = self.bam.split(".")[0]
+        bam_prefix = bam.split(".")[0]
         bam_marked = "%s_marked.bam" % bam_prefix
         metrics    = "%s_metrics.txt" % bam_prefix
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem*4/5, self.temp_dir)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, self.tmp_dir)
 
         # Generating the marking duplicates options
         mark_dup_opts = list()
-        mark_dup_opts.append("INPUT=%s" % self.bam)
+        mark_dup_opts.append("INPUT=%s" % bam)
         mark_dup_opts.append("OUTPUT=%s" % bam_marked)
         mark_dup_opts.append("METRICS_FILE=%s" % metrics)
         mark_dup_opts.append("ASSUME_SORTED=TRUE")

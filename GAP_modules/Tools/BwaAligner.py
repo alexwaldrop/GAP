@@ -9,37 +9,30 @@ class BwaAligner(Tool):
     def __init__(self, config, sample_data):
         super(BwaAligner, self).__init__(config, sample_data)
 
-        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
-
-        self.sample_name    = self.sample_data["sample_name"]
-
         self.can_split      = True
         self.splitter       = "BwaFastqSplitter"
         self.merger         = "SamtoolsBAMMerge"
 
-        self.nr_cpus        = self.config["platform"]["max_nr_cpus"]    # BWA MEM can use as many CPUs as possible
+        self.nr_cpus        = self.max_nr_cpus    # BWA MEM can use as many CPUs as possible
         self.mem            = max(10, self.nr_cpus)    # BWA MEM should not need more than 1 GB/CPU
 
         self.input_keys             = ["R1", "R2"]
         self.splitted_input_keys    = ["R1", "R2", "nr_cpus"]
-
         self.output_keys            = ["bam"]
         self.splitted_output_keys   = ["bam"]
 
         self.req_tools      = ["bwa", "samtools"]
         self.req_resources  = ["ref"]
 
-        self.R1             = None
-        self.R2             = None
-        self.split_id       = None
+        self.sample_name    = self.sample_data["sample_name"]
 
-    def get_rg_header(self):
+    def get_rg_header(self, R1):
 
         if "read_group_tag" in self.sample_data:
             return self.sample_data["read_group_tag"]
 
         # Obtain the read header
-        cmd = "head -n 1 %s" % self.R1
+        cmd = "head -n 1 %s" % R1
         self.sample_data["main-server"].run_command("fastq_header", cmd, log=False)
         out, err = self.sample_data["main-server"].get_proc_output("fastq_header")
 
@@ -67,22 +60,21 @@ class BwaAligner(Tool):
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.R1                 = kwargs.get("R1",              None)
-        self.R2                 = kwargs.get("R2",              None)
-        self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
-        self.mem                = kwargs.get("mem",             self.mem)
-        self.split_id           = kwargs.get("split_id",        None)
+        R1                 = kwargs.get("R1",              None)
+        R2                 = kwargs.get("R2",              None)
+        nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
+        split_id           = kwargs.get("split_id",        None)
 
         # Generating command for alignment
-        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.tools["bwa"], self.get_rg_header(), self.nr_cpus, self.resources["ref"], self.R1, self.R2)
+        aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.tools["bwa"], self.get_rg_header(R1), nr_cpus, self.resources["ref"], R1, R2)
 
         # Generating command for converting SAM to BAM
-        sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.tools["samtools"], self.nr_cpus)
+        sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.tools["samtools"], nr_cpus)
 
         # Generating the bam name
-        bam_output = "%s/%s" % (self.temp_dir, self.sample_name)
-        if self.split_id is not None:
-            bam_output += "_%d.bam" % self.split_id
+        bam_output = "%s/%s" % (self.tmp_dir, self.sample_name)
+        if split_id is not None:
+            bam_output += "_%d.bam" % split_id
         else:
             bam_output += ".bam"
 

@@ -7,8 +7,6 @@ class FastQC(Tool):
     def __init__(self, config, sample_data):
         super(FastQC, self).__init__(config, sample_data)
 
-        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
-
         self.can_split      = False
 
         self.nr_cpus        = 2     # FASTQC requires 1 CPU per FASTQ file
@@ -20,25 +18,21 @@ class FastQC(Tool):
         self.req_tools      = ["fastqc", "java"]
         self.req_resources  = []
 
-        self.R1             = None
-        self.R2             = None
-
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.R1                 = kwargs.get("R1",              None)
-        self.R2                 = kwargs.get("R2",              None)
-        self.nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
-        self.mem                = kwargs.get("mem",             self.mem)
+        R1                 = kwargs.get("R1",              None)
+        R2                 = kwargs.get("R2",              None)
+        nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
 
         # Generating quality check command
-        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.tools["fastqc"], self.nr_cpus, self.tools["java"], self.R1, self.R2)
+        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.tools["fastqc"], nr_cpus, self.tools["java"], R1, R2)
 
         # Generating the output paths
         self.output = dict()
-        self.output["R1_html"]  = "%s_fastqc.html" % self.R1.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R1_zip"]   = "%s_fastqc.zip"  % self.R1.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R2_html"]  = "%s_fastqc.html" % self.R2.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R2_zip"]   = "%s_fastqc.zip"  % self.R2.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R1_html"]  = "%s_fastqc.html" % R1.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R1_zip"]   = "%s_fastqc.zip"  % R1.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R2_html"]  = "%s_fastqc.html" % R2.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R2_zip"]   = "%s_fastqc.zip"  % R2.replace(".fastq.gz", "").replace(".fastq", "")
 
         return fastqc_cmd

@@ -7,8 +7,8 @@ class SamtoolsDepthMerge(Merger):
     def __init__(self, config, sample_data):
         super(SamtoolsDepthMerge, self).__init__(config, sample_data)
 
-        self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
-        self.mem            = self.config["platform"]["MS_mem"]
+        self.nr_cpus        = self.main_server_nr_cpus
+        self.mem            = self.main_server_mem
 
         self.input_keys     = ["samtools_depth"]
         self.output_keys    = ["samtools_depth"]
@@ -16,18 +16,16 @@ class SamtoolsDepthMerge(Merger):
         self.req_tools      = []
         self.req_resources  = []
 
-        self.inputs = None
-
     def get_command(self, **kwargs):
 
         # Obtaining the arguments
-        self.inputs = kwargs.get("samtools_depth", None)
+        inputs = kwargs.get("samtools_depth", None)
 
         # Generating variables
-        output  = "%s.samtoolsdepth.txt" % self.inputs[0].split(".")[0]
+        output  = "%s.samtoolsdepth.txt" % inputs[0].split(".")[0]
 
         # Generating command for concatenating multiple files together using unix Cat command
-        cat_cmd = "cat %s > %s !LOG2!" % (" ".join(self.inputs), output)
+        cat_cmd = "cat %s > %s !LOG2!" % (" ".join(inputs), output)
 
         # Set output variables
         self.output = dict()

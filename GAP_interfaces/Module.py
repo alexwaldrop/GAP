@@ -10,8 +10,18 @@ class Module(object):
         self.config         = config
         self.sample_data    = sample_data
 
+        self.max_nr_cpus    = self.config["platform"]["max_nr_cpus"]
+        self.max_mem        = self.config["platform"]["max_mem"]
+
+        self.main_server_nr_cpus    = self.config["platform"]["MS_nr_cpus"]
+        self.main_server_mem        = self.config["platform"]["MS_mem"]
+
         self.nr_cpus    = None
         self.mem        = None
+
+        self.wrk_dir        = self.config["paths"]["instance_wrk_dir"]
+        self.tmp_dir        = self.config["paths"]["instance_tmp_dir"]
+        self.bin_dir        = self.config["paths"]["instance_bin_dir"]
 
         self.output         = None
 
