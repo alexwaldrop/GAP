@@ -1,5 +1,3 @@
-import logging
-
 from GAP_interfaces import Merger
 
 __main_class__ = "SamtoolsDepthMerge"

@@ -1,4 +1,3 @@
-import logging
 import os
 
 from GAP_interfaces import Tool

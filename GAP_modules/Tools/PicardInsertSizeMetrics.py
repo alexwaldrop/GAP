@@ -1,5 +1,3 @@
-import logging
-
 from GAP_interfaces import Tool
 
 __main_class__ = "PicardInsertSizeMetrics"
