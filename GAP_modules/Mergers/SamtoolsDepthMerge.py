@@ -7,18 +7,18 @@ __main_class__ = "SamtoolsDepthMerge"
 class SamtoolsDepthMerge(Merger):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsDepthMerge, self).__init__()
+        super(SamtoolsDepthMerge, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.nr_cpus    = self.config["platform"]["MS_nr_cpus"]
-        self.mem        = self.config["platform"]["MS_mem"]
-
-        self.inputs       = None
+        self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
+        self.mem            = self.config["platform"]["MS_mem"]
 
         self.input_keys     = ["samtools_depth"]
         self.output_keys    = ["samtools_depth"]
+
+        self.req_tools      = []
+        self.req_resources  = []
+
+        self.inputs = None
 
     def get_command(self, **kwargs):
 

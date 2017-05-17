@@ -7,16 +7,7 @@ __main_class__ = "SamtoolsDepth"
 class SamtoolsDepth(Tool):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsDepth, self).__init__()
-
-        self.config         = config
-        self.sample_data    = sample_data
-
-        # Path to samtools
-        self.samtools       = self.config["paths"]["tools"]["samtools"]
-
-        # Path to bedtools
-        self.bedtools       = self.config["paths"]["tools"]["bedtools"]
+        super(SamtoolsDepth, self).__init__(config, sample_data)
 
         # Module is splittable by chromosome
         self.can_split      = True
@@ -26,17 +17,15 @@ class SamtoolsDepth(Tool):
         self.nr_cpus        = 1
         self.mem            = 3
 
-        # Bam alignment
-        self.bam            = None
-
-        # Bed file containing target regions of interest
-        self.target_bed     = config["paths"]["resources"]["target_bed"]
-
         # Define input/output keys
         self.input_keys             = ["bam"]
         self.splitted_input_keys    = ["bam", "location"]
         self.output_keys            = ["samtools_depth"]
         self.splitted_output_keys   = ["samtools_depth"]
+
+        # Define required tools/resources
+        self.req_tools = ["samtools", "bedtools"]
+        self.req_resources = []
 
     def get_command(self, **kwargs):
 
@@ -45,6 +34,9 @@ class SamtoolsDepth(Tool):
         self.chrm       = kwargs.get("location",    None)
         self.split_id   = kwargs.get("split_id",    None)
         self.target_bed = kwargs.get("target_bed",  self.config["paths"]["resources"]["target_bed"])
+        self.samtools   = kwargs.get("samtools",    self.tools["samtools"])
+        self.bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
+        self.target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
 
         bam_prefix = self.bam.split(".")[0]
 

@@ -5,19 +5,19 @@ __main_class__ = "SamtoolsDepthSplitter"
 class SamtoolsDepthSplitter(Splitter):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsDepthSplitter, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
+        super(SamtoolsDepthSplitter, self).__init__(config, sample_data)
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam", "location"]
+
+        self.req_tools      = []
+        self.req_resources  = []
 
         self.bam            = None
 
     def get_command(self, **kwargs):
 
-        self.bam            = kwargs.get("bam",         None)
+        self.bam   = kwargs.get("bam",         None)
 
         chrom_list = self.sample_data["chrom_list"]
 

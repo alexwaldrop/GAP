@@ -17,19 +17,13 @@ class BedtoolsCaptureEfficiency(Tool):
         self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
         self.mem            = self.config["platform"]["MS_mem"]
 
-        # Bed file containing target regions of interest
-        self.target_bed     = self.config["paths"]["resources"]["target_bed"]
-        self.ref            = self.config["paths"]["ref"]
-
-        # Percent of reads to use for capture efficiency statistics
-        self.subsample_perc = 0.25 #self.config["general"]["capture_efficiency_subsample_perc"]
-
         # I/O keys
         self.input_keys     = ["bam"]
         self.output_keys    = ["capture_bed"]
 
+        # Required tools and resources
         self.req_tools      = ["bedtools", "samtools"]
-        self.req_resources  = []
+        self.req_resources  = ["target_bed", "ref"]
 
         # Bam input file
         self.bam            = None
@@ -39,9 +33,12 @@ class BedtoolsCaptureEfficiency(Tool):
         # Get command for running bedtools intersect to determine capture efficiency for a bam over a set of BED-formatted targets
         # Obtaining the arguments
         self.bam                = kwargs.get("bam",                 None)
-        self.target_bed         = kwargs.get("target_bed",          self.config["paths"]["resources"]["target_bed"])
-        self.subsample_perc     = kwargs.get("subsample_perc",      self.subsample_perc)
         self.is_bam_sorted      = kwargs.get("is_bam_sorted",       True)
+        self.subsample_perc     = kwargs.get("subsample_perc",      0.25)
+        self.samtools           = kwargs.get("samtools",            self.tools["samtools"])
+        self.bedtools           = kwargs.get("bedtools",            self.tools["bedtools"])
+        self.target_bed         = kwargs.get("target_bed",          self.resources["target_bed"])
+        self.ref                = kwargs.get("ref",                 self.resources["ref"])
 
         # Generate output filename
         bam_prefix = self.bam.split(".")[0]
