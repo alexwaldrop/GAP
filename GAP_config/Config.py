@@ -84,7 +84,7 @@ class Config(object):
         ref_dict = self.config["references"][ref_name]
 
         # Adding reference path to paths dictionary
-        self.config["paths"]["ref"] = ref_dict["path"]
+        self.config["paths"]["resources"]["ref"] = ref_dict["path"]
 
         # Processing the chromosome list
         chroms = list()

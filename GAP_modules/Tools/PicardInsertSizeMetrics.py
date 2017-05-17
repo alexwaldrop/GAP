@@ -7,13 +7,7 @@ __main_class__ = "PicardInsertSizeMetrics"
 class PicardInsertSizeMetrics(Tool):
 
     def __init__(self, config, sample_data):
-        super(PicardInsertSizeMetrics, self).__init__()
-
-        self.config         = config
-        self.sample_data    = sample_data
-
-        self.picard         = self.config["paths"]["tools"]["picard"]
-        self.java           = self.config["paths"]["tools"]["java"]
+        super(PicardInsertSizeMetrics, self).__init__(config, sample_data)
 
         self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
@@ -27,6 +21,9 @@ class PicardInsertSizeMetrics(Tool):
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["insert_size_report", "insert_size_histogram"]
+
+        self.req_tools      = ["picard", "java"]
+        self.req_resources  = []
 
         self.bam            = None
 
@@ -44,7 +41,7 @@ class PicardInsertSizeMetrics(Tool):
         # Generate cmd to run picard insert size metrics
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (self.mem * 4 / 5, self.temp_dir)
         cmd = "%s %s -jar %s CollectInsertSizeMetrics HISTOGRAM_FILE=%s INPUT=%s OUTPUT=%s STOP_AFTER=%d !LOG2!" \
-                     % (self.java, jvm_options, self.picard, histogram_output, self.bam, text_output, self.num_reads)
+                     % (self.tools["java"], jvm_options, self.tools["picard"], histogram_output, self.bam, text_output, self.num_reads)
 
         # Generating the output
         self.output = dict()

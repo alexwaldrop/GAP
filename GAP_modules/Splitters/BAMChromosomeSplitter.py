@@ -7,12 +7,7 @@ __main_class__ = "BAMChromosomeSplitter"
 class BAMChromosomeSplitter(Splitter):
 
     def __init__(self, config, sample_data):
-        super(BAMChromosomeSplitter, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
-
-        self.samtools = self.config["paths"]["tools"]["samtools"]
+        super(BAMChromosomeSplitter, self).__init__(config, sample_data)
 
         self.nr_cpus     = self.config["platform"]["MS_nr_cpus"]
         self.mem         = self.config["platform"]["MS_mem"]
@@ -20,12 +15,15 @@ class BAMChromosomeSplitter(Splitter):
         self.input_keys  = ["bam"]
         self.output_keys = ["bam", "is_aligned"]
 
+        self.req_tools      = ["samtools"]
+        self.req_resources  = []
+
         self.bam = None
 
     def get_header(self):
 
         # Obtain the reference sequences IDs
-        cmd = "%s view -H %s | grep \"@SQ\"" % (self.samtools, self.bam)
+        cmd = "%s view -H %s | grep \"@SQ\"" % (self.tools["samtools"], self.bam)
         self.sample_data["main-server"].run_command("bam_header", cmd, log=False)
         out, err = self.sample_data["main-server"].get_proc_output("bam_header")
 
@@ -76,14 +74,14 @@ class BAMChromosomeSplitter(Splitter):
         cmds = list()
 
         # Obtaining the chromosomes in parallel
-        cmd = '%s view -@ %d -u -F 4 %s $chrom_name > %s_$chrom_name.bam' % (self.samtools, self.nr_cpus, self.bam, bam_prefix)
+        cmd = '%s view -@ %d -u -F 4 %s $chrom_name > %s_$chrom_name.bam' % (self.tools["samtools"], self.nr_cpus, self.bam, bam_prefix)
         cmds.append('for chrom_name in %s; do %s & done' % (" ".join(chroms), cmd))
 
         # Obtaining the remaining chromosomes from the bam header
-        cmds.append('%s view -@ %d -u -F 4 %s %s > %s_remains.bam' % (self.samtools, self.nr_cpus, self.bam, " ".join(remains), bam_prefix))
+        cmds.append('%s view -@ %d -u -F 4 %s %s > %s_remains.bam' % (self.tools["samtools"], self.nr_cpus, self.bam, " ".join(remains), bam_prefix))
 
         # Obtaining the unaligned reads
-        cmds.append('%s view -@ %d -u -f 4 %s > %s_unmaped.bam' % (self.samtools, self.nr_cpus, self.bam, bam_prefix))
+        cmds.append('%s view -@ %d -u -f 4 %s > %s_unmaped.bam' % (self.tools["samtools"], self.nr_cpus, self.bam, bam_prefix))
 
         # Setting up the output paths
         self.output = list()

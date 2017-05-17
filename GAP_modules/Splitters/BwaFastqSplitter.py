@@ -8,10 +8,7 @@ __main_class__ = "BwaFastqSplitter"
 class BwaFastqSplitter(Splitter):
 
     def __init__(self, config, sample_data):
-        super(BwaFastqSplitter, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
+        super(BwaFastqSplitter, self).__init__(config, sample_data)
 
         self.temp_dir = self.config["paths"]["instance_tmp_dir"]
 
@@ -27,6 +24,9 @@ class BwaFastqSplitter(Splitter):
 
         self.input_keys  = ["R1", "R2"]
         self.output_keys = ["R1", "R2", "nr_cpus"]
+
+        self.req_tools      = []
+        self.req_resources  = []
 
         self.R1          = None
         self.R2          = None

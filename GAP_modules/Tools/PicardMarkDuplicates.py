@@ -5,13 +5,7 @@ __main_class__ = "PicardMarkDuplicates"
 class PicardMarkDuplicates(Tool):
 
     def __init__(self, config, sample_data):
-        super(PicardMarkDuplicates, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
-
-        self.picard         = self.config["paths"]["tools"]["picard"]
-        self.java           = self.config["paths"]["tools"]["java"]
+        super(PicardMarkDuplicates, self).__init__(config, sample_data)
 
         self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
@@ -30,6 +24,9 @@ class PicardMarkDuplicates(Tool):
         self.splitted_input_keys    = ["bam", "is_aligned"]
         self.output_keys            = ["bam", "MD_report"]
         self.splitted_output_keys   = ["bam", "MD_report"]
+
+        self.req_tools      = ["picard", "java"]
+        self.req_resources  = []
 
     def get_command(self, **kwargs):
 
@@ -63,7 +60,7 @@ class PicardMarkDuplicates(Tool):
         mark_dup_opts.append("VALIDATION_STRINGENCY=LENIENT")
 
         # Generating command for marking duplicates
-        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.java, jvm_options, self.picard, " ".join(mark_dup_opts))
+        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["picard"], " ".join(mark_dup_opts))
 
         # Generating the output path
         self.output = dict()

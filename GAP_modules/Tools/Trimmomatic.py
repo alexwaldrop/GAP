@@ -5,13 +5,8 @@ __main_class__ = "Trimmomatic"
 class Trimmomatic(Tool):
 
     def __init__(self, config, sample_data):
-        super(Trimmomatic, self).__init__()
+        super(Trimmomatic, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.trimmomatic_jar    = self.config["paths"]["tools"]["trimmomatic"]
-        self.adapters           = self.config["paths"]["resources"]["adapters"]
         self.is_phred33         = self.sample_data["phred33"]
 
         self.temp_dir           = self.config["paths"]["instance_tmp_dir"]
@@ -23,6 +18,9 @@ class Trimmomatic(Tool):
 
         self.input_keys     = ["R1", "R2"]
         self.output_keys    = ["R1", "R1_unpair", "R2", "R2_unpair", "trim_report"]
+
+        self.req_tools      = ["trimmomatic", "java"]
+        self.req_resources  = ["adapters"]
 
         self.R1             = None
         self.R2             = None
@@ -41,7 +39,7 @@ class Trimmomatic(Tool):
         R2_pair     = "%s/R2_%s_trimmed.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         R2_unpair   = "%s/R2_%s_trimmed_unpaired.fastq" % (self.temp_dir, self.sample_data["sample_name"])
         out_file    = "%s/%s_trimmed_output.txt" % (self.temp_dir, self.sample_data["sample_name"])
-        steps       = [ "ILLUMINACLIP:%s:2:20:7:1:true" % self.adapters,
+        steps       = [ "ILLUMINACLIP:%s:2:20:7:1:true" % self.resources["adapters"],
                         "LEADING:5",
                         "TRAILING:5",
                         "SLIDINGWINDOW:4:10",
@@ -50,8 +48,9 @@ class Trimmomatic(Tool):
         jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (self.mem*4/5, self.temp_dir)
 
         # Generating command
-        trim_cmd = "java %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
-            jvm_options, self.trimmomatic_jar, self.nr_cpus, phred, self.R1, self.R2, R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps), out_file)
+        trim_cmd = "%s %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
+            self.tools["java"], jvm_options, self.tools["trimmomatic"], self.nr_cpus, phred, self.R1, self.R2,
+            R1_pair, R1_unpair, R2_pair, R2_unpair, " ".join(steps), out_file)
 
         # Change the input data to correct one
         self.output = dict()

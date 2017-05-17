@@ -7,12 +7,7 @@ __main_class__ = "SamtoolsFlagstat"
 class SamtoolsFlagstat(Tool):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsFlagstat, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
-
-        self.samtools       = self.config["paths"]["tools"]["samtools"]
+        super(SamtoolsFlagstat, self).__init__(config, sample_data)
 
         self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
@@ -23,6 +18,9 @@ class SamtoolsFlagstat(Tool):
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["flagstat"]
+
+        self.req_tools      = ["samtools"]
+        self.req_resources  = ["ref"]
 
         self.bam            = None
 
@@ -35,7 +33,7 @@ class SamtoolsFlagstat(Tool):
         bam_prefix = self.bam.split(".")[0]
 
         # Generating indexing command
-        flagstat_cmd = "%s flagstat %s > %s_flagstat.txt" % (self.samtools, self.bam, bam_prefix)
+        flagstat_cmd = "%s flagstat %s > %s_flagstat.txt" % (self.tools["samtools"], self.bam, bam_prefix)
 
         # Generating the output
         self.output = dict()

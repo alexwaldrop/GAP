@@ -5,15 +5,7 @@ __main_class__ = "GATKPrintReads"
 class GATKPrintReads(Tool):
 
     def __init__(self, config, sample_data):
-        super(GATKPrintReads, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
-
-        self.java = self.config["paths"]["tools"]["java"]
-        self.GATK = self.config["paths"]["tools"]["gatk"]
-
-        self.ref = self.config["paths"]["ref"]
+        super(GATKPrintReads, self).__init__(config, sample_data)
 
         self.temp_dir = self.config["paths"]["instance_tmp_dir"]
 
@@ -28,6 +20,9 @@ class GATKPrintReads(Tool):
         self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
         self.output_keys            = ["bam"]
         self.splitted_output_keys   = ["bam"]
+
+        self.req_tools      = ["gatk", "java"]
+        self.req_resources  = ["ref"]
 
         self.bam        = None
         self.L          = None
@@ -58,7 +53,7 @@ class GATKPrintReads(Tool):
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % recalib_bam)
         opts.append("-nct %d" % self.nr_cpus)
-        opts.append("-R %s" % self.ref)
+        opts.append("-R %s" % self.resources["ref"])
         opts.append("-BQSR %s" % self.BQSR)
 
         # Limit the locations to be processes
@@ -76,7 +71,7 @@ class GATKPrintReads(Tool):
                 opts.append("-XL \"%s\"" % self.XL)
 
         # Generating command for recalibrating the BAM file
-        pr_cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
+        pr_cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
         # Create output path
         self.output = dict()

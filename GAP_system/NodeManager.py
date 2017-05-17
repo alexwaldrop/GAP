@@ -38,6 +38,7 @@ class NodeManager(object):
 
         has_errors = False
 
+        # Checking input/output keys
         for tool_id in self.nodes:
 
             # Identifying all the input keys
@@ -57,6 +58,26 @@ class NodeManager(object):
                 if error is not None:
                     has_errors = True
                     logging.error("For the %s (%s), the following I/O error appeared: %s " % (tool_id, self.modules[tool_id], error))
+
+        # Checking tools and resources requirements
+        for tool_id in self.nodes:
+
+            # Identifying if any required keys are not found
+            not_found = self.nodes[tool_id].check_requirements()
+
+            # Checking if all the required tools are provided
+            if not_found["tools"]:
+                has_errors = True
+                logging.error(
+                    "For the %s (%s), the following tools are required, but are not found in the config: %s " %
+                    (tool_id, self.modules[tool_id], " ".join(not_found["tools"])))
+
+            # Checking if all the required resources are provided
+            if not_found["resources"]:
+                has_errors = True
+                logging.error(
+                    "For the %s (%s), the following resources are required, but are not found in the config: %s " %
+                    (tool_id, self.modules[tool_id], " ".join(not_found["resources"])))
 
         if has_errors:
             raise IOError("One or more modules have I/O errors. Please check the error messages above!")
