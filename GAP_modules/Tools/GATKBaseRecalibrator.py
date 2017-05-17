@@ -7,19 +7,9 @@ __main_class__="GATKBaseRecalibrator"
 class GATKBaseRecalibrator(Tool):
 
     def __init__(self, config, sample_data):
-        super(GATKBaseRecalibrator, self).__init__()
+        super(GATKBaseRecalibrator, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.java           = self.config["paths"]["java"]
-        self.GATK           = self.config["paths"]["gatk"]
-        self.samtools       = self.config["paths"]["samtools"]
-
-        self.ref            = self.config["paths"]["ref"]
-        self.dbsnp          = self.config["paths"]["dbsnp"]
-
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 
@@ -29,12 +19,15 @@ class GATKBaseRecalibrator(Tool):
         self.input_keys     = ["bam"]
         self.output_keys    = ["BQSR_report"]
 
+        self.req_tools      = ["gatk", "java", "samtools"]
+        self.req_resources  = ["ref", "dbsnp"]
+
         self.bam            = None
 
     def get_chrom_locations(self, max_nr_reads=2.5*10**7):
 
         # Obtaining the chromosome alignment information
-        cmd = "%s idxstats %s" % (self.samtools, self.bam)
+        cmd = "%s idxstats %s" % (self.tools["samtools"], self.bam)
         self.sample_data["main-server"].run_command("bam_idxstats", cmd, log=False)
         out, err = self.sample_data["main-server"].get_proc_output("bam_idxstats")
 
@@ -84,8 +77,8 @@ class GATKBaseRecalibrator(Tool):
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % recalib_report)
         opts.append("-nct %d" % self.nr_cpus)
-        opts.append("-R %s" % self.ref)
-        opts.append("-knownSites %s" % self.dbsnp)
+        opts.append("-R %s" % self.resources["ref"])
+        opts.append("-knownSites %s" % self.resources["dbsnp"])
         opts.append("-cov ReadGroupCovariate")
         opts.append("-cov QualityScoreCovariate")
         opts.append("-cov CycleCovariate")
@@ -98,7 +91,7 @@ class GATKBaseRecalibrator(Tool):
                 opts.append("-L \"%s\"" % chrom)
 
         # Generating command for base recalibration
-        br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
+        br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
         # Generating the output path
         self.output = dict()

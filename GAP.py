@@ -61,12 +61,14 @@ def main():
     node_manager = NodeManager(config, plat)
 
     # Check I/O of the pipeline, before starting the pipeline
-    plat.check_input(config["sample"])
     node_manager.check_nodes()
 
     # Setting up the platform
     plat.prepare_platform(config["sample"])
-    plat.prepare_data(config["sample"], nr_local_ssd=5)
+
+    # Update NodeManager with changes made to config while preparing platform
+    # paths of tools/resources may have changed if they were transferred from bucket to instance
+    node_manager.update()
 
     # Running the modules
     node_manager.run()

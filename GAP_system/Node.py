@@ -295,6 +295,27 @@ class Node(threading.Thread):
         else:
             return None
 
+    def check_requirements(self):
+
+        # Generating an aggregated not_found dictionary
+        not_found = dict()
+        not_found["tools"] = list()
+        not_found["resources"] = list()
+
+        # Generating the list of modules to check
+        if self.is_split_mode:
+            modules_to_check = [self.split_obj, self.main_obj, self.merge_obj]
+        else:
+            modules_to_check = [self.main_obj]
+
+        # Obtiaining the list of requirements that are not met
+        for module_obj in modules_to_check:
+            not_found_in_module = module_obj.check_requirements()
+            not_found["tools"].extend( not_found_in_module["tools"] )
+            not_found["resources"].extend( not_found_in_module["resources"] )
+
+        return not_found
+
     def define_output(self):
         if self.is_split_mode:
             return self.merge_obj.define_output()

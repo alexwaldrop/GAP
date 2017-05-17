@@ -5,15 +5,9 @@ __main_class__= "FastQC"
 class FastQC(Tool):
     
     def __init__(self, config, sample_data):
-        super(FastQC, self).__init__()
+        super(FastQC, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.fastqc         = self.config["paths"]["fastqc"]
-        self.java           = self.config["paths"]["java"]
-
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 
@@ -22,6 +16,9 @@ class FastQC(Tool):
 
         self.input_keys     = ["R1", "R2"]
         self.output_keys    = ["R1_html", "R1_zip", "R2_html", "R2_zip"]
+
+        self.req_tools      = ["fastqc", "java"]
+        self.req_resources  = []
 
         self.R1             = None
         self.R2             = None
@@ -35,7 +32,7 @@ class FastQC(Tool):
         self.mem                = kwargs.get("mem",             self.mem)
 
         # Generating quality check command
-        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.fastqc, self.nr_cpus, self.java, self.R1, self.R2)
+        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.tools["fastqc"], self.nr_cpus, self.tools["java"], self.R1, self.R2)
 
         # Generating the output paths
         self.output = dict()

@@ -5,17 +5,9 @@ __main_class__ = "GATKHaplotypeCaller"
 class GATKHaplotypeCaller(Tool):
 
     def __init__(self, config, sample_data):
-        super(GATKHaplotypeCaller, self).__init__()
+        super(GATKHaplotypeCaller, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.java = self.config["paths"]["java"]
-        self.GATK = self.config["paths"]["gatk"]
-
-        self.ref = self.config["paths"]["ref"]
-
-        self.temp_dir = self.config["general"]["temp_dir"]
+        self.temp_dir = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
@@ -28,6 +20,9 @@ class GATKHaplotypeCaller(Tool):
         self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
         self.output_keys            = ["gvcf", "gvcf_idx"]
         self.splitted_output_keys   = ["gvcf", "gvcf_idx"]
+
+        self.req_tools      = ["gatk", "java"]
+        self.req_resources  = ["ref"]
 
         self.bam = None
         self.L = None
@@ -59,7 +54,7 @@ class GATKHaplotypeCaller(Tool):
         opts.append("-I %s" % self.bam)
         opts.append("-o %s" % gvcf)
         opts.append("-nct %d" % self.nr_cpus)
-        opts.append("-R %s" % self.ref)
+        opts.append("-R %s" % self.resources["ref"])
         opts.append("-ERC GVCF")
         if self.BQSR is not None:
             opts.append("-BQSR %s" % self.BQSR)
@@ -79,7 +74,7 @@ class GATKHaplotypeCaller(Tool):
                 opts.append("-XL \"%s\"" % self.XL)
 
         # Generating command for base recalibration
-        hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
+        hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
         # Create output path
         self.output = dict()

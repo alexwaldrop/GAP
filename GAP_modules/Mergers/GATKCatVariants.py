@@ -9,23 +9,18 @@ __main_class__ = "GATKCatVariants"
 class GATKCatVariants(Merger):
 
     def __init__(self, config, sample_data):
-        super(GATKCatVariants, self).__init__()
+        super(GATKCatVariants, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.java = self.config["paths"]["java"]
-        self.GATK = self.config["paths"]["gatk"]
-
-        self.ref = self.config["paths"]["ref"]
-
-        self.temp_dir = self.config["general"]["temp_dir"]
+        self.temp_dir = self.config["paths"]["instance_tmp_dir"]
 
         self.nr_cpus      = self.config["platform"]["MS_nr_cpus"]
         self.mem          = self.config["platform"]["MS_mem"]
 
         self.input_keys   = ["gvcf"]
         self.output_keys  = ["gvcf", "gvcf_idx"]
+
+        self.req_tools      = ["gatk", "java"]
+        self.req_resources  = ["ref"]
 
         self.gvcf_list    = None
 
@@ -48,12 +43,12 @@ class GATKCatVariants(Merger):
         # Generating the combine options
         opts = list()
         opts.append("-out %s" % gvcf)
-        opts.append("-R %s" % self.ref)
+        opts.append("-R %s" % self.resources["ref"])
         for gvcf_input in self.gvcf_list:
             opts.append("-V %s" % gvcf_input)
 
         # Generating the combine command
-        comb_cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants %s !LOG3!" % (self.java, jvm_options, self.GATK, " ".join(opts))
+        comb_cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
         # Generating the output path
         self.output = dict()

@@ -31,20 +31,23 @@ class Instance(object):
         self.MAX_RESET_COUNT    = self.config["platform"]["max_reset"]
 
         # Setting variables
-        self.nr_cpus            = kwargs.get("nr_cpus",          self.MAX_NR_CPUS)
-        self.mem                = kwargs.get("mem",              self.MAX_MEM)
-        self.is_server          = kwargs.get("is_server",        False)
-        self.boot_disk_size     = kwargs.get("boot_disk_size",   60)
-        self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd", False)
-        self.is_preemptible     = kwargs.get("is_preemptible",   False)
-        self.zone               = kwargs.get("zone",             self.config["platform"]["zone"])
-        self.ready_topic        = kwargs.get("ready_topic",      "ready")
-        self.nr_local_ssd       = kwargs.get("nr_local_ssd",     0)
-        self.start_up_script    = kwargs.get("start_up_script",  None)
-        self.shutdown_script    = kwargs.get("shutdown_script",  None)
-        self.instances          = kwargs.get("instances",        {})
-        self.main_server        = kwargs.get("main_server",      None)
-        self.instance_type      = kwargs.get("instance_type",    self.get_inst_type())
+        self.zone               = kwargs.get("zone",                self.config["platform"]["zone"])
+        self.start_up_script    = kwargs.get("start_up_script",     self.config["platform"]["start_up_script"])
+        self.shutdown_script    = kwargs.get("shutdown_script",     self.config["platform"]["shutdown_script"])
+        self.boot_disk_size     = kwargs.get("boot_disk_size",      self.config["platform"]["boot_disk_size"])
+        self.instance_log_dir   = kwargs.get("instance_log_dir",    self.config["paths"]["instance_log_dir"])
+        self.disk_image         = kwargs.get("disk_image",          self.config["platform"]["disk_image"])
+        self.nr_cpus            = kwargs.get("nr_cpus",             self.MAX_NR_CPUS)
+        self.mem                = kwargs.get("mem",                 self.MAX_MEM)
+        self.is_server          = kwargs.get("is_server",           False)
+        self.is_boot_disk_ssd   = kwargs.get("is_boot_disk_ssd",    False)
+        self.is_preemptible     = kwargs.get("is_preemptible",      False)
+        self.ready_topic        = kwargs.get("ready_topic",         "ready")
+        self.nr_local_ssd       = kwargs.get("nr_local_ssd",        0)
+        self.instances          = kwargs.get("instances",           {})
+        self.main_server        = kwargs.get("main_server",         None)
+        self.service_acct       = kwargs.get("service_acct",        None)
+        self.instance_type      = kwargs.get("instance_type",       self.get_inst_type())
 
         self.processes          = OrderedDict()
 
@@ -86,10 +89,10 @@ class Instance(object):
         args.append("cloud-platform")
 
         args.append("--service-account")
-        args.append("gap-412@davelab-gcloud.iam.gserviceaccount.com")
+        args.append(str(self.service_acct))
 
         args.append("--image")
-        args.append("davelab-image")
+        args.append(str(self.disk_image))
 
         if "custom" in self.instance_type:
             args.append("--custom-cpu")
@@ -106,14 +109,10 @@ class Instance(object):
 
         metadata_args = list()
         if self.start_up_script is not None:
-            metadata_args.append("startup-script-url=gs://davelab_data/scripts/%s" % self.start_up_script)
-        else:
-            metadata_args.append("startup-script-url=gs://davelab_data/scripts/startup.sh")
+            metadata_args.append("startup-script-url=%s" % self.start_up_script)
 
         if self.shutdown_script is not None:
-            metadata_args.append("shutdown-script-url=gs://davelab_data/scripts/%s" % self.shutdown_script)
-        else:
-            metadata_args.append("shutdown-script-url=gs://davelab_data/scripts/shutdown.sh")
+            metadata_args.append("shutdown-script-url=%s" % self.shutdown_script)
 
         metadata_args.append("is-nfs-server=%d" % self.is_server)
 
@@ -257,13 +256,16 @@ class Instance(object):
         ratio["highmem"] = 13.00 / 2
 
         # Identifying needed predefined instance type
-        ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
-        if ratio_mem_cpu <= ratio["highcpu"]:
-            instance_type = "highcpu"
-        elif ratio_mem_cpu <= ratio["standard"]:
+        if self.nr_cpus == 1:
             instance_type = "standard"
         else:
-            instance_type = "highmem"
+            ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
+            if ratio_mem_cpu <= ratio["highcpu"]:
+                instance_type = "highcpu"
+            elif ratio_mem_cpu <= ratio["standard"]:
+                instance_type = "standard"
+            else:
+                instance_type = "highmem"
 
         # Initializing predefined instance data
         predef_inst = {}
@@ -289,13 +291,18 @@ class Instance(object):
         # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
         if self.nr_cpus != 1:
             custom_inst["nr_cpus"] = self.nr_cpus + self.nr_cpus % 2
+        else:
+            custom_inst["nr_cpus"] = 1
 
         # Computing the memory as integer value in GB
         custom_inst["mem"] = int(math.ceil(self.mem))
 
         # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
         custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
-        custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        if self.nr_cpus != 1:
+            custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        else:
+            custom_inst["mem"] = min(1, custom_inst["mem"])
 
         # Generating custom instance name
         custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
@@ -372,15 +379,21 @@ class Instance(object):
 
             # Generating all the logging pipes
             log_cmd_null = " >>/dev/null 2>&1 "
-            log_cmd_stdout = " >>/data/logs/%s.log " % job_name
-            log_cmd_stderr = " 2>>/data/logs/%s.log " % job_name
-            log_cmd_all = " >>/data/logs/%s.log 2>&1 " % job_name
+            log_file     = os.path.join(self.instance_log_dir, "%s.log" % job_name)
+            log_cmd_stdout = " >>%s " % (log_file)
+            log_cmd_stderr = " 2>>%s " % (log_file)
+            log_cmd_all = " >>%s 2>&1 " % (log_file)
 
             # Replacing the placeholders with the logging pipes
             command = command.replace("!LOG0!", log_cmd_null)
             command = command.replace("!LOG1!", log_cmd_stdout)
             command = command.replace("!LOG2!", log_cmd_stderr)
             command = command.replace("!LOG3!", log_cmd_all)
+
+        # Replace single quotes in the command so they can be correctly interpreted by the shell
+        # Helpful for running awk or sed commands which need to contain single quotes
+        # Idea from http://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
+        command = command.replace("'", "'\"'\"'")
 
         cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, command, self.zone)
 
@@ -496,6 +509,7 @@ class Instance(object):
                     #exit program if ssh error (from preemption) not found in error message
                     if proc_obj.log:
                         logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
 
@@ -515,6 +529,7 @@ class Instance(object):
                 else:
                     if proc_obj.log:
                         logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
         else:

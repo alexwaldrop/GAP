@@ -5,7 +5,11 @@ from GAP_interfaces import ABCMetaEnhanced
 class Tool(object):
     __metaclass__ = ABCMetaEnhanced
 
-    def __init__(self):
+    def __init__(self, config, sample_data):
+
+        self.config = config
+        self.sample_data = sample_data
+
         self.nr_cpus    = None
         self.mem        = None
 
@@ -20,6 +24,12 @@ class Tool(object):
         self.output_keys = None
         self.splitted_output_keys = None
 
+        self.req_tools = None
+        self.req_resources = None
+
+        self.tools      = self.config["paths"]["tools"]
+        self.resources  = self.config["paths"]["resources"]
+
     def check_init(self):
         cls_name = self.__class__.__name__
 
@@ -30,6 +40,9 @@ class Tool(object):
             "can_split":    self.can_split,
             "input_keys":   self.input_keys,
             "output_keys":  self.output_keys,
+
+            "req_tools":       self.req_tools,
+            "req_resources":   self.req_resources,
         }
 
         # Check if class instance has initialized all the attributes
@@ -60,6 +73,25 @@ class Tool(object):
             search_list = self.input_keys
 
         return [ key for key in search_list if key not in provided_keys ]
+
+    def check_requirements(self):
+
+        # Generating the not found lists
+        not_found = dict()
+        not_found["tools"] = []
+        not_found["resources"] = []
+
+        # Identifying if all the required tool keys are found in the config object
+        for req_tool_key in self.req_tools:
+            if req_tool_key not in self.tools:
+                not_found["tools"].append(req_tool_key)
+
+        # Identifying if all the required resource keys are found in the config object
+        for req_res_key in self.req_resources:
+            if req_res_key not in self.resources:
+                not_found["resources"].append(req_res_key)
+
+        return not_found
 
     def define_output(self, splitted=False):
         if splitted and self.can_split:

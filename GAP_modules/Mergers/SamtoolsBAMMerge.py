@@ -9,14 +9,9 @@ __main_class__ = "SamtoolsBAMMerge"
 class SamtoolsBAMMerge(Merger):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsBAMMerge, self).__init__()
+        super(SamtoolsBAMMerge, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.samtools     = self.config["paths"]["samtools"]
-
-        self.temp_dir     = self.config["general"]["temp_dir"]
+        self.temp_dir     = self.config["paths"]["instance_tmp_dir"]
 
         self.sample_name  = self.sample_data["sample_name"]
 
@@ -25,6 +20,9 @@ class SamtoolsBAMMerge(Merger):
 
         self.input_keys   = ["bam"]
         self.output_keys  = ["bam"]
+
+        self.req_tools      = ["samtools"]
+        self.req_resources  = []
 
         self.bam_list     = None
         self.sorted_input = None
@@ -48,8 +46,8 @@ class SamtoolsBAMMerge(Merger):
 
         # Generating the merging command
         if self.sorted_input:
-            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.samtools, self.nr_cpus, bam_output, " ".join(self.bam_list))
+            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], self.nr_cpus, bam_output, " ".join(self.bam_list))
         else:
-            bam_merge_cmd = "%s cat -o %s %s" % (self.samtools, bam_output, " ".join(self.bam_list))
+            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], bam_output, " ".join(self.bam_list))
 
         return bam_merge_cmd

@@ -5,13 +5,13 @@ __main_class__ = "GATKReferenceSplitter"
 class GATKReferenceSplitter(Splitter):
 
     def __init__(self, config, sample_data):
-        super(GATKReferenceSplitter, self).__init__()
-
-        self.config = config
-        self.sample_data = sample_data
+        super(GATKReferenceSplitter, self).__init__(config, sample_data)
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
+
+        self.req_tools      = []
+        self.req_resources  = []
 
         self.bam            = None
         self.BQSR_report    = None

@@ -7,14 +7,9 @@ __main_class__ = "SamtoolsIndex"
 class SamtoolsIndex(Tool):
 
     def __init__(self, config, sample_data):
-        super(SamtoolsIndex, self).__init__()
+        super(SamtoolsIndex, self).__init__(config, sample_data)
 
-        self.config = config
-        self.sample_data = sample_data
-
-        self.samtools       = self.config["paths"]["samtools"]
-
-        self.temp_dir       = self.config["general"]["temp_dir"]
+        self.temp_dir       = self.config["paths"]["instance_tmp_dir"]
 
         self.can_split      = False
 
@@ -23,6 +18,9 @@ class SamtoolsIndex(Tool):
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam_idx"]
+
+        self.req_tools      = ["samtools"]
+        self.req_resources  = []
 
         self.bam            = None
 
@@ -37,7 +35,7 @@ class SamtoolsIndex(Tool):
         bam_index = "%s.bai" % bam_prefix
 
         # Generating indexing command
-        index_cmd = "%s index %s %s" % (self.samtools, self.bam, bam_index)
+        index_cmd = "%s index %s %s" % (self.tools["samtools"], self.bam, bam_index)
 
         # Generating the output paths
         self.output = dict()
