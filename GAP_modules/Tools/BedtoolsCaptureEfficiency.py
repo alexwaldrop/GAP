@@ -1,4 +1,5 @@
 import logging
+import os
 
 from GAP_interfaces import Tool
 
@@ -33,20 +34,32 @@ class BedtoolsCaptureEfficiency(Tool):
         # Bam input file
         self.bam            = None
 
-
     def get_command(self, **kwargs):
 
         # Get command for running bedtools intersect to determine capture efficiency for a bam over a set of BED-formatted targets
         # Obtaining the arguments
-        self.bam            = kwargs.get("bam",             None)
-        self.target_bed     = kwargs.get("target_bed",      self.config["paths"]["resources"]["target_bed"])
-        self.subsample_perc = kwargs.get("subsample_perc",  self.subsample_perc)
+        self.bam                = kwargs.get("bam",                 None)
+        self.target_bed         = kwargs.get("target_bed",          self.config["paths"]["resources"]["target_bed"])
+        self.subsample_perc     = kwargs.get("subsample_perc",      self.subsample_perc)
+        self.is_bam_sorted      = kwargs.get("is_bam_sorted",       True)
 
         # Generate output filename
         bam_prefix = self.bam.split(".")[0]
         intersect_output = "%s.intersect.txt" % bam_prefix
 
-        # Get command to make genome file for sorting
+        # Sort bam if necessary
+        sort_bam_cmd = ""
+        if not self.is_bam_sorted:
+            # Get new filename for sorted bed
+            bam_basename    = os.path.join(self.temp_dir, self.bam.split("/")[-1])
+            sorted_bam      = "%s.sorted.%s" % (bam_basename.split(".")[0], ".".join(bam_basename.split(".")[1:]))
+            # Sort and index bam and set self.bam to the name of the sorted bam
+            sort_bam_cmd    = "%s sort %s > %s !LOG2!" % (self.samtools, self.bam, sorted_bam)
+            index_bam_cmd   = "%s index %s !LOG2!" % (self.samtools, sorted_bam)
+            sort_bam_cmd    = sort_bam_cmd + " ; " + index_bam_cmd + " ; "
+            self.bam        = sorted_bam
+
+        # Make genome file to specify sort order of chromosomes in BAM
         genome_file = "%s.genome" % bam_prefix
         make_genome_file_cmd = "%s idxstats %s | awk 'BEGIN{OFS=\"\\t\"}{print $1,$2}' > %s !LOG2!" % \
                                (self.tools["samtools"], self.bam, genome_file)
@@ -64,7 +77,7 @@ class BedtoolsCaptureEfficiency(Tool):
             intersect_cmd = "%s intersect -a %s -b %s -c -sorted -bed -g %s > %s !LOG2!" \
                             % (self.tools["bedtools"], self.bam, self.target_bed, genome_file, intersect_output)
 
-        intersect_cmd = "%s ; %s" % (make_genome_file_cmd, intersect_cmd)
+        intersect_cmd = "%s%s ; %s" % (sort_bam_cmd, make_genome_file_cmd, intersect_cmd)
 
         # Set name of output file
         self.output = dict()
