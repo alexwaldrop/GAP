@@ -55,7 +55,7 @@ class GATKBaseRecalibrator(Tool):
             total += int(data[2])
 
             # If we reached more than maximum number reads, then return the current available list
-            if total >= max_nr_reads:
+            if total >= int(max_nr_reads):
                 return chrom_list
 
         # If here, then process the entire file
