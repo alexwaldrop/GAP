@@ -393,7 +393,9 @@ class Instance(object):
         # Replace single quotes in the command so they can be correctly interpreted by the shell
         # Helpful for running awk or sed commands which need to contain single quotes
         # Idea from http://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
-        command = command.replace("'", "'\"'\"'")
+        # Only format the string on the first time (to prevent substitutions when commands are re-run for preemption)
+        if self.reset_count == 0:
+            command = command.replace("'", "'\"'\"'")
 
         cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, command, self.zone)
 
