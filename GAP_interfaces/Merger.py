@@ -2,11 +2,14 @@ from GAP_interfaces import Module
 
 class Merger(Module):
 
-    def __init__(self, config, sample_data):
+    def __init__(self, config, sample_data, main_module=None):
         super(Merger, self).__init__(config, sample_data)
 
         self.input_keys  = None
         self.output_keys = None
+
+        # Optionally set name of merger module to the name of the main tool using the merger
+        self.main_module = main_module if main_module is not None else self.__class__.__name__
 
     def check_init(self):
         cls_name = self.__class__.__name__

@@ -2,11 +2,14 @@ from GAP_interfaces import Module
 
 class Splitter(Module):
 
-    def __init__(self, config, sample_data):
+    def __init__(self, config, sample_data, main_module_name=None):
         super(Splitter, self).__init__(config, sample_data)
 
         self.input_keys  = None
         self.output_keys = None
+
+        # Optionally set name of splitter module to the name of the main tool using the splitter
+        self.main_module_name = main_module_name if main_module_name is not None else self.__class__.__name__
 
     def check_init(self):
         cls_name = self.__class__.__name__
