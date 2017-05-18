@@ -13,7 +13,7 @@ class FastQC(Tool):
         self.mem            = 5     # FASTQC requires 250MB RAM per FASTQ file
 
         self.input_keys     = ["R1", "R2"]
-        self.output_keys    = ["R1_html", "R1_zip", "R2_html", "R2_zip"]
+        self.output_keys    = ["R1_fastqc", "R2_fastqc"]
 
         self.req_tools      = ["fastqc", "java"]
         self.req_resources  = []
@@ -26,13 +26,11 @@ class FastQC(Tool):
         nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
 
         # Generating quality check command
-        fastqc_cmd = "%s -t %d --java %s --nogroup %s %s !LOG3!" % (self.tools["fastqc"], nr_cpus, self.tools["java"], R1, R2)
+        fastqc_cmd = "%s -t %d --java %s --nogroup --extract %s %s !LOG3!" % (self.tools["fastqc"], nr_cpus, self.tools["java"], R1, R2)
 
         # Generating the output paths
         self.output = dict()
-        self.output["R1_html"]  = "%s_fastqc.html" % R1.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R1_zip"]   = "%s_fastqc.zip"  % R1.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R2_html"]  = "%s_fastqc.html" % R2.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R2_zip"]   = "%s_fastqc.zip"  % R2.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R1_fastqc"] = "%s_fastqc"  % R1.replace(".fastq.gz", "").replace(".fastq", "")
+        self.output["R2_fastqc"] = "%s_fastqc"  % R2.replace(".fastq.gz", "").replace(".fastq", "")
 
         return fastqc_cmd
