@@ -92,8 +92,10 @@ class Node(threading.Thread):
                 raise exc_info[0], exc_info[1], exc_info[2]
 
 
-    def __init__(self, config, platform, sample_data, module_name, final_output_keys):
+    def __init__(self, tool_id, config, platform, sample_data, module_name, final_output_keys):
         super(Node, self).__init__()
+
+        self.tool_id = tool_id
 
         self.daemon = True
         self.exception_queue = Queue.Queue()
@@ -102,6 +104,7 @@ class Node(threading.Thread):
         self.platform = platform
         self.sample_data = sample_data
         self.module_name = module_name
+        print "Node name: %s\nModule name: %s" % (self.name, self.module_name)
 
         # Importing main module
         try:

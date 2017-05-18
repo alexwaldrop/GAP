@@ -31,7 +31,7 @@ class NodeManager(object):
             self.modules[tool_id] = tool_data["module"]
             self.requires[tool_id] = tool_data["input_from"]
             self.final_output[tool_id] = tool_data["final_output"]
-            self.nodes[tool_id] = Node(self.config, self.platform, self.config["sample"],
+            self.nodes[tool_id] = Node(tool_id, self.config, self.platform, self.config["sample"],
                                        self.modules[tool_id], self.final_output[tool_id])
 
     def check_nodes(self):
