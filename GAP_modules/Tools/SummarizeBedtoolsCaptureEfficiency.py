@@ -35,7 +35,7 @@ class SummarizeBedtoolsCaptureEfficiency(Tool):
             cmd += " --targettype %s" % target_type
 
         # Write output to summary file
-        cmd += " > %s" % output
+        cmd += " > %s !LOG2!" % output
 
         # Generating the output
         self.output = dict()

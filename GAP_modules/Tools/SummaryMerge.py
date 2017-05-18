@@ -29,7 +29,7 @@ class SummaryMerge(Tool):
         output = os.path.join(self.wrk_dir, "%s.qc_summary.txt" % sample_name)
 
         # Generating command to merge QC summary output files from two or more QCParser modules
-        cmd = "%s merge -i %s --sample %s > %s" % \
+        cmd = "%s merge -i %s --sample %s > %s !LOG2!" % \
               (self.tools["qc_parser"], " ".join(summary_files), sample_name, output)
 
         # Generating the output

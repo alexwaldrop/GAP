@@ -27,7 +27,7 @@ class SummarizePicardInsertSizeMetrics(Tool):
         output = "%s.insertsummary.txt" % input.split(".")[0]
 
         # Generating command to parse picard CollectInsertSizeMetrics output
-        cmd = "%s insertsize -i %s > %s" % (self.tools["qc_parser"], input, output)
+        cmd = "%s insertsize -i %s > %s !LOG2!" % (self.tools["qc_parser"], input, output)
 
         # Generating the output
         self.output = dict()

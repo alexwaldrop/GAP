@@ -36,7 +36,7 @@ class SummarizeSamtoolsDepth(Tool):
             cmd += " --ct %d" % cutoff
 
         # Write output to summary file
-        cmd += " > %s" % output
+        cmd += " > %s !LOG2!" % output
 
         # Generating the output
         self.output = dict()

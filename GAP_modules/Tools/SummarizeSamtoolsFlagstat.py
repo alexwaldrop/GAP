@@ -27,7 +27,7 @@ class SummarizeSamtoolsFlagstat(Tool):
         output = "%s.flagstatsummary.txt" % input.split(".")[0]
 
         # Generating command to parse samtools flagstat output
-        cmd = "%s flagstat -i %s > %s" % (self.tools["qc_parser"], input, output)
+        cmd = "%s flagstat -i %s > %s !LOG2!" % (self.tools["qc_parser"], input, output)
 
         # Generating the output
         self.output = dict()

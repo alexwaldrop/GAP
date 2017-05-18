@@ -27,7 +27,7 @@ class SummarizeTrimmomatic(Tool):
         output = "%s.trimsummary.txt" % input.split(".")[0]
 
         # Generating command to parse Trimmomatic log for trimming stats
-        cmd = "%s trimmomatic -i %s > %s" % (self.tools["qc_parser"], input, output)
+        cmd = "%s trimmomatic -i %s > %s !LOG2!" % (self.tools["qc_parser"], input, output)
 
         # Generating the output
         self.output = dict()
