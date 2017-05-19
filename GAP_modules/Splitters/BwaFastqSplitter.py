@@ -7,8 +7,8 @@ __main_class__ = "BwaFastqSplitter"
 
 class BwaFastqSplitter(Splitter):
 
-    def __init__(self, config, sample_data):
-        super(BwaFastqSplitter, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id, main_module_name=None):
+        super(BwaFastqSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
 
         self.nr_cpus     = self.main_server_nr_cpus
         self.mem         = self.main_server_mem
@@ -107,3 +107,4 @@ class BwaFastqSplitter(Splitter):
         )
 
         return " && ".join(cmds)
+

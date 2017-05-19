@@ -4,8 +4,8 @@ __main_class__ = "PicardInsertSizeMetrics"
 
 class PicardInsertSizeMetrics(Tool):
 
-    def __init__(self, config, sample_data):
-        super(PicardInsertSizeMetrics, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(PicardInsertSizeMetrics, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -27,19 +27,16 @@ class PicardInsertSizeMetrics(Tool):
         bam    = kwargs.get("bam", None)
         mem    = kwargs.get("mem", self.mem)
 
-        # Generate output filenames
-        bam_prefix = bam.split(".")[0]
-        histogram_output = "%s_insert_size_histogram.pdf" % bam_prefix
-        text_output      = "%s_insert_size.txt" % bam_prefix
-
         # Generate cmd to run picard insert size metrics
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
         cmd = "%s %s -jar %s CollectInsertSizeMetrics HISTOGRAM_FILE=%s INPUT=%s OUTPUT=%s STOP_AFTER=%d !LOG2!" \
-                     % (self.tools["java"], jvm_options, self.tools["picard"], histogram_output, bam, text_output, self.num_reads)
-
-        # Generating the output
-        self.output = dict()
-        self.output["insert_size_report"]       = text_output
-        self.output["insert_size_histogram"]    = histogram_output
+                     % (self.tools["java"], jvm_options, self.tools["picard"],
+                        self.output["insert_size_histogram"], bam,
+                        self.output["insert_size_report"],
+                        self.num_reads)
 
         return cmd
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("insert_size_histogram", "insert_size_histogram.pdf")
+        self.generate_output_file_path("insert_size_report",    "insertsize.out")

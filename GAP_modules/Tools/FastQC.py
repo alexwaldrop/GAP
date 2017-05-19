@@ -4,8 +4,8 @@ __main_class__= "FastQC"
 
 class FastQC(Tool):
     
-    def __init__(self, config, sample_data):
-        super(FastQC, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(FastQC, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -28,9 +28,14 @@ class FastQC(Tool):
         # Generating quality check command
         fastqc_cmd = "%s -t %d --java %s --nogroup --extract %s %s !LOG3!" % (self.tools["fastqc"], nr_cpus, self.tools["java"], R1, R2)
 
-        # Generating the output paths
-        self.output = dict()
-        self.output["R1_fastqc"] = "%s_fastqc"  % R1.replace(".fastq.gz", "").replace(".fastq", "")
-        self.output["R2_fastqc"] = "%s_fastqc"  % R2.replace(".fastq.gz", "").replace(".fastq", "")
-
         return fastqc_cmd
+
+    def init_output_file_paths(self, **kwargs):
+
+        # Obtaining the arguments
+        R1 = kwargs.get("R1", None)
+        R2 = kwargs.get("R2", None)
+
+        # Generate output filenames
+        self.declare_output_file_path("R1_fastqc", "%s_fastqc" % R1.replace(".fastq.gz", "").replace(".fastq", ""))
+        self.declare_output_file_path("R2_fastqc", "%s_fastqc" % R2.replace(".fastq.gz", "").replace(".fastq", ""))

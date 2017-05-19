@@ -6,8 +6,8 @@ __main_class__ = "BAMChromosomeSplitter"
 
 class BAMChromosomeSplitter(Splitter):
 
-    def __init__(self, config, sample_data):
-        super(BAMChromosomeSplitter, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id, main_module_name=None):
+        super(BAMChromosomeSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
 
         self.nr_cpus     = self.main_server_nr_cpus
         self.mem         = self.main_server_mem
@@ -105,3 +105,4 @@ class BAMChromosomeSplitter(Splitter):
 
         # Parallel split of the files
         return "%s ; wait" % " & ".join(cmds)
+

@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsFlagstat"
 
 class SamtoolsFlagstat(Tool):
 
-    def __init__(self, config, sample_data):
-        super(SamtoolsFlagstat, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(SamtoolsFlagstat, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -20,15 +20,12 @@ class SamtoolsFlagstat(Tool):
 
     def get_command(self, **kwargs):
 
-        bam                    = kwargs.get("bam",              None)
+        bam = kwargs.get("bam", None)
 
-        bam_prefix = bam.split(".")[0]
+        # Generating flagstat command
+        cmd = "%s flagstat %s > %s" % (self.tools["samtools"], bam, self.output["flagstat"])
 
-        # Generating indexing command
-        flagstat_cmd = "%s flagstat %s > %s_flagstat.txt" % (self.tools["samtools"], bam, bam_prefix)
+        return cmd
 
-        # Generating the output
-        self.output = dict()
-        self.output["flagstat"] = "%s_flagstat.txt" % bam_prefix
-
-        return flagstat_cmd
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("flagstat", "flagstat.out")

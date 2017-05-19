@@ -4,8 +4,8 @@ __main_class__ = "GATKPrintReads"
 
 class GATKPrintReads(Tool):
 
-    def __init__(self, config, sample_data):
-        super(GATKPrintReads, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(GATKPrintReads, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
@@ -30,20 +30,13 @@ class GATKPrintReads(Tool):
         BQSR           = kwargs.get("BQSR_report",       None)
         nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
         mem            = kwargs.get("mem",               self.mem)
-        split_id       = kwargs.get("split_id",          None)
 
-        # Generating variables
-        bam_prefix = bam.split(".")[0]
-        if split_id is None:
-            recalib_bam = "%s_recalib.bam" % bam_prefix
-        else:
-            recalib_bam = "%s_recalib_%d.bam" % (bam_prefix, split_id)
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
 
         # Generating the haplotype caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % recalib_bam)
+        opts.append("-o %s" % self.output["bam"])
         opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % self.resources["ref"])
         opts.append("-BQSR %s" % BQSR)
@@ -65,8 +58,8 @@ class GATKPrintReads(Tool):
         # Generating command for recalibrating the BAM file
         pr_cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
-        # Create output path
-        self.output = dict()
-        self.output["bam"] = recalib_bam
-
         return pr_cmd
+
+    def init_output_file_paths(self, **kwargs):
+        split_id = kwargs.get("split_id", None)
+        self.generate_output_file_path("bam", "recalibrated.bam", split_id=split_id)

@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepth"
 
 class SamtoolsDepth(Tool):
 
-    def __init__(self, config, sample_data):
-        super(SamtoolsDepth, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(SamtoolsDepth, self).__init__(config, sample_data, tool_id)
 
         # Module is splittable by chromosome
         self.can_split      = True
@@ -35,43 +35,36 @@ class SamtoolsDepth(Tool):
         bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
         target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
 
-        bam_prefix = bam.split(".")[0]
+        # Output file name
+        depth_out = self.output["samtools_depth"]
 
-        #generate names of output files
         if split_id is None:
             #case: no splitting
-            output_bam = "%s.depth.txt" % bam_prefix
 
             if target_bed is None:
                 #case: do not subset by target bedfile
-                final_cmd = "%s depth -a %s > %s !LOG2!" % (samtools, bam, output_bam)
+                final_cmd = "%s depth -a %s > %s !LOG2!" % (samtools, bam, depth_out)
             else:
                 #case: subset samtools depth output by target bedfile
                 #samtools depth command
                 depth_cmd = "%s depth -a %s" % (samtools, bam)
 
                 #append commands for subsetting to target depth
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, target_bed, bedtools)
+                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(depth_out, target_bed, bedtools)
         else:
             #case: split by chromosome
-            output_bam = "%s.%d.depth.txt" % (bam_prefix, split_id)
-
             if target_bed is None:
                 #case: get depth for all positions (WGS)
-                final_cmd = "%s depth -r %s -a %s > %s !LOG2!" % (samtools, chrm, bam, output_bam)
+                final_cmd = "%s depth -r %s -a %s > %s !LOG2!" % (samtools, chrm, bam, depth_out)
 
             else:
                 #case: get depth at positions specified by target bedfile (Exome, TargetCapture)
                 depth_cmd = "%s depth -r %s -a %s !LOG2!" % (samtools, chrm, bam)
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(output_bam, target_bed, bedtools)
-
-        # Set name of output file
-        self.output = dict()
-        self.output["samtools_depth"] = output_bam
+                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(depth_out, target_bed, bedtools)
 
         return final_cmd
 
-    def get_samtools_depth_bed_command(self, output_bam, target_bed, bedtools):
+    def get_samtools_depth_bed_command(self, output_file, target_bed, bedtools):
         #returns command for subsetting samtools depth output based on a target bed file
 
         # convert depth output to bedfile
@@ -81,7 +74,11 @@ class SamtoolsDepth(Tool):
         intersect_bed_cmd = "%s intersect -a %s -b stdin -sorted -wb !LOG2!" % (bedtools, target_bed)
 
         # convert output bed to samtools depth output
-        bed_2_depth_cmd = "cut -f 4,5,7 > %s !LOG2!" % (output_bam)
+        bed_2_depth_cmd = "cut -f 4,5,7 > %s !LOG2!" % (output_file)
 
         # chain subcommands with pipes for final command
         return depth_2_bed_cmd + " | " + intersect_bed_cmd + " | " + bed_2_depth_cmd
+
+    def init_output_file_paths(self, **kwargs):
+        split_id = kwargs.get("split_id", None)
+        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out", split_id=split_id)

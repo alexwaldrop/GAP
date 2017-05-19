@@ -6,8 +6,8 @@ __main_class__= "BwaAligner"
 
 class BwaAligner(Tool):
     
-    def __init__(self, config, sample_data):
-        super(BwaAligner, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(BwaAligner, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = True
         self.splitter       = "BwaFastqSplitter"
@@ -63,7 +63,6 @@ class BwaAligner(Tool):
         R1                 = kwargs.get("R1",              None)
         R2                 = kwargs.get("R2",              None)
         nr_cpus            = kwargs.get("nr_cpus",         self.nr_cpus)
-        split_id           = kwargs.get("split_id",        None)
 
         # Generating command for alignment
         aligner_cmd = "%s mem -M -R \"%s\" -t %d %s %s %s !LOG2!" % (self.tools["bwa"], self.get_rg_header(R1), nr_cpus, self.resources["ref"], R1, R2)
@@ -71,18 +70,11 @@ class BwaAligner(Tool):
         # Generating command for converting SAM to BAM
         sam_to_bam_cmd  = "%s view -uS -@ %d - !LOG2!" % (self.tools["samtools"], nr_cpus)
 
-        # Generating the bam name
-        bam_output = "%s/%s" % (self.tmp_dir, self.sample_name)
-        if split_id is not None:
-            bam_output += "_%d.bam" % split_id
-        else:
-            bam_output += ".bam"
-
-        # Generating the output
-        self.output = dict()
-        self.output["bam"] = bam_output
-
         # Generating command for sorting BAM
-        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.tools["samtools"], self.nr_cpus, bam_output)
+        bam_sort_cmd = "%s sort -@ %d - -o %s !LOG3!" % (self.tools["samtools"], self.nr_cpus, self.output["bam"])
 
         return "%s | %s | %s" % (aligner_cmd, sam_to_bam_cmd, bam_sort_cmd)
+
+    def init_output_file_paths(self, **kwargs):
+        split_id = kwargs.get("split_id", None)
+        self.generate_output_file_path("bam", "sorted.bam", split_id=split_id)

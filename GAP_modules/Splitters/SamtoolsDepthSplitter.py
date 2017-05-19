@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepthSplitter"
 
 class SamtoolsDepthSplitter(Splitter):
 
-    def __init__(self, config, sample_data):
-        super(SamtoolsDepthSplitter, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id, main_module_name=None):
+        super(SamtoolsDepthSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam", "location"]
