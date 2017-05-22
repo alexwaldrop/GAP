@@ -72,20 +72,6 @@ class Module(object):
 
         return not_found
 
-    @abc.abstractmethod
-    def get_command(self, **kwargs):
-        raise NotImplementedError("Class does not have a required \"get_command()\" method!")
-
-    def get_nr_cpus(self):
-        return self.nr_cpus
-
-    def get_mem(self):
-        return self.mem
-
-    @abc.abstractmethod
-    def init_output_file_paths(self, **kwargs):
-        raise NotImplementedError("Class does not have a required \"set_output_file_paths()\" method!")
-
     def generate_command(self, **kwargs):
         # Base method for generating the command to be run for a module
 
@@ -103,6 +89,14 @@ class Module(object):
 
         # Return the final command
         return cmd
+
+    @abc.abstractmethod
+    def get_command(self, **kwargs):
+        raise NotImplementedError("Class does not have a required \"get_command()\" method!")
+
+    @abc.abstractmethod
+    def init_output_file_paths(self, **kwargs):
+        raise NotImplementedError("Class does not have a required \"set_output_file_paths()\" method!")
 
     def check_output_files(self, **kwargs):
         # Check to see that a module's required output files were actually generated in the get_command
@@ -173,6 +167,11 @@ class Module(object):
                     raise IOError("Attempted to create two or more output files with the same name in module '%s'. See above for details!" %
                                   self.__class__.__name__)
 
+    def get_nr_cpus(self):
+        return self.nr_cpus
+
+    def get_mem(self):
+        return self.mem
 
 
 
