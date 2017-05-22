@@ -38,3 +38,10 @@ class Splitter(Module):
 
     def get_nr_splits(self):
         return len(self.get_output())
+
+    def generate_command(self, **kwargs):
+        self.output = dict() if self.output is None else self.output
+        return self.get_command(**kwargs)
+
+    def init_output_file_paths(self, **kwargs):
+        pass
