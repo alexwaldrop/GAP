@@ -2,8 +2,8 @@ from GAP_interfaces import Module
 
 class Tool(Module):
 
-    def __init__(self, config, sample_data):
-        super(Tool, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(Tool, self).__init__(config, sample_data, tool_id)
 
         self.can_split = None
         self.splitter = None
@@ -13,6 +13,8 @@ class Tool(Module):
         self.splitted_input_keys = None
         self.output_keys = None
         self.splitted_output_keys = None
+
+        self.main_module_name = self.__class__.__name__
 
     def check_init(self):
         cls_name = self.__class__.__name__

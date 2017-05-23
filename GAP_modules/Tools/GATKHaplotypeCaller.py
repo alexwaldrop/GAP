@@ -4,8 +4,8 @@ __main_class__ = "GATKHaplotypeCaller"
 
 class GATKHaplotypeCaller(Tool):
 
-    def __init__(self, config, sample_data):
-        super(GATKHaplotypeCaller, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(GATKHaplotypeCaller, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
@@ -30,21 +30,14 @@ class GATKHaplotypeCaller(Tool):
         XL             = kwargs.get("excluded_location", None)
         nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
         mem            = kwargs.get("mem",               self.mem)
-        split_id       = kwargs.get("split_id",          None)
 
-        # Generating variables
-        bam_prefix = bam.split(".")[0]
-        if split_id is not None:
-            gvcf = "%s_%d.g.vcf" % (bam_prefix, split_id)
-        else:
-            gvcf = "%s.g.vcf" % bam_prefix
-        idx = "%s.idx" % gvcf
+        # Set JVM options
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
 
         # Generating the haplotype caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % gvcf)
+        opts.append("-o %s" % self.output["gvcf"])
         opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % self.resources["ref"])
         opts.append("-ERC GVCF")
@@ -68,9 +61,9 @@ class GATKHaplotypeCaller(Tool):
         # Generating command for base recalibration
         hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
-        # Create output path
-        self.output = dict()
-        self.output["gvcf"]     = gvcf
-        self.output["gvcf_idx"] = idx
-
         return hc_cmd
+
+    def init_output_file_paths(self, **kwargs):
+        split_id = kwargs.get("split_id", None)
+        self.generate_output_file_path("gvcf", "g.vcf", split_id=split_id)
+        self.generate_output_file_path("gvcf_idx", "g.vcf.idx", split_id=split_id)

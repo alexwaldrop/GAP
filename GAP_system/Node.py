@@ -104,12 +104,11 @@ class Node(threading.Thread):
         self.platform = platform
         self.sample_data = sample_data
         self.module_name = module_name
-        print "Node name: %s\nModule name: %s" % (self.name, self.module_name)
 
         # Importing main module
         try:
             self.main = initialize_module(module_name, is_tool=True)
-            self.main_obj = self.main["class"](self.config, self.sample_data)
+            self.main_obj = self.main["class"](self.config, self.sample_data, self.tool_id)
         except ImportError:
             logging.error("Module %s cannot be imported!" % module_name)
             exit(1)
@@ -119,17 +118,19 @@ class Node(threading.Thread):
 
         # Importing splitter and merger:
         if self.is_split_mode:
+            # Get name of main module to link splitter/merger
+            main_module_name = self.main_obj.main_module_name
 
             try:
                 self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
-                self.split_obj = self.split["class"](self.config, self.sample_data)
+                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id,  main_module_name=main_module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
 
             try:
                 self.merge = initialize_module(self.main_obj.merger, is_merger=True)
-                self.merge_obj = self.merge["class"](self.config, self.sample_data)
+                self.merge_obj = self.merge["class"](self.config, self.sample_data, self.tool_id, main_module_name=main_module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
                 exit(1)
@@ -151,7 +152,7 @@ class Node(threading.Thread):
         merge_job_name  = "%s_merge" % self.module_name
 
         # Running the splitter
-        cmd = self.split_obj.get_command(**self.input_data)
+        cmd = self.split_obj.generate_command(**self.input_data)
 
         if cmd is not None:
             self.platform.instances["main-server"].run_command(split_job_name, cmd)
@@ -167,7 +168,7 @@ class Node(threading.Thread):
         for split_id, args in enumerate(self.split_outputs):
 
             # Obtaining main command
-            cmd = self.main_obj.get_command(split_id=split_id, **args)
+            cmd = self.main_obj.generate_command(split_id=split_id, **args)
 
             # Obtaining the main output
             self.main_outputs.append(self.main_obj.get_output())
@@ -199,7 +200,7 @@ class Node(threading.Thread):
             merge_input[key] = [ main_output[key] for main_output in self.main_outputs]
 
         # Running the merger
-        cmd = self.merge_obj.get_command(**merge_input)
+        cmd = self.merge_obj.generate_command(**merge_input)
         self.platform.instances["main-server"].run_command(merge_job_name, cmd)
         self.platform.instances["main-server"].wait_process(merge_job_name)
 
@@ -209,7 +210,7 @@ class Node(threading.Thread):
     def run_normal(self):
 
         # Obtaining main command
-        cmd = self.main_obj.get_command(**self.input_data)
+        cmd = self.main_obj.generate_command(**self.input_data)
 
         # Obtaining output that will be saved at the end of the pipeline
         self.main_outputs = self.main_obj.get_output()

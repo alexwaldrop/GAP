@@ -6,8 +6,8 @@ __main_class__="GATKBaseRecalibrator"
 
 class GATKBaseRecalibrator(Tool):
 
-    def __init__(self, config, sample_data):
-        super(GATKBaseRecalibrator, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(GATKBaseRecalibrator, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -64,14 +64,12 @@ class GATKBaseRecalibrator(Tool):
         mem            = kwargs.get("mem",         self.mem)
 
         # Generating variables
-        bam_prefix = bam.split(".")[0]
-        recalib_report = "%s_BQSR.grp" % bam_prefix
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, self.tmp_dir)
 
         # Generating the base recalibration options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % recalib_report)
+        opts.append("-o %s" % self.output["BQSR_report"])
         opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % self.resources["ref"])
         opts.append("-knownSites %s" % self.resources["dbsnp"])
@@ -89,8 +87,7 @@ class GATKBaseRecalibrator(Tool):
         # Generating command for base recalibration
         br_cmd = "%s %s -jar %s -T BaseRecalibrator %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
 
-        # Generating the output path
-        self.output = dict()
-        self.output["BQSR_report"]  = recalib_report
-
         return br_cmd
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("BQSR_report", ".grp")

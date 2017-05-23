@@ -8,8 +8,8 @@ __main_class__ = "SamtoolsBAMMerge"
 
 class SamtoolsBAMMerge(Merger):
 
-    def __init__(self, config, sample_data):
-        super(SamtoolsBAMMerge, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id, main_module_name=None):
+        super(SamtoolsBAMMerge, self).__init__(config, sample_data, tool_id, main_module_name)
 
         self.nr_cpus      = self.main_server_nr_cpus
         self.mem          = self.main_server_mem
@@ -33,15 +33,13 @@ class SamtoolsBAMMerge(Merger):
             logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
             return None
 
-        # Generating the output
-        bam_output = "%s/%s_%s.bam" % (self.tmp_dir, self.sample_name, hashlib.md5(str(time.time())).hexdigest()[:5])
-        self.output = dict()
-        self.output["bam"] = bam_output
-
         # Generating the merging command
         if sorted_input:
-            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], nr_cpus, bam_output, " ".join(bam_list))
+            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], nr_cpus, self.output["bam"], " ".join(bam_list))
         else:
-            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], bam_output, " ".join(bam_list))
+            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], self.output["bam"], " ".join(bam_list))
 
         return bam_merge_cmd
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("bam", "bam")

@@ -4,8 +4,8 @@ __main_class__ = "SummarizeBedtoolsCaptureEfficiency"
 
 class SummarizeBedtoolsCaptureEfficiency(Tool):
 
-    def __init__(self, config, sample_data):
-        super(SummarizeBedtoolsCaptureEfficiency, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(SummarizeBedtoolsCaptureEfficiency, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -24,9 +24,6 @@ class SummarizeBedtoolsCaptureEfficiency(Tool):
         capture_bed         = kwargs.get("capture_bed",     None)
         target_type         = kwargs.get("target_type",     None)
 
-        # Set name of output file
-        output = "%s.capturesummary.txt" % capture_bed.split(".")[0]
-
         # Generating command to parse bedtools coverage output
         cmd = "%s capture -i %s" % (self.tools["qc_parser"], capture_bed)
 
@@ -35,10 +32,9 @@ class SummarizeBedtoolsCaptureEfficiency(Tool):
             cmd += " --targettype %s" % target_type
 
         # Write output to summary file
-        cmd += " > %s !LOG2!" % output
-
-        # Generating the output
-        self.output = dict()
-        self.output["summary_file"] = output
+        cmd += " > %s !LOG2!" % self.output["summary_file"]
 
         return cmd
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("summary_file", "capture.summary.txt")

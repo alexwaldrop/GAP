@@ -4,8 +4,8 @@ __main_class__ = "SummarizeSamtoolsDepth"
 
 class SummarizeSamtoolsDepth(Tool):
 
-    def __init__(self, config, sample_data):
-        super(SummarizeSamtoolsDepth, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(SummarizeSamtoolsDepth, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -24,9 +24,6 @@ class SummarizeSamtoolsDepth(Tool):
         input           = kwargs.get("samtools_depth",  None)
         cutoffs         = kwargs.get("cutoffs",         [1,5,10,15,25,50,100])
 
-        # Set name of output file
-        output = "%s.depthsummary.txt" % input.split(".")[0]
-
         # Generating command to parse samtools depth output
         cmd = "%s coverage -i %s" % (self.tools["qc_parser"], input)
 
@@ -36,10 +33,9 @@ class SummarizeSamtoolsDepth(Tool):
             cmd += " --ct %d" % cutoff
 
         # Write output to summary file
-        cmd += " > %s !LOG2!" % output
-
-        # Generating the output
-        self.output = dict()
-        self.output["summary_file"] = output
+        cmd += " > %s !LOG2!" % self.output["summary_file"]
 
         return cmd
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("summary_file", "depth.summary.txt")

@@ -5,8 +5,8 @@ __main_class__ = "SummarizeFastQC"
 
 class SummarizeFastQC(Tool):
 
-    def __init__(self, config, sample_data):
-        super(SummarizeFastQC, self).__init__(config, sample_data)
+    def __init__(self, config, sample_data, tool_id):
+        super(SummarizeFastQC, self).__init__(config, sample_data, tool_id)
 
         self.can_split      = False
 
@@ -44,16 +44,10 @@ class SummarizeFastQC(Tool):
                                                           qc_parser,
                                                           omit_fastq_name,
                                                           column_header_suffix=r2_column_header)
-        # Get name of final output file
-        combined_output = r1_output.replace(".fastqcsummary", ".fastqcsummary.combined")
 
         # final command
         cmd = "%s ; %s ; paste %s %s > %s !LOG2!" \
-              % (r1_parse_cmd, r2_parse_cmd, r1_output, r2_output, combined_output)
-
-        # Generating the output
-        self.output = dict()
-        self.output["summary_file"] = combined_output
+              % (r1_parse_cmd, r2_parse_cmd, r1_output, r2_output, self.output["summary_file"])
 
         return cmd
 
@@ -78,4 +72,8 @@ class SummarizeFastQC(Tool):
         cmd += " > %s !LOG2!" % output
 
         return cmd, output
+
+
+    def init_output_file_paths(self, **kwargs):
+        self.generate_output_file_path("summary_file", "fastqc.summary.txt")
 
