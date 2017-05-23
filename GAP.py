@@ -7,6 +7,8 @@ from GAP_config import Config
 from GAP_system import NodeManager
 from GAP_modules.Google import GoogleCompute as Platform
 from GAP_modules.Google import GoogleException
+from GAP_system import PipelineData
+from GAP_system import SampleData
 
 # Initilizing global variables
 config = None
@@ -53,6 +55,10 @@ def main():
 
     # Configure the logging system
     configure_logging(config)
+
+    data = PipelineData("/home/alex/Desktop/cloud_pipeline_development/test_input.json")
+
+    exit(0)
 
     # Create platform
     plat = Platform(config)
