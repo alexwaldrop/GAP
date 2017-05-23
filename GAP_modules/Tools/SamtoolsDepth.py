@@ -38,47 +38,44 @@ class SamtoolsDepth(Tool):
         # Output file name
         depth_out = self.output["samtools_depth"]
 
-        if split_id is None:
-            #case: no splitting
+        # Command to run samtools depth to get coverage depth from BAM at each position in genome
+        depth_cmd = "%s depth -a %s" % (samtools, bam) if split_id is None else "%s depth -r %s -a %s" %(samtools, chrm, bam)
 
-            if target_bed is None:
-                #case: do not subset by target bedfile
-                final_cmd = "%s depth -a %s > %s !LOG2!" % (samtools, bam, depth_out)
-            else:
-                #case: subset samtools depth output by target bedfile
-                #samtools depth command
-                depth_cmd = "%s depth -a %s" % (samtools, bam)
+        if target_bed is not None:
+            # Subset samtools depth output to include only positions in target regions specified by bed file
 
-                #append commands for subsetting to target depth
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(depth_out, target_bed, bedtools)
+            # Command to make genome file to specify sort order of chromosomes in BAM
+            make_genome_file_cmd = "%s idxstats %s | awk 'BEGIN{OFS=\"\\t\"}{print $1,$2}' > %s !LOG2!" % \
+                                   (samtools, bam, self.output["genome_file"])
+
+            # Command to subset results from samtools depth by a bed file
+            subset_output_cmd = self.subset_depth_bed_command(bedtools, target_bed)
+
+            cmd = "%s ; %s | %s > %s !LOG2!" \
+                  % (make_genome_file_cmd, depth_cmd, subset_output_cmd, self.output["samtools_depth"])
+
         else:
-            #case: split by chromosome
-            if target_bed is None:
-                #case: get depth for all positions (WGS)
-                final_cmd = "%s depth -r %s -a %s > %s !LOG2!" % (samtools, chrm, bam, depth_out)
+            # Return full samtools depth output
+            cmd = " %s > %s !LOG2!" % (depth_cmd, self.output["samtools_depth"])
 
-            else:
-                #case: get depth at positions specified by target bedfile (Exome, TargetCapture)
-                depth_cmd = "%s depth -r %s -a %s !LOG2!" % (samtools, chrm, bam)
-                final_cmd = depth_cmd + " | " + self.get_samtools_depth_bed_command(depth_out, target_bed, bedtools)
+        return cmd
 
-        return final_cmd
+    def init_output_file_paths(self, **kwargs):
+        split_id = kwargs.get("split_id", None)
+        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out", split_id=split_id)
+        self.generate_output_file_path("genome_file", "bedtools.genome")
 
-    def get_samtools_depth_bed_command(self, output_file, target_bed, bedtools):
+    def subset_depth_bed_command(self, bedtools, target_bed):
         #returns command for subsetting samtools depth output based on a target bed file
 
         # convert depth output to bedfile
         depth_2_bed_cmd = "awk 'BEGIN{OFS=\"\\t\"}{print $1,$2,$2+1,$3}' !LOG2!"
 
         # intersect depth file with target region bed file
-        intersect_bed_cmd = "%s intersect -a %s -b stdin -sorted -wb !LOG2!" % (bedtools, target_bed)
+        intersect_bed_cmd = "%s intersect -a %s -b stdin -sorted -wb -g %s !LOG2!" % (bedtools, target_bed, self.output["genome_file"])
 
         # convert output bed to samtools depth output
-        bed_2_depth_cmd = "cut -f 4,5,7 > %s !LOG2!" % (output_file)
+        bed_2_depth_cmd = "cut -f 4,5,7"
 
         # chain subcommands with pipes for final command
-        return depth_2_bed_cmd + " | " + intersect_bed_cmd + " | " + bed_2_depth_cmd
-
-    def init_output_file_paths(self, **kwargs):
-        split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out", split_id=split_id)
+        return "%s | %s | %s" % (depth_2_bed_cmd, intersect_bed_cmd, bed_2_depth_cmd)
