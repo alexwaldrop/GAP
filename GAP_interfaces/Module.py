@@ -76,7 +76,7 @@ class Module(object):
         # Base method for generating the command to be run for a module
 
         # Initialize new dict to hold output files if it doesn't already exist
-        self.output = dict() if self.output is None else self.output
+        self.output = dict()
 
         # Set and check names of output filepaths
         self.init_output_file_paths(**kwargs)
@@ -157,7 +157,7 @@ class Module(object):
         self.check_for_path_collisions(output_key, file_path)
         self.output[output_key] = file_path
 
-    def check_for_path_collisions(self, check_key, check_file):
+    def check_for_path_collisions(self, check_key, check_file, **kwargs):
         # Checks to see if a filename collides with an existing filename either in the current input and output
         for file_type, file_path in self.output.iteritems():
             if file_type != check_key:

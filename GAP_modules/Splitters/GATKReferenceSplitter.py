@@ -13,33 +13,39 @@ class GATKReferenceSplitter(Splitter):
         self.req_tools      = []
         self.req_resources  = []
 
-    def get_command(self, **kwargs):
+    def init_split_info(self, **kwargs):
+        # Obtain arguments
+        bam = kwargs.get("bam", None)
+        BQSR_report = kwargs.get("BQSR_report", None)
 
-        bam            = kwargs.get("bam",         None)
-        BQSR_report    = kwargs.get("BQSR_report", None)
-
-        chrom_list = self.sample_data["chrom_list"]
-
-        # Setting up the splits
+        # Get information related to each split
         # Process each chromosome separately and process the rest in one single run
-        self.output = list()
+        chrom_list = self.sample_data["chrom_list"]
         for chrom in chrom_list:
             self.output.append(
                 {
-                    "bam":                  bam,
-                    "BQSR_report":          BQSR_report,
-                    "location":             chrom,
-                    "excluded_location":    None
+                    "bam": bam,
+                    "BQSR_report": BQSR_report,
+                    "location": chrom,
+                    "excluded_location": None
                 }
             )
         self.output.append(
             {
-                "bam":                  bam,
-                "BQSR_report":          BQSR_report,
-                "location":             None,
-                "excluded_location":    chrom_list
+                "bam": bam,
+                "BQSR_report": BQSR_report,
+                "location": None,
+                "excluded_location": chrom_list
             }
         )
 
+    def init_output_file_paths(self, **kwargs):
+        # No output files need to be generated
+        return None
+
+    def get_command(self, **kwargs):
         # No command needs to be run
         return None
+
+
+
