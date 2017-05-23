@@ -123,7 +123,7 @@ class Node(threading.Thread):
 
             try:
                 self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
-                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id)
+                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id,  main_module_name=main_module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
