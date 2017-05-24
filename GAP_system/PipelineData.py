@@ -5,7 +5,7 @@ import os
 from SampleData import SampleData
 
 class PipelineData:
-    def __init__(self, json_input, required_keys=None):
+    def __init__(self, json_input):
 
         # Takes a JSON file as input
         self.json_input     = json_input
@@ -13,8 +13,11 @@ class PipelineData:
         # Required keys in JSON file
         self.required_keys  = ["samples", "pipeline_id"]
 
-        # Parse and validate JSON input file
+        # Parse JSON input
         self.data           = self.parse_json_input()
+
+        # Check for presence of required keys
+        self.check_required_keys()
 
         # Create unique pipeline id
         self.pipeline_id    = str(self.data["pipeline_id"])
@@ -64,16 +67,13 @@ class PipelineData:
             logging.error("Pipeline data input file is not a valid JSON file: %s." % self.json_input)
             raise
 
-        # Check for presence of required keys
-        self.check_required_keys(data)
-
         return data
 
-    def check_required_keys(self, json_dict):
+    def check_required_keys(self):
         # Checks for the presence of specific keys in a JSON file
         errors = False
         for key in self.required_keys:
-            if key not in json_dict:
+            if key not in self.data:
                 errors = True
                 logging.error("Required key '%s' not found in Pipeline JSON input file: %s" % (key, self.json_input))
 
