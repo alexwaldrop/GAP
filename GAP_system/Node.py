@@ -92,25 +92,43 @@ class Node(threading.Thread):
                 raise exc_info[0], exc_info[1], exc_info[2]
 
 
-    def __init__(self, tool_id, config, platform, sample_data, module_name, final_output_keys):
+    def __init__(self, config, platform, sample_data, **kwargs):
         super(Node, self).__init__()
 
-        self.tool_id = tool_id
+        # Setting base variables
+        self.config         = config
+        self.platform       = platform
+        self.sample_data    = sample_data
+        self.kwargs         = kwargs
 
+        # Obtaining configuration
+        self.tool_id            = kwargs.get("tool_id")
+        self.module_name        = kwargs.get("module")
+        self.final_output_keys  = kwargs.get("final_output",        list())
+
+        # Setting node thread as daemon
         self.daemon = True
+
+        # Generating a queue for the exceptions that appear in the current thread
         self.exception_queue = Queue.Queue()
 
-        self.config = config
-        self.platform = platform
-        self.sample_data = sample_data
-        self.module_name = module_name
+        # Input data for the entire node
+        self.input_data = None
+
+        # Output data from all the sections of the node
+        self.split_outputs = None
+        self.main_outputs  = None
+        self.merge_outputs = None
+
+        # Status of the node
+        self.finished      = False
 
         # Importing main module
         try:
-            self.main = initialize_module(module_name, is_tool=True)
+            self.main = initialize_module(self.module_name, is_tool=True)
             self.main_obj = self.main["class"](self.config, self.sample_data, self.tool_id)
         except ImportError:
-            logging.error("Module %s cannot be imported!" % module_name)
+            logging.error("Module %s cannot be imported!" % self.module_name)
             exit(1)
 
         # Identify if the node is running in split mode
@@ -118,31 +136,20 @@ class Node(threading.Thread):
 
         # Importing splitter and merger:
         if self.is_split_mode:
-            # Get name of main module to link splitter/merger
-            main_module_name = self.main_obj.main_module_name
 
             try:
                 self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
-                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id,  main_module_name=main_module_name)
+                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id, main_module_name=self.module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
 
             try:
                 self.merge = initialize_module(self.main_obj.merger, is_merger=True)
-                self.merge_obj = self.merge["class"](self.config, self.sample_data, self.tool_id, main_module_name=main_module_name)
+                self.merge_obj = self.merge["class"](self.config, self.sample_data, self.tool_id, main_module_name=self.module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
                 exit(1)
-
-        self.input_data = None
-        self.final_output_keys  = final_output_keys
-
-        self.split_outputs = None
-        self.main_outputs  = None
-        self.merge_outputs = None
-
-        self.finished      = False
 
     def run_split(self):
 
@@ -241,6 +248,9 @@ class Node(threading.Thread):
             self.exception_queue.put(None)
         finally:
             self.finished = True
+
+    def get_module_name(self):
+        return self.module_name
 
     def check_input(self, input_keys):
 
@@ -355,6 +365,9 @@ class Node(threading.Thread):
             return self.merge_outputs
         else:
             return self.main_outputs
+
+    def define_final_output(self):
+        return self.final_output_keys
 
     def set_final_output(self):
 

@@ -12,8 +12,6 @@ class NodeManager(object):
 
         self.requires   = dict()
         self.nodes      = dict()
-        self.modules    = dict()
-        self.final_output = dict()
 
         self.generate_graph()
 
@@ -28,11 +26,11 @@ class NodeManager(object):
             if not isinstance(tool_data, dict):
                 continue
 
-            self.modules[tool_id] = tool_data["module"]
-            self.requires[tool_id] = tool_data["input_from"]
-            self.final_output[tool_id] = tool_data["final_output"]
-            self.nodes[tool_id] = Node(tool_id, self.config, self.platform, self.config["sample"],
-                                       self.modules[tool_id], self.final_output[tool_id])
+            # Add tool_id in the tool_data
+            tool_data["tool_id"] = tool_id
+
+            self.requires[tool_id] = tool_data.pop("input_from")
+            self.nodes[tool_id] = Node(self.config, self.platform, self.config["sample"], **tool_data)
 
     def check_nodes(self):
 
@@ -40,6 +38,10 @@ class NodeManager(object):
 
         # Checking input/output keys
         for tool_id in self.nodes:
+
+            # Obtaining information about the node
+            module_name         = self.nodes[tool_id].get_module_name()
+            final_output_keys   = self.nodes[tool_id].define_final_output()
 
             # Identifying all the input keys
             input_keys = list()
@@ -49,18 +51,21 @@ class NodeManager(object):
                 else:
                     input_keys.extend( self.nodes[required_tool_id].define_output() )
 
-            logging.info("Checking I/O for module %s." % self.modules[tool_id])
+            logging.info("Checking I/O for module %s." % module_name)
 
             # Testing the input keys and the final_output keys
             input_err = self.nodes[tool_id].check_input(input_keys)
-            output_err = self.nodes[tool_id].check_output(self.final_output[tool_id])
+            output_err = self.nodes[tool_id].check_output(final_output_keys)
             for error in input_err, output_err:
                 if error is not None:
                     has_errors = True
-                    logging.error("For the %s (%s), the following I/O error appeared: %s " % (tool_id, self.modules[tool_id], error))
+                    logging.error("For the %s (%s), the following I/O error appeared: %s " % (tool_id, module_name, error))
 
         # Checking tools and resources requirements
         for tool_id in self.nodes:
+
+            # Obtaining information about the node
+            module_name         = self.nodes[tool_id].module_name
 
             # Identifying if any required keys are not found
             not_found = self.nodes[tool_id].check_requirements()
@@ -70,14 +75,14 @@ class NodeManager(object):
                 has_errors = True
                 logging.error(
                     "For the %s (%s), the following tools are required, but are not found in the config: %s " %
-                    (tool_id, self.modules[tool_id], " ".join(not_found["tools"])))
+                    (tool_id, module_name, " ".join(not_found["tools"])))
 
             # Checking if all the required resources are provided
             if not_found["resources"]:
                 has_errors = True
                 logging.error(
                     "For the %s (%s), the following resources are required, but are not found in the config: %s " %
-                    (tool_id, self.modules[tool_id], " ".join(not_found["resources"])))
+                    (tool_id, module_name, " ".join(not_found["resources"])))
 
         if has_errors:
             raise IOError("One or more modules have I/O errors. Please check the error messages above!")
@@ -100,7 +105,7 @@ class NodeManager(object):
                 # Check if tool has finished running
                 if self.nodes[tool_id].finished:
                     self.nodes[tool_id].finalize()
-                    logging.info("Module '%s' has finished!" % self.modules[tool_id])
+                    logging.info("Module '%s' has finished!" % self.nodes[tool_id].get_module_name())
                     completed.append(tool_id)
                     continue
 
@@ -135,9 +140,3 @@ class NodeManager(object):
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
-
-    def update(self):
-        logging.info("Updating graph after transferring data/tools/resources from bucket to instance.")
-        # Updates node graph with values from a new config
-        self.generate_graph()
-        self.check_nodes()
