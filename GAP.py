@@ -66,10 +66,6 @@ def main():
     # Setting up the platform
     plat.prepare_platform(config["sample"])
 
-    # Update NodeManager with changes made to config while preparing platform
-    # paths of tools/resources may have changed if they were transferred from bucket to instance
-    node_manager.update()
-
     # Running the modules
     node_manager.run()
 

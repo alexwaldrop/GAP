@@ -231,9 +231,7 @@ class GoogleCompute(object):
             self.instances["main-server"].run_command("copyTools", cmd)
 
             #update tools paths to reflect their location on the main server
-            self.config["paths"]["tools"] = self.update_paths(self.config["paths"]["tools"],
-                                                              source_dir=self.bucket_tool_dir,
-                                                              dest_dir=self.tool_dir)
+            self.update_paths(self.config["paths"]["tools"], source_dir=self.bucket_tool_dir, dest_dir=self.tool_dir)
 
         # Make symbolic links in the bin directory for all exectuables
         for tool_type, tool_path in self.config["paths"]["tools"].iteritems():
@@ -249,9 +247,8 @@ class GoogleCompute(object):
             self.instances["main-server"].run_command("copyResources", cmd)
 
             #update resources paths to reflect their location on the main server
-            self.config["paths"]["resources"] = self.update_paths(self.config["paths"]["resources"],
-                                                                  source_dir=self.bucket_resource_dir,
-                                                                  dest_dir=self.resource_dir)
+            self.update_paths(self.config["paths"]["resources"], source_dir=self.bucket_resource_dir, dest_dir=self.resource_dir)
+
         # Copy input files to main server and update paths to reflect their location on main server
         sample_data["input"] = dict()
         for (file_type, gs_file_path) in sample_data["gs_input"].iteritems():
@@ -520,7 +517,6 @@ class GoogleCompute(object):
     def update_paths(self, file_dict, source_dir, dest_dir):
         # Takes a dict <file_type, file_path> as an argument and returns the updated name for each element assuming it is being
         # Transferred from the source to the dest directory
-        updated_paths = dict()
 
         for file_type, file_path in file_dict.iteritems():
 
@@ -530,11 +526,9 @@ class GoogleCompute(object):
 
             # Update tool path if transferred from bucket to instance
             if file_path.startswith(source_dir):
-                updated_paths[file_type] = file_path.replace(source_dir, dest_dir)
+                file_dict[file_type] = file_path.replace(source_dir, dest_dir)
             else:
-                updated_paths[file_type] = file_path
-
-        return updated_paths
+                file_dict[file_type] = file_path
 
     def format_dirs(self):
         # Standardize formatting of directories specified in config
