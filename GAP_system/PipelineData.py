@@ -29,7 +29,7 @@ class PipelineData:
         self.pipeline_name  = self.get_pipeline_name()
 
         # Dictionary for holding global output files produced by pipeline
-        self.final_output = dict()
+        self.final_output   = dict()
 
     def get_sample_data(self):
         # Parses sample information and creates sample objects for each sample record in the JSON
@@ -85,5 +85,8 @@ class PipelineData:
         # Concatenates the pipeline_id to either the name of a single sample or 'Multisample' in the case of >1 samples
         prefix = self.sample_data[self.sample_data.keys()[0]].name if len(self.sample_data) == 1 else "Multisample"
         return "%s-%s" % (prefix, self.pipeline_id)
+
+    def get_samples(self):
+        return self.sample_data
 
 
