@@ -31,6 +31,9 @@ class Config(object):
         # Standardize formatting of directory strings in config
         self.format_dirs()
 
+        # Convert relative cloud storage paths to absolute paths
+        self.make_cloud_paths_absolute()
+
     def read_config(self):
 
         # Checking if the config file exists
@@ -119,3 +122,23 @@ class Config(object):
     def format_dir(self, dir):
         # Takes a directory path as a parameter and returns standard-formatted directory string '/this/is/my/dir/'
         return dir.rstrip("/") + "/"
+
+    def make_cloud_paths_absolute(self):
+        # Converts relative paths to absolute paths
+        # ASSUMES ALL RELATIVE PATHS ARE LOCATED ON CLOUD STORAGE
+
+        # Make all cloud tool paths absolute
+        for file_type, file_name in self.config["paths"]["tools"].iteritems():
+            # Determine whether tool path is cloud or instance path
+            if not file_name.startswith("/"):
+                file_name = file_name.replace(self.config["paths"]["cloud_storage_tool_dir"],"")
+                file_name = os.path.join(self.config["paths"]["cloud_storage_tool_dir"], file_name)
+            self.config["paths"]["tools"][file_type] = file_name
+
+        # Make all cloud resource paths absolute
+        for file_type, file_name in self.config["paths"]["resources"].iteritems():
+            # Determine whether tool path is cloud or instance path
+            if not file_name.startswith("/"):
+                file_name = file_name.replace(self.config["paths"]["cloud_storage_resource_dir"], "")
+                file_name = os.path.join(self.config["paths"]["cloud_storage_resource_dir"], file_name)
+            self.config["paths"]["resources"][file_type] = file_name
