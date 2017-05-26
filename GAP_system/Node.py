@@ -1,41 +1,14 @@
 import importlib
 import logging
-import threading
-import Queue
-import sys
 
-def initialize_module(module_name, is_tool=False, is_splitter=False, is_merger=False):
+from GAP_system import Thread
 
-    d = dict()
-    d["module_name"] = module_name
+class Node(Thread):
 
-    if is_tool:
-        d["module"] = importlib.import_module("GAP_modules.Tools.%s" % d["module_name"])
-    elif is_splitter:
-        d["module"] = importlib.import_module("GAP_modules.Splitters.%s" % d["module_name"])
-    elif is_merger:
-        d["module"] = importlib.import_module("GAP_modules.Mergers.%s" % d["module_name"])
-    else:
-        logging.error("Module %s could not be imported! Specify whether module is tool, splitter, or merger!")
-
-    d["class_name"] = d["module"].__main_class__
-    d["class"] = d["module"].__dict__[d["class_name"]]
-
-    return d
-
-class Node(threading.Thread):
-
-
-    class SplitServer(threading.Thread):
-        """ Exception throwing method taken from:
-                http://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python
-        """
+    class SplitServer(Thread):
 
         def __init__(self, server_name, platform, job_name, cmd, **kwargs):
             super(Node.SplitServer, self).__init__()
-
-            self.daemon = True
-            self.exception_queue = Queue.Queue()
 
             self.platform = platform
             self.server_name = server_name
@@ -46,7 +19,10 @@ class Node(threading.Thread):
 
             self.kwargs = kwargs
 
-        def run_with_exception(self):
+            # Setting up the error message in case the thread raises an exception
+            self.set_error_message("(%s) Exception in executing thread" % self.server_name)
+
+        def task(self):
 
             # Creating split server
             self.platform.create_split_server(self.server_name, **self.kwargs)
@@ -67,31 +43,6 @@ class Node(threading.Thread):
             # Waiting for split server to be destroyed
             self.server_obj.wait_process("destroy")
 
-        def run(self):
-            try:
-                self.run_with_exception()
-            except BaseException as e:
-                if e.message != "":
-                    logging.error("(%s) Exception in executing thread: %s." % (self.server_name, e.message))
-                self.exception_queue.put(sys.exc_info())
-            else:
-                self.exception_queue.put(None)
-
-        def wait(self):
-
-            # Check if thread is not running
-            if not self.is_alive():
-
-                # Check if thread has already finished (queue should not be empty)
-                if self.exception_queue.empty():
-                    return
-
-            # If running, or finished already, wait for possible exception to appear
-            exc_info = self.exception_queue.get()
-            if exc_info is not None:
-                raise exc_info[0], exc_info[1], exc_info[2]
-
-
     def __init__(self, config, platform, sample_data, **kwargs):
         super(Node, self).__init__()
 
@@ -106,12 +57,6 @@ class Node(threading.Thread):
         self.module_name        = kwargs.get("module")
         self.final_output_keys  = kwargs.get("final_output",        list())
 
-        # Setting node thread as daemon
-        self.daemon = True
-
-        # Generating a queue for the exceptions that appear in the current thread
-        self.exception_queue = Queue.Queue()
-
         # Input data for the entire node
         self.input_data = None
 
@@ -120,12 +65,12 @@ class Node(threading.Thread):
         self.main_outputs  = None
         self.merge_outputs = None
 
-        # Status of the node
-        self.finished      = False
+        # Setting up the error message in case the thread raises an exception
+        self.set_error_message("Exception in executing node with module '%s'" % self.module_name)
 
         # Importing main module
         try:
-            self.main = initialize_module(self.module_name, is_tool=True)
+            self.main = Node.init_module(self.module_name, is_tool=True)
             self.main_obj = self.main["class"](self.config, self.sample_data, self.tool_id)
         except ImportError:
             logging.error("Module %s cannot be imported!" % self.module_name)
@@ -138,18 +83,38 @@ class Node(threading.Thread):
         if self.is_split_mode:
 
             try:
-                self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
+                self.split = Node.init_module(self.main_obj.splitter, is_splitter=True)
                 self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id, main_module_name=self.module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
 
             try:
-                self.merge = initialize_module(self.main_obj.merger, is_merger=True)
+                self.merge = Node.init_module(self.main_obj.merger, is_merger=True)
                 self.merge_obj = self.merge["class"](self.config, self.sample_data, self.tool_id, main_module_name=self.module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
                 exit(1)
+
+    @staticmethod
+    def init_module(module_name, is_tool=False, is_splitter=False, is_merger=False):
+
+        d = dict()
+        d["module_name"] = module_name
+
+        if is_tool:
+            d["module"] = importlib.import_module("GAP_modules.Tools.%s" % d["module_name"])
+        elif is_splitter:
+            d["module"] = importlib.import_module("GAP_modules.Splitters.%s" % d["module_name"])
+        elif is_merger:
+            d["module"] = importlib.import_module("GAP_modules.Mergers.%s" % d["module_name"])
+        else:
+            logging.error("Module %s could not be imported! Specify whether module is tool, splitter, or merger!")
+
+        d["class_name"] = d["module"].__main_class__
+        d["class"] = d["module"].__dict__[d["class_name"]]
+
+        return d
 
     def run_split(self):
 
@@ -198,8 +163,18 @@ class Node(threading.Thread):
                 split_servers[server_name].start()
 
         # Waiting for all the split processes to finish
-        for server_thread in split_servers.itervalues():
-            server_thread.wait()
+        done = False
+        while not done:
+
+            # Assume all server_threads have finished
+            done = True
+
+            # Check each server if it has finished
+            for server_thread in split_servers.itervalues():
+                if server_thread.is_done():
+                    server_thread.finalize()
+                else:
+                    done = False
 
         # Convert the input to a dictionary of lists
         merge_input = dict()
@@ -229,25 +204,14 @@ class Node(threading.Thread):
         self.platform.instances["main-server"].run_command(self.module_name, cmd)
         self.platform.instances["main-server"].wait_process(self.module_name)
 
-    def run(self):
+    def task(self):
 
-        try:
-
-            if self.is_split_mode:
-                self.run_split()
-            else:
-                self.run_normal()
-
-            self.set_final_output()
-
-        except BaseException as e:
-            if e.message != "":
-                logging.error("Exception in executing node with module '%s': %s." % (self.module_name, e.message))
-            self.exception_queue.put(sys.exc_info())
+        if self.is_split_mode:
+            self.run_split()
         else:
-            self.exception_queue.put(None)
-        finally:
-            self.finished = True
+            self.run_normal()
+
+        self.set_final_output()
 
     def get_module_name(self):
         return self.module_name
@@ -404,14 +368,3 @@ class Node(threading.Thread):
                 # Search the key in the main object output
                 if key in self.main_outputs:
                     self.sample_data["final_output"][self.module_name].append( self.main_outputs[key] )
-
-    def finalize(self):
-
-        # Check if the list is empty
-        if self.exception_queue.empty():
-            return
-
-        # Raise an exception if required
-        exc_info = self.exception_queue.get()
-        if exc_info is not None:
-            raise exc_info[0], exc_info[1], exc_info[2]

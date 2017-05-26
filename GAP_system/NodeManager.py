@@ -103,7 +103,7 @@ class NodeManager(object):
                     continue
 
                 # Check if tool has finished running
-                if self.nodes[tool_id].finished:
+                if self.nodes[tool_id].is_done():
                     self.nodes[tool_id].finalize()
                     logging.info("Module '%s' has finished!" % self.nodes[tool_id].get_module_name())
                     completed.append(tool_id)
