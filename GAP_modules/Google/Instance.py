@@ -576,3 +576,31 @@ class Instance(object):
 
         for proc_name, proc_obj in self.processes.iteritems():
             self.wait_process(proc_name)
+
+    def file_exists(self, job_name, file_name):
+        # Returns True if file exists, False otherwise
+        cmd = "ls %s" % file_name
+
+        # Run ls command
+        self.run_command(job_name, cmd)
+
+        # Check whether command executed successfully and return whether file was found
+        out, err = self.get_proc_output(job_name)
+        if len(err) != 0:
+            return False
+        return True
+
+    def transfer(self, job_name, source_path, dest_path, recursive=True, log_transfer=True):
+        # Transfers one or more files between the instance and cloud storage
+
+        # Google cloud options for fast transfer
+        options_fast    = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+
+        # Specify whether transfer is recursive or not
+        recursive_flag  = "-r" if recursive else ""
+
+        log_flag        = "!LOG3!" if log_transfer else ""
+
+        # Run command to copy file
+        cmd = "gsutil %s cp %s %s %s %s" % (options_fast, recursive_flag, source_path, dest_path, log_flag)
+        self.run_command(job_name, cmd)
