@@ -5,15 +5,16 @@ from Node import Node
 
 class NodeManager(object):
 
-    def __init__(self, config, platform):
+    def __init__(self, platform):
 
-        self.config = config
-        self.platform = platform
+        self.platform       = platform
+        self.config         = self.platform.get_config()
+        self.pipeline_data  = self.platform.get_pipeline_data()
 
-        self.requires   = dict()
-        self.nodes      = dict()
-        self.modules    = dict()
-        self.final_output = dict()
+        self.requires       = dict()
+        self.nodes          = dict()
+        self.modules        = dict()
+        self.final_output   = dict()
 
         self.generate_graph()
 
@@ -31,8 +32,10 @@ class NodeManager(object):
             self.modules[tool_id] = tool_data["module"]
             self.requires[tool_id] = tool_data["input_from"]
             self.final_output[tool_id] = tool_data["final_output"]
-            self.nodes[tool_id] = Node(tool_id, self.config, self.platform, self.config["sample"],
-                                       self.modules[tool_id], self.final_output[tool_id])
+            self.nodes[tool_id] = Node(self.platform,
+                                       tool_id=tool_id,
+                                       module_name=self.modules[tool_id],
+                                       final_output_keys=self.final_output[tool_id])
 
     def check_nodes(self):
 
@@ -45,9 +48,9 @@ class NodeManager(object):
             input_keys = list()
             for required_tool_id in self.requires[tool_id]:
                 if required_tool_id == "main_input":
-                    input_keys.extend( self.config["sample"]["gs_input"].keys() )
+                    input_keys.extend(self.pipeline_data.get_main_input_keys())
                 else:
-                    input_keys.extend( self.nodes[required_tool_id].define_output() )
+                    input_keys.extend(self.nodes[required_tool_id].define_output())
 
             logging.info("Checking I/O for module %s." % self.modules[tool_id])
 
@@ -125,7 +128,7 @@ class NodeManager(object):
                 input_data = list()
                 for required_tool_id in self.requires[tool_id]:
                     if required_tool_id == "main_input":
-                        input_data.append( self.config["sample"]["input"] )
+                        input_data.append( self.pipeline_data.get_main_input_files() )
                     else:
                         input_data.append( self.nodes[required_tool_id].get_output() )
 
@@ -135,9 +138,3 @@ class NodeManager(object):
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
-
-    def update(self):
-        logging.info("Updating graph after transferring data/tools/resources from bucket to instance.")
-        # Updates node graph with values from a new config
-        self.generate_graph()
-        self.check_nodes()

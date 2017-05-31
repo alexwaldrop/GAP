@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsIndex"
 
 class SamtoolsIndex(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SamtoolsIndex, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SamtoolsIndex, self).__init__(platform, tool_id)
 
         self.can_split      = False
 

@@ -31,48 +31,48 @@ class Node(threading.Thread):
                 http://stackoverflow.com/questions/2829329/catch-a-threads-exception-in-the-caller-thread-in-python
         """
 
-        def __init__(self, server_name, platform, job_name, cmd, **kwargs):
+        def __init__(self, instance_name, platform, job_name, cmd, **kwargs):
             super(Node.SplitServer, self).__init__()
 
-            self.daemon = True
-            self.exception_queue = Queue.Queue()
+            self.daemon             = True
+            self.exception_queue    = Queue.Queue()
 
-            self.platform = platform
-            self.server_name = server_name
-            self.server_obj = None
+            self.platform           = platform
+            self.instance_name      = instance_name
+            self.instance           = None
 
-            self.job_name = job_name
-            self.cmd = cmd
+            self.job_name           = job_name
+            self.cmd                = cmd
 
-            self.kwargs = kwargs
+            self.kwargs             = kwargs
 
         def run_with_exception(self):
 
             # Creating split server
-            self.platform.create_split_server(self.server_name, **self.kwargs)
-            self.server_obj = self.platform.instances[self.server_name]
+            self.platform.create_instance(self.instance_name, **self.kwargs)
+            self.instance = self.platform.instances[self.instance_name]
 
             # Waiting for split server to be created
-            self.server_obj.wait_process("create")
+            self.instance.wait_process("create")
 
             # Running the command on instance
-            self.server_obj.run_command(self.job_name, self.cmd)
+            self.instance.run_command(self.job_name, self.cmd)
 
             # Waiting for the job to finish
-            self.server_obj.wait_process(self.job_name)
+            self.instance.wait_process(self.job_name)
 
             # If no exceptions were raised and we reach this point
-            self.server_obj.destroy()
+            self.instance.destroy()
 
             # Waiting for split server to be destroyed
-            self.server_obj.wait_process("destroy")
+            self.instance.wait_process("destroy")
 
         def run(self):
             try:
                 self.run_with_exception()
             except BaseException as e:
                 if e.message != "":
-                    logging.error("(%s) Exception in executing thread: %s." % (self.server_name, e.message))
+                    logging.error("(%s) Exception in executing thread: %s." % (self.instance_name, e.message))
                 self.exception_queue.put(sys.exc_info())
             else:
                 self.exception_queue.put(None)
@@ -92,23 +92,23 @@ class Node(threading.Thread):
                 raise exc_info[0], exc_info[1], exc_info[2]
 
 
-    def __init__(self, tool_id, config, platform, sample_data, module_name, final_output_keys):
+    def __init__(self, platform, tool_id, module_name, final_output_keys):
         super(Node, self).__init__()
-
-        self.tool_id = tool_id
 
         self.daemon = True
         self.exception_queue = Queue.Queue()
 
-        self.config = config
-        self.platform = platform
-        self.sample_data = sample_data
-        self.module_name = module_name
+        self.platform       = platform
+        self.config         = self.platform.get_config()
+        self.pipeline_data  = self.platform.get_pipeline_data()
+
+        self.tool_id        = tool_id
+        self.module_name    = module_name
 
         # Importing main module
         try:
             self.main = initialize_module(module_name, is_tool=True)
-            self.main_obj = self.main["class"](self.config, self.sample_data, self.tool_id)
+            self.main_obj = self.main["class"](self.platform, self.tool_id)
         except ImportError:
             logging.error("Module %s cannot be imported!" % module_name)
             exit(1)
@@ -123,14 +123,14 @@ class Node(threading.Thread):
 
             try:
                 self.split = initialize_module(self.main_obj.splitter, is_splitter=True)
-                self.split_obj = self.split["class"](self.config, self.sample_data, self.tool_id,  main_module_name=main_module_name)
+                self.split_obj = self.split["class"](self.platform, self.tool_id, main_module_name=main_module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.splitter)
                 exit(1)
 
             try:
                 self.merge = initialize_module(self.main_obj.merger, is_merger=True)
-                self.merge_obj = self.merge["class"](self.config, self.sample_data, self.tool_id, main_module_name=main_module_name)
+                self.merge_obj = self.merge["class"](self.platform, self.tool_id, main_module_name=main_module_name)
             except ImportError:
                 logging.error("Module %s cannot be imported!" % self.main_obj.merger)
                 exit(1)
@@ -155,8 +155,8 @@ class Node(threading.Thread):
         cmd = self.split_obj.generate_command(**self.input_data)
 
         if cmd is not None:
-            self.platform.instances["main-server"].run_command(split_job_name, cmd)
-            self.platform.instances["main-server"].wait_process(split_job_name)
+            self.platform.main_instance.run_command(split_job_name, cmd)
+            self.platform.main_instance.wait_process(split_job_name)
 
         # Obtaining the splitter outputs
         self.split_outputs = self.split_obj.get_output()
@@ -177,8 +177,9 @@ class Node(threading.Thread):
             if cmd is not None:
 
                 # Generating split server name
-                server_name = "%s-split%d-server" % (self.module_name.lower(), split_id)
-
+                server_name = self.platform.generate_split_instance_name(self.tool_id,
+                                                                         self.module_name,
+                                                                         split_id=split_id)
                 # Obtaining required resources
                 kwargs = dict()
                 kwargs["nr_cpus"] = self.main_obj.get_nr_cpus()
@@ -201,8 +202,8 @@ class Node(threading.Thread):
 
         # Running the merger
         cmd = self.merge_obj.generate_command(**merge_input)
-        self.platform.instances["main-server"].run_command(merge_job_name, cmd)
-        self.platform.instances["main-server"].wait_process(merge_job_name)
+        self.platform.main_instance.run_command(merge_job_name, cmd)
+        self.platform.main_instance.wait_process(merge_job_name)
 
         # Obtaining the merger outputs
         self.merge_outputs = self.merge_obj.get_output()
@@ -219,8 +220,8 @@ class Node(threading.Thread):
             logging.debug("Module %s has generated no command." % self.module_name)
             return None
 
-        self.platform.instances["main-server"].run_command(self.module_name, cmd)
-        self.platform.instances["main-server"].wait_process(self.module_name)
+        self.platform.main_instance.run_command(self.module_name, cmd)
+        self.platform.main_instance.wait_process(self.module_name)
 
     def run(self):
 
@@ -358,14 +359,6 @@ class Node(threading.Thread):
 
     def set_final_output(self):
 
-        # Initialize the final output in the sample_data
-        if "final_output" not in self.sample_data:
-            self.sample_data["final_output"] = dict()
-
-        # Check if the module is already in the final_output
-        if self.module_name not in self.sample_data["final_output"]:
-            self.sample_data["final_output"][self.module_name] = list()
-
         # Get every key that is first found in the merger output or the splits output
         for key in self.final_output_keys:
 
@@ -374,23 +367,32 @@ class Node(threading.Thread):
 
                 # Search the key in the merger output
                 if key in self.merge_outputs:
-                    self.sample_data["final_output"][self.module_name].append( self.merge_outputs[key] )
-
+                    self.pipeline_data.add_final_output(tool_id=self.tool_id,
+                                                        module_name=self.module_name,
+                                                        output_file_type=key,
+                                                        output_file=self.merge_outputs[key])
                 # Search the key in the main object output
                 elif key in self.main_outputs[0]:
                     for main_output in self.main_outputs:
-                        self.sample_data["final_output"][self.module_name].append( main_output[key] )
-
+                        self.pipeline_data.add_final_output(tool_id=self.tool_id,
+                                                            module_name=self.module_name,
+                                                            output_file_type=key,
+                                                            output_file=main_output[key])
                 # Search the key in the splitter output
                 elif key in self.split_outputs[0]:
                     for split_output in self.split_outputs:
-                        self.sample_data["final_output"][self.module_name].append( split_output[key] )
-
+                        self.pipeline_data.add_final_output(tool_id=self.tool_id,
+                                                            module_name=self.module_name,
+                                                            output_file_type=key,
+                                                            output_file=split_output[key])
             else:
 
                 # Search the key in the main object output
                 if key in self.main_outputs:
-                    self.sample_data["final_output"][self.module_name].append( self.main_outputs[key] )
+                    self.pipeline_data.add_final_output(tool_id=self.tool_id,
+                                                        module_name=self.module_name,
+                                                        output_file_type=key,
+                                                        output_file=self.main_outputs[key])
 
     def finalize(self):
 

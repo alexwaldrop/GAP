@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepthSplitter"
 
 class SamtoolsDepthSplitter(Splitter):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(SamtoolsDepthSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(SamtoolsDepthSplitter, self).__init__(platform, tool_id, main_module_name)
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam", "location"]
@@ -17,7 +17,7 @@ class SamtoolsDepthSplitter(Splitter):
         # Each split will return a bam file and a chromosome name
         bam = kwargs.get("bam", None)
 
-        chrom_list = self.sample_data["chrom_list"]
+        chrom_list = self.config["sample"]["chrom_list"]
 
         # Setting up the splits
         # Process each chromosome separately and process the rest in one single run

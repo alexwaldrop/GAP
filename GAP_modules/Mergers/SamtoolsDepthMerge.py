@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepthMerge"
 
 class SamtoolsDepthMerge(Merger):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(SamtoolsDepthMerge, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(SamtoolsDepthMerge, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus        = self.main_server_nr_cpus
         self.mem            = self.main_server_mem

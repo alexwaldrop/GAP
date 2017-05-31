@@ -4,8 +4,8 @@ from GAP_interfaces import Module
 
 class Splitter(Module):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(Splitter, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(Splitter, self).__init__(platform, tool_id)
 
         self.input_keys  = None
         self.output_keys = None
@@ -76,7 +76,7 @@ class Splitter(Module):
         output_dir  = kwargs.get("output_dir",  self.tmp_dir)
         split_id    = kwargs.get("split_id",    None)
         split_name  = kwargs.get("split_name",  None)
-        sample      = self.config["sample"]["sample_name"]
+        prefix      = self.pipeline_data.get_pipeline_name()
 
         # Check to make sure a split_id has been provided
         if split_id is None:
@@ -91,7 +91,7 @@ class Splitter(Module):
 
         # Generate standardized filename
         output_file_name = "%s_%s_%s%s%s" % \
-                           (sample, self.main_module_name, self.tool_id, split_string, extension)
+                           (prefix, self.main_module_name, self.tool_id, split_string, extension)
 
         # Add pathname to filename
         output_file_path = os.path.join(output_dir, output_file_name)

@@ -6,8 +6,8 @@ __main_class__="GATKBaseRecalibrator"
 
 class GATKBaseRecalibrator(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(GATKBaseRecalibrator, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(GATKBaseRecalibrator, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -23,9 +23,10 @@ class GATKBaseRecalibrator(Tool):
     def get_chrom_locations(self, bam, max_nr_reads=2.5*10**7):
 
         # Obtaining the chromosome alignment information
+        main_instance = self.platform.get_main_instance()
         cmd = "%s idxstats %s" % (self.tools["samtools"], bam)
-        self.sample_data["main-server"].run_command("bam_idxstats", cmd, log=False)
-        out, err = self.sample_data["main-server"].get_proc_output("bam_idxstats")
+        main_instance.run_command("bam_idxstats", cmd, log=False)
+        out, err = main_instance.get_proc_output("bam_idxstats")
 
         if err != "":
             err_msg = "Could not obtain information for BaseRecalibrator. "
@@ -44,7 +45,7 @@ class GATKBaseRecalibrator(Tool):
             data = line.split()
 
             # If we reached the special chromosomes or the unaligned reads, get all the locations for analysis
-            if data[0] not in self.sample_data["chrom_list"]:
+            if data[0] not in self.config["sample"]["chrom_list"]:
                 break
 
             chrom_list.append(data[0])

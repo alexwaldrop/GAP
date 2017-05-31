@@ -2,8 +2,8 @@ from GAP_interfaces import Module
 
 class Merger(Module):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(Merger, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(Merger, self).__init__(platform, tool_id)
 
         self.input_keys  = None
         self.output_keys = None

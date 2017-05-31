@@ -7,10 +7,12 @@ from GAP_interfaces import ABCMetaEnhanced
 class Module(object):
     __metaclass__ = ABCMetaEnhanced
 
-    def __init__(self, config, sample_data, tool_id):
+    def __init__(self, platform, tool_id):
 
-        self.config         = config
-        self.sample_data    = sample_data
+        # Get information from the platform
+        self.platform       = platform
+        self.config         = self.platform.get_config()
+        self.pipeline_data  = self.platform.get_pipeline_data()
 
         # Global maximum alloted cpu/memory for a given pipeline module
         self.max_nr_cpus    = self.config["platform"]["max_nr_cpus"]
@@ -127,7 +129,7 @@ class Module(object):
         # Get optional arguments
         output_dir  = kwargs.get("output_dir",  self.wrk_dir)
         split_id    = kwargs.get("split_id",    None)
-        sample      = self.config["sample"]["sample_name"]
+        prefix      = self.pipeline_data.get_pipeline_name()
 
         # Optionally get name of split
         split_string = ".split.%s" % (str(split_id)) if split_id is not None else ""
@@ -137,7 +139,7 @@ class Module(object):
 
         # Generate standardized filename
         output_file_name = "%s_%s_%s%s%s" % \
-                           (sample, self.main_module_name, self.tool_id, split_string, extension)
+                           (prefix, self.main_module_name, self.tool_id, split_string, extension)
 
         # Add pathname to filename
         output_file_path = os.path.join(output_dir, output_file_name)

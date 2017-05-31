@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepth"
 
 class SamtoolsDepth(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SamtoolsDepth, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SamtoolsDepth, self).__init__(platform, tool_id)
 
         # Module is splittable by chromosome
         self.can_split      = True
@@ -34,9 +34,6 @@ class SamtoolsDepth(Tool):
         samtools   = kwargs.get("samtools",    self.tools["samtools"])
         bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
         target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
-
-        # Output file name
-        depth_out = self.output["samtools_depth"]
 
         # Command to run samtools depth to get coverage depth from BAM at each position in genome
         depth_cmd = "%s depth -a %s" % (samtools, bam) if split_id is None else "%s depth -r %s -a %s" %(samtools, chrm, bam)

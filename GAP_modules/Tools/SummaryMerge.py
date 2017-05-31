@@ -5,8 +5,8 @@ __main_class__ = "SummaryMerge"
 
 class SummaryMerge(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SummaryMerge, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SummaryMerge, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -23,7 +23,7 @@ class SummaryMerge(Tool):
 
         # Get options from kwargs
         summary_files  = kwargs.get("summary_file",  None)
-        sample_name    = kwargs.get("sample_name", self.config["sample"]["sample_name"])
+        sample_name    = kwargs.get("sample_name", self.pipeline_data.get_sample_name())
 
         # Generating command to merge QC summary output files from two or more QCParser modules
         cmd = "%s merge -i %s --sample %s > %s !LOG2!" % \

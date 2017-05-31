@@ -4,8 +4,8 @@ __main_class__ = "GATKReferenceSplitter"
 
 class GATKReferenceSplitter(Splitter):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(GATKReferenceSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(GATKReferenceSplitter, self).__init__(platform, tool_id, main_module_name)
 
         self.input_keys     = ["bam"]
         self.output_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
@@ -20,7 +20,7 @@ class GATKReferenceSplitter(Splitter):
 
         # Get information related to each split
         # Process each chromosome separately and process the rest in one single run
-        chrom_list = self.sample_data["chrom_list"]
+        chrom_list = self.config["sample"]["chrom_list"]
         for chrom in chrom_list:
             self.output.append(
                 {

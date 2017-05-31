@@ -6,8 +6,8 @@ __main_class__ = "BAMChromosomeSplitter"
 
 class BAMChromosomeSplitter(Splitter):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(BAMChromosomeSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(BAMChromosomeSplitter, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus     = self.main_server_nr_cpus
         self.mem         = self.main_server_mem
@@ -21,9 +21,10 @@ class BAMChromosomeSplitter(Splitter):
     def get_header(self, bam):
 
         # Obtain the reference sequences IDs
+        main_instance = self.platform.get_main_instance()
         cmd = "%s view -H %s | grep \"@SQ\"" % (self.tools["samtools"], bam)
-        self.sample_data["main-server"].run_command("bam_header", cmd, log=False)
-        out, err = self.sample_data["main-server"].get_proc_output("bam_header")
+        main_instance.run_command("bam_header", cmd, log=False)
+        out, err = main_instance.get_proc_output("bam_header")
 
         if err != "":
             err_msg = "Could not obtain the header from the BAM file. "
@@ -33,7 +34,7 @@ class BAMChromosomeSplitter(Splitter):
             exit(1)
 
         # Obtain the references that are marked in the config file
-        chrom_list_config = self.sample_data["chrom_list"]
+        chrom_list_config = self.config["sample"]["chrom_list"]
         ref_in_config = list()
         ref_not_in_config = list()
         for line in out.split("\n"):
@@ -58,7 +59,7 @@ class BAMChromosomeSplitter(Splitter):
 
     def init_split_info(self, **kwargs):
         # Obtaining the arguments
-        bam = kwargs.get("bam", None)
+        bam           = kwargs.get("bam",           None)
 
         # Obtaining chromosome data from bam header
         chroms, remains = self.get_header(bam)

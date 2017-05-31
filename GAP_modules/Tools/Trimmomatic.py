@@ -4,8 +4,8 @@ __main_class__ = "Trimmomatic"
 
 class Trimmomatic(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(Trimmomatic, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(Trimmomatic, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -18,7 +18,7 @@ class Trimmomatic(Tool):
         self.req_tools      = ["trimmomatic", "java"]
         self.req_resources  = ["adapters"]
 
-        self.is_phred33     = self.sample_data["phred33"]
+        self.is_phred33     = self.config["sample"]["phred33"]
 
     def get_command(self, **kwargs):
 

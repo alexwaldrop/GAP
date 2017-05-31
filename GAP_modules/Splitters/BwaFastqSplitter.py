@@ -6,8 +6,8 @@ from GAP_interfaces import Splitter
 __main_class__ = "BwaFastqSplitter"
 
 class BwaFastqSplitter(Splitter):
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(BwaFastqSplitter, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(BwaFastqSplitter, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus = self.main_server_nr_cpus
         self.mem = self.main_server_mem
@@ -20,7 +20,7 @@ class BwaFastqSplitter(Splitter):
 
         # BWA-MEM aligning speed
         self.ALIGN_SPEED = 10 ** 8  # bps/vCPU for 10 mins of processing
-        self.READ_LENGTH = self.sample_data["read_length"]
+        self.READ_LENGTH = 125 #TODO: Add function to get read length from file for
         self.MAX_NR_CPUS = self.max_nr_cpus
 
     def init_split_info(self, **kwargs):
@@ -90,8 +90,9 @@ class BwaFastqSplitter(Splitter):
         else:
             cmd = "cat %s | wc -l" % R1
 
-        self.sample_data["main-server"].run_command("fastq_count", cmd, log=False)
-        out, err = self.sample_data["main-server"].get_proc_output("fastq_count")
+        main_instance = self.platform.get_main_instance()
+        main_instance.run_command("fastq_count", cmd, log=False)
+        out, err = main_instance.get_proc_output("fastq_count")
 
         if err != "":
             err_msg = "Could not obtain the number of reads in the FASTQ file. "
@@ -100,9 +101,9 @@ class BwaFastqSplitter(Splitter):
             logging.error(err_msg)
             exit(1)
 
-        self.sample_data["nr_reads"] = int(out) / 4
+        nr_reads = int(out) / 4
 
-        return self.sample_data["nr_reads"]
+        return nr_reads
 
     def get_unix_split_cmd(self, fastq_file, nr_cpus, output_prefix, output_suffix):
         # Return command for using the unix 'split' command to split a fastq file into chunks
