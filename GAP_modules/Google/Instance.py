@@ -586,9 +586,7 @@ class Instance(object):
 
         # Check whether command executed successfully and return whether file was found
         out, err = self.get_proc_output(job_name)
-        if len(err) != 0:
-            return False
-        return True
+        return len(err) == 0
 
     def transfer(self, job_name, source_path, dest_path, recursive=True, log_transfer=True):
         # Transfers one or more files between the instance and cloud storage
