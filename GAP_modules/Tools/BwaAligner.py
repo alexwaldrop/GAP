@@ -24,7 +24,11 @@ class BwaAligner(Tool):
         self.req_tools      = ["bwa", "samtools"]
         self.req_resources  = ["ref"]
 
-        self.sample_name    = self.pipeline_data.get_sample_name()
+        # Sample information for making read group header
+        sample              = self.pipeline_data.get_samples()[self.pipeline_data.get_samples().keys()[0]]
+        self.sample_name    = sample.name
+        self.lib_name       = sample["lib_name"]
+        self.seq_platform   = sample["seq_platform"]
 
     def get_rg_header(self, R1):
 
@@ -45,9 +49,9 @@ class BwaAligner(Tool):
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
         rg_id = ":".join(fastq_header_data[0:4])        # Read Group ID
         rg_pu = fastq_header_data[-1]                   # Read Group Platform Unit
-        rg_sm = self.config["sample"]["sample_name"]         # Read Group Sample
-        rg_lb = self.config["sample"]["lib_name"]            # Read Group Library ID
-        rg_pl = self.config["sample"]["seq_platform"]        # Read Group Platform used
+        rg_sm = self.sample_name                        # Read Group Sample
+        rg_lb = self.lib_name                           # Read Group Library ID
+        rg_pl = self.seq_platform                       # Read Group Platform used
 
         read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
                                                           "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
