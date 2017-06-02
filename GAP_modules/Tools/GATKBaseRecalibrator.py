@@ -91,4 +91,6 @@ class GATKBaseRecalibrator(Tool):
         return br_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("BQSR_report", ".grp")
+
+        self.generate_output_file_path(output_key="BQSR_report",
+                                       extension=".grp")

@@ -46,5 +46,9 @@ class GATKCombineGVCF(Merger):
         return comb_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("gvcf", "g.vcf")
-        self.generate_output_file_path("gvcf_idx", "g.vcf.idx")
+
+        self.generate_output_file_path(output_key="gvcf",
+                                       extension="g.vcf")
+
+        self.generate_output_file_path(output_key="gvcf_idx",
+                                       extension="g.vcf.idx")

@@ -54,6 +54,10 @@ class BedtoolsCaptureEfficiency(Tool):
         return intersect_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("capture_bed", "capture.out")
-        self.generate_output_file_path("genome_file", "bedtools.genome")
+
+        self.generate_output_file_path(output_key="capture_bed",
+                                       extension="capture.out")
+
+        self.generate_output_file_path(output_key="genome_file",
+                                       extension="bedtools.genome")
 

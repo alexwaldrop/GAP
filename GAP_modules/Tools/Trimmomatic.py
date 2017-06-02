@@ -52,8 +52,17 @@ class Trimmomatic(Tool):
 
     def init_output_file_paths(self, **kwargs):
 
-        self.generate_output_file_path("R1", "R1.trimmed.fastq")
-        self.generate_output_file_path("R1_unpair", "R1.trimmed_unpaired.fastq")
-        self.generate_output_file_path("R2", "R2.trimmed.fastq")
-        self.generate_output_file_path("R2_unpair", "R2.trimmed_unpaired.fastq")
-        self.generate_output_file_path("trim_report", ".trim_report.txt")
+        self.generate_output_file_path(output_key="R1",
+                                       extension="R1.trimmed.fastq")
+
+        self.generate_output_file_path(output_key="R1_unpair",
+                                       extension="R1.trimmed_unpaired.fastq")
+
+        self.generate_output_file_path(output_key="R2",
+                                       extension="R2.trimmed.fastq")
+
+        self.generate_output_file_path(output_key="R2_unpair",
+                                       extension="R2.trimmed_unpaired.fastq")
+
+        self.generate_output_file_path(output_key="trim_report",
+                                       extension=".trim_report.txt")

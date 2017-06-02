@@ -40,4 +40,5 @@ class SamtoolsBAMMerge(Merger):
         return bam_merge_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("bam", "bam")
+        self.generate_output_file_path(output_key="bam",
+                                       extension=".bam")

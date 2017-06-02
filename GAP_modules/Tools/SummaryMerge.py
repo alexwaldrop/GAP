@@ -32,4 +32,6 @@ class SummaryMerge(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("summary_file", "full_qc.summary.txt")
+
+        self.generate_output_file_path(output_key="summary_file",
+                                       extension="full_qc.summary.txt")

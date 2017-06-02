@@ -27,4 +27,5 @@ class SamtoolsDepthMerge(Merger):
         return cat_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out")
+        self.generate_output_file_path(output_key="samtools_depth",
+                                       extension="samtoolsdepth.out")

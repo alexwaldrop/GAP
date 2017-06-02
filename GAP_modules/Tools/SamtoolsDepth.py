@@ -58,9 +58,15 @@ class SamtoolsDepth(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out", split_id=split_id)
-        self.generate_output_file_path("genome_file", "bedtools.genome")
+        self.generate_output_file_path(output_key="samtools_depth",
+                                       extension="samtoolsdepth.out",
+                                       split_id=split_id)
+
+        self.generate_output_file_path(output_key="genome_file",
+                                       extension="bedtools.genome",
+                                       split_id=split_id)
 
     def subset_depth_bed_command(self, bedtools, target_bed):
         #returns command for subsetting samtools depth output based on a target bed file

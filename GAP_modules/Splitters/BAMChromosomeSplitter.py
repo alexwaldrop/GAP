@@ -90,7 +90,10 @@ class BAMChromosomeSplitter(Splitter):
         for i in range(len(self.output)):
             split_id    = i
             split_name  = self.output[i]["split_name"]
-            self.generate_output_file_path("bam", "bam", split_id=split_id, split_name=split_name)
+            self.generate_output_file_path(output_key="bam",
+                                           extension="bam",
+                                           split_id=split_id,
+                                           split_name=split_name)
 
     def get_command(self, **kwargs):
 

@@ -74,5 +74,7 @@ class SummarizeFastQC(Tool):
         return cmd, output
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("summary_file", "fastqc.summary.txt")
+
+        self.generate_output_file_path(output_key="summary_file",
+                                       extension="fastqc.summary.txt")
 

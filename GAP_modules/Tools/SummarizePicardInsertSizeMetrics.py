@@ -29,4 +29,6 @@ class SummarizePicardInsertSizeMetrics(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("summary_file", "insertsize.summary.txt")
+
+        self.generate_output_file_path(output_key="summary_file",
+                                       extension="insertsize.summary.txt")

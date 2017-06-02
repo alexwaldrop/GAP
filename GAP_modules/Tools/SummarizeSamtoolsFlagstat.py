@@ -21,7 +21,7 @@ class SummarizeSamtoolsFlagstat(Tool):
     def get_command(self, **kwargs):
 
         # Get options from kwargs
-        input           = kwargs.get("flagstat",  None)
+        input = kwargs.get("flagstat",  None)
 
         # Generating command to parse samtools flagstat output
         cmd = "%s flagstat -i %s > %s !LOG2!" % (self.tools["qc_parser"], input, self.output["summary_file"])
@@ -29,4 +29,6 @@ class SummarizeSamtoolsFlagstat(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("summary_file", "flagstat.summary.txt")
+
+        self.generate_output_file_path(output_key="summary_file",
+                                       extension="flagstat.summary.txt")

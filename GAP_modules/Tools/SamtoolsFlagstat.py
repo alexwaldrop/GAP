@@ -28,4 +28,6 @@ class SamtoolsFlagstat(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("flagstat", "flagstat.out")
+
+        self.generate_output_file_path(output_key="flagstat",
+                                       extension="flagstat.out")

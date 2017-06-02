@@ -75,4 +75,6 @@ class BwaAligner(Tool):
 
     def init_output_file_paths(self, **kwargs):
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("bam", "sorted.bam", split_id=split_id)
+        self.generate_output_file_path(output_key="bam",
+                                       extension="sorted.bam",
+                                       split_id=split_id)

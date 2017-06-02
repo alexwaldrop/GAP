@@ -51,13 +51,22 @@ class PicardMarkDuplicates(Tool):
         return mark_dup_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         bam         = kwargs.get("bam",         None)
         split_id    = kwargs.get("split_id",    None)
         is_aligned  = kwargs.get("is_aligned",  True)
 
         if is_aligned:
-            self.generate_output_file_path("bam", "mrkdup.bam", split_id=split_id)
-            self.generate_output_file_path("MD_report", "mrkdup_metrics.txt", split_id=split_id)
+            self.generate_output_file_path(output_key="bam",
+                                           extension="mrkdup.bam",
+                                           split_id=split_id)
+
+            self.generate_output_file_path(output_key="MD_report",
+                                           extension="mrkdup_metrics.txt",
+                                           split_id=split_id)
         else:
-            self.declare_output_file_path("bam", bam)
-            self.declare_output_file_path("MD_report", "")
+            self.generate_output_file_path(output_key="bam",
+                                           output_file_path=bam)
+
+            self.generate_output_file_path(output_key="MD_report",
+                                           output_file_path="")

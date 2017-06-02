@@ -28,5 +28,7 @@ class SamtoolsIndex(Tool):
         return index_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         bam = kwargs.get("bam", None)
-        self.declare_output_file_path("bam_idx", "%s.bai" % bam)
+        self.generate_output_file_path(output_key="bam_idx",
+                                       output_file_path="%s.bai" % bam)

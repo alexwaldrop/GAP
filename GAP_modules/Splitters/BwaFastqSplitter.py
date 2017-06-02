@@ -62,8 +62,15 @@ class BwaFastqSplitter(Splitter):
     def init_output_file_paths(self, **kwargs):
         for i in range(len(self.output)):
             split_name = self.output[i]["split_name"]
-            self.generate_output_file_path("R1", "R1.fastq", split_id=i, split_name=split_name)
-            self.generate_output_file_path("R2", "R2.fastq", split_id=i, split_name=split_name)
+            self.generate_output_file_path(output_key="R1",
+                                           extension="R1.fastq",
+                                           split_id=i,
+                                           split_name=split_name)
+
+            self.generate_output_file_path(output_key="R2",
+                                           extension="R2.fastq",
+                                           split_id=i,
+                                           split_name=split_name)
 
     def get_command(self, **kwargs):
 

@@ -38,5 +38,9 @@ class PicardInsertSizeMetrics(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("insert_size_histogram", "insert_size_histogram.pdf")
-        self.generate_output_file_path("insert_size_report",    "insertsize.out")
+
+        self.generate_output_file_path(output_key="insert_size_histogram",
+                                       extension="insert_size_histogram.pdf")
+
+        self.generate_output_file_path(output_key="insert_size_report",
+                                       extension="insertsize.out")

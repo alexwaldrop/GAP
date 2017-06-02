@@ -64,6 +64,12 @@ class GATKHaplotypeCaller(Tool):
         return hc_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("gvcf", "g.vcf", split_id=split_id)
-        self.generate_output_file_path("gvcf_idx", "g.vcf.idx", split_id=split_id)
+        self.generate_output_file_path(output_key="gvcf",
+                                       extension="g.vcf",
+                                       split_id=split_id)
+
+        self.generate_output_file_path(output_key="gvcf_idx",
+                                       extension="g.vcf.idx",
+                                       split_id=split_id)

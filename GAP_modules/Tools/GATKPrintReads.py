@@ -61,5 +61,8 @@ class GATKPrintReads(Tool):
         return pr_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("bam", "recalibrated.bam", split_id=split_id)
+        self.generate_output_file_path(output_key="bam",
+                                       extension="recalibrated.bam",
+                                       split_id=split_id)
