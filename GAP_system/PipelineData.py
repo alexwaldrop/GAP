@@ -4,40 +4,26 @@ import os
 
 from SampleData import SampleData
 
-class PipelineData:
+class PipelineData(object):
+
     def __init__(self, json_input):
 
-        # Takes a JSON file as input
+        # Obtain the JSON data
         self.json_input     = json_input
+        self.json_data      = self.parse_json_input(required_keys=["pipeline_id","samples"])
 
-        # Required keys in JSON file
-        self.required_keys  = ["samples", "pipeline_id"]
+        # Obtain sample data
+        self.samples        = self.parse_samples()
 
-        # Parse JSON input
-        self.data           = self.parse_json_input()
-
-        # Check for presence of required keys
-        self.check_required_keys()
-
-        # Create unique pipeline id
-        self.pipeline_id    = str(self.data["pipeline_id"])
-
-        # Set required attributes
-        self.sample_data    = self.make_samples()
-
-        # Make sure all samples have same input_data keys
-        self.validate_sample_keys()
-
-        # Get name of sample on which pipeline is being run
-        self.sample_name    = self.generate_sample_name()
-
-        # Set unique name for pipeline
-        self.pipeline_name  = self.generate_pipeline_name()
+        # Generate name variables
+        self.pipeline_id    = self.json_data["pipeline_id"]
+        self.sample_name    = self.samples.keys()[0] if len(self.samples) == 1 else "Multisample"
+        self.pipeline_name  = "%s-%s" % (self.sample_name, self.pipeline_id)
 
         # Dictionary for holding global output files produced by pipeline
         self.final_output   = dict()
 
-    def parse_json_input(self):
+    def parse_json_input(self, required_keys=None):
         # Parses JSON input file and sets attributes of PipelineData class
         # Checks format of JSON to ensure presence of certain attributes
         # Throws errors if JSON can't be parsed or if JSON doesn't contain necessary information
@@ -51,63 +37,62 @@ class PipelineData:
         # Load file into a dictionary
         try:
             with open(self.json_input, "r") as ft:
-                data = json.load(ft)
+                json_data = json.load(ft)
 
         except:
             logging.error("Pipeline data input file is not a valid JSON file: %s." % self.json_input)
             raise
 
-        return data
-
-    def check_required_keys(self):
         # Checks for the presence of specific keys in a JSON file
-        errors = False
-        for key in self.required_keys:
-            if key not in self.data:
-                errors = True
-                logging.error("Required key '%s' not found in Pipeline JSON input file: %s" % (key, self.json_input))
+        if required_keys is not None:
+            errors = False
+            for key in required_keys:
+                if key not in json_data:
+                    errors = True
+                    logging.error(
+                        "Required key '%s' not found in Pipeline JSON input file: %s" % (key, self.json_input))
 
-        if errors:
-            raise IOError("One or more required keys was not found in the JSON input file: %s. See above for errors!" % self.json_input)
+            if errors:
+                raise IOError(
+                    "One or more required keys was not found in the JSON input file: %s. See above for errors!" % self.json_input)
 
-    def make_samples(self):
+        return json_data
+
+    def parse_samples(self):
         # Parses sample information and creates sample objects for each sample record in the JSON
         # Checks to make sure all samples contain the same input file keys
+
+        # Generate sample data
         sample_data = dict()
-        for sample in self.data["samples"]:
+        for sample in self.json_data["samples"]:
+
             # Create sample object from next sample
             sample_name = sample["name"]
 
             # Check to make sure no duplicate samples exist
             if sample_name in sample_data:
-                logging.error("Pipeline input JSON contains two or more samples with the name '%s'! "
-                              "Sample names must be unique!" % sample_name)
-                exit(1)
+                logging.error("Pipeline input JSON contains two or more samples with the name '%s'! Sample names must be unique!" % sample_name)
+                raise IOError("Two or more samples have the same name in the JSON input file")
 
-            sample_data[sample_name] = SampleData(sample_name, sample["input"])
-        return sample_data
+            sample_data[sample_name] = SampleData(sample)
 
-    def validate_sample_keys(self):
-        # Check to make sure every sample has exactly the same input data keys
+        # Check if every sample has exactly the same input data keys (possible human error)
         input_keys = None
-        for sample in self.sample_data:
-            sample_keys = sorted(self.sample_data[sample].input_data.keys())
+        for sample in sample_data:
+
+            sample_keys = sorted(sample_data[sample].input_data.keys())
+
             if input_keys is None:
                 input_keys = sample_keys
+
             elif "".join(sample_keys) != "".join(input_keys):
-                logging.error("Samples do not all have identical input data keys on sample sheet! Make sure all input data keys are the same!")
-                exit(1)
+                logging.warning("Samples do not all have identical input data keys on sample sheet!")
+                break
 
-    def generate_sample_name(self):
-            return self.sample_data[self.sample_data.keys()[0]].name if len(self.sample_data) == 1 else "Multisample"
-
-    def generate_pipeline_name(self):
-        # Creates a unique name for the pipeline
-        # Concatenates the pipeline_id to either the name of a single sample or 'Multisample' in the case of >1 samples
-            prefix = self.sample_data[self.sample_data.keys()[0]].name if len(self.sample_data) == 1 else "Multisample"
-            return "%s-%s" % (prefix, self.pipeline_id)
+        return sample_data
 
     def add_final_output(self, tool_id, module_name, output_file_type, output_file):
+
         # Add output file to dictionary structure of files to return
         if module_name not in self.final_output:
             self.final_output[module_name]          = dict()
@@ -118,31 +103,16 @@ class PipelineData:
         # Append tuple of (output_file_type, output_file) to list of output files for the tool/module
         self.final_output[module_name][tool_id].append((output_file_type, output_file))
 
-
     def get_main_input_keys(self):
         # Return input data keys
-        return self.sample_data[self.sample_data.keys()[0]].input_data.keys()
+        return self.samples.values()[0].get_input_keys()
 
-    def get_main_input_files(self):
+    def get_main_input(self):
 
-        # Return dictionary of sample input data files
-        input_files = dict()
-        num_samples = len(self.sample_data.keys())
-
-        for sample_name, sample in self.sample_data.iteritems():
-            for file_type, file_name in sample.input_data.iteritems():
-                if num_samples == 1:
-                    # Case: One sample
-                    input_files[file_type] = file_name
-                elif file_type not in input_files:
-                    # Case: Multisample
-                    input_files[file_type] = [file_name]
-                else:
-                    input_files[file_type].append(file_name)
-        return input_files
+        return [sample.input_data for sample in self.samples.itervalues()]
 
     def get_samples(self):
-        return self.sample_data
+        return self.samples
 
     def get_sample_name(self):
         return self.sample_name
@@ -152,7 +122,3 @@ class PipelineData:
 
     def get_final_output(self):
         return self.final_output
-
-
-
-
