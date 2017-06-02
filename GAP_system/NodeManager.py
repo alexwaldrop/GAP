@@ -128,11 +128,13 @@ class NodeManager(object):
                 input_data = list()
                 for required_tool_id in self.requires[tool_id]:
                     if required_tool_id == "main_input":
-                        input_data.append( self.pipeline_data.get_main_input() )
+                        input_data.extend( self.pipeline_data.get_main_input() )
                     else:
                         input_data.append( self.nodes[required_tool_id].get_output() )
 
                 # Launching the tool
+                print self.pipeline_data.get_main_input()
+                print input_data
                 self.nodes[tool_id].set_input(input_data)
                 self.nodes[tool_id].start()
 
