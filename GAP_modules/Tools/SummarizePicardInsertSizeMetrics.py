@@ -4,8 +4,8 @@ __main_class__ = "SummarizePicardInsertSizeMetrics"
 
 class SummarizePicardInsertSizeMetrics(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SummarizePicardInsertSizeMetrics, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SummarizePicardInsertSizeMetrics, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -29,4 +29,6 @@ class SummarizePicardInsertSizeMetrics(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("summary_file", "insertsize.summary.txt")
+
+        self.generate_output_file_path(output_key="summary_file",
+                                       extension="insertsize.summary.txt")

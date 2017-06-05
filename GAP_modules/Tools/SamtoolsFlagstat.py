@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsFlagstat"
 
 class SamtoolsFlagstat(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SamtoolsFlagstat, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SamtoolsFlagstat, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -28,4 +28,6 @@ class SamtoolsFlagstat(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("flagstat", "flagstat.out")
+
+        self.generate_output_file_path(output_key="flagstat",
+                                       extension="flagstat.out")

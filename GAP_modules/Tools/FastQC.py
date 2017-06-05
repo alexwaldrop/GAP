@@ -4,8 +4,8 @@ __main_class__= "FastQC"
 
 class FastQC(Tool):
     
-    def __init__(self, config, sample_data, tool_id):
-        super(FastQC, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(FastQC, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -37,5 +37,8 @@ class FastQC(Tool):
         R2 = kwargs.get("R2", None)
 
         # Generate output filenames
-        self.declare_output_file_path("R1_fastqc", "%s_fastqc" % R1.replace(".fastq.gz", "").replace(".fastq", ""))
-        self.declare_output_file_path("R2_fastqc", "%s_fastqc" % R2.replace(".fastq.gz", "").replace(".fastq", ""))
+        self.generate_output_file_path(output_key="R1_fastqc",
+                                       output_file_path="%s_fastqc" % R1.replace(".fastq.gz", "").replace(".fastq", ""))
+
+        self.generate_output_file_path(output_key="R2_fastqc",
+                                       output_file_path="%s_fastqc" % R2.replace(".fastq.gz", "").replace(".fastq", ""))

@@ -1,91 +1,43 @@
 #!/usr/bin/env python2.7
 
 import logging
+from GAP_system.Pipeline import Pipeline
+import argparse
 import sys
 
-from GAP_config import Config
-from GAP_system import NodeManager
-from GAP_modules.Google import GoogleCompute as Platform
-from GAP_modules.Google import GoogleException
+def get_arg_parser():
+    # Returns command line argument parser for GAP
+    parser = argparse.ArgumentParser()
 
-# Initilizing global variables
-config = None
-plat = None
+    # Path to config file defining pipeline runtime parameters
+    parser.add_argument('--config',
+                        action='store',
+                        dest='config_file',
+                        required=True,
+                        help="Path to INI formatted configuration file defining pipeline runtime parameters")
 
-def configure_logging(config):
+    # Path to sample sheet containing sample level information
+    parser.add_argument('--input',
+                        action='store',
+                        dest='sample_input_file',
+                        required=True,
+                        help="Path to JSON formatted sample sheet containing input files and information for one or more samples.")
+    return parser
 
-    # Setting the format of the logs
-    FORMAT = "[%(asctime)s] %(levelname)s: %(message)s"
-
-    # Configuring the logging system to the lowest level
-    logging.basicConfig(level=logging.DEBUG, format=FORMAT, stream=sys.stderr)
-
-    # Defining the ANSI Escape characters
-    BOLD = '\033[1m'
-    DEBUG = '\033[92m'
-    INFO = '\033[94m'
-    WARNING = '\033[93m'
-    ERROR = '\033[91m'
-    END = '\033[0m'
-
-    # Coloring the log levels
-    if sys.stderr.isatty():
-        logging.addLevelName(logging.ERROR,     "%s%s%s%s%s" % (BOLD, ERROR,    "GAP_ERROR",    END, END))
-        logging.addLevelName(logging.WARNING,   "%s%s%s%s%s" % (BOLD, WARNING,  "GAP_WARNING",  END, END))
-        logging.addLevelName(logging.INFO,      "%s%s%s%s%s" % (BOLD, INFO,     "GAP_INFO",     END, END))
-        logging.addLevelName(logging.DEBUG,     "%s%s%s%s%s" % (BOLD, DEBUG,    "GAP_DEBUG",    END, END))
-    else:
-        logging.addLevelName(logging.ERROR,     "GAP_ERROR")
-        logging.addLevelName(logging.WARNING,   "GAP_WARNING")
-        logging.addLevelName(logging.INFO,      "GAP_INFO")
-        logging.addLevelName(logging.DEBUG,     "GAP_DEBUG")
-
-    # Setting the level of the logs
-    level = [logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG][ config["general"]["verbosity"] ]
-    logging.getLogger().setLevel(level)
 
 def main():
-    global plat
-    global config
 
-    # Obtain the config object
-    config = Config("GAP_config/GAP.config").config
+    # Get options from command line
+    parser  = get_arg_parser()
+    args    = parser.parse_args(sys.argv[1:])
 
-    # Configure the logging system
-    configure_logging(config)
+    sample_input = args.sample_input_file
+    config_file  = args.config_file
 
-    # Create platform
-    plat = Platform(config)
+    pipeline = Pipeline(sample_input, config_file)
+    pipeline.run()
 
-    # Create Node Manager
-    node_manager = NodeManager(config, plat)
-
-    # Check I/O of the pipeline, before starting the pipeline
-    node_manager.check_nodes()
-
-    # Setting up the platform
-    plat.prepare_platform(config["sample"])
-
-    # Running the modules
-    node_manager.run()
-
-    # Copy the final results to the bucket
-    plat.finalize(config["sample"])
-
-    # Aligning done
     logging.info("Analysis pipeline complete.")
 
 if __name__ == "__main__":
-
-    try:
-        main()
-    except KeyboardInterrupt:
-        logging.info("Ctrl+C received! Now exiting!")
-        raise
-    except GoogleException:
-        logging.info("Now exiting!")
-        plat.finalize(config["sample"])
-        raise
-    finally:
-        if plat is not None:
-            plat.clean_up()
+    main()

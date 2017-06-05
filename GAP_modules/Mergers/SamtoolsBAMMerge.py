@@ -8,8 +8,8 @@ __main_class__ = "SamtoolsBAMMerge"
 
 class SamtoolsBAMMerge(Merger):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(SamtoolsBAMMerge, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(SamtoolsBAMMerge, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus      = self.main_server_nr_cpus
         self.mem          = self.main_server_mem
@@ -19,8 +19,6 @@ class SamtoolsBAMMerge(Merger):
 
         self.req_tools      = ["samtools"]
         self.req_resources  = []
-
-        self.sample_name  = self.sample_data["sample_name"]
 
     def get_command(self, **kwargs):
 
@@ -42,4 +40,5 @@ class SamtoolsBAMMerge(Merger):
         return bam_merge_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("bam", "bam")
+        self.generate_output_file_path(output_key="bam",
+                                       extension=".bam")

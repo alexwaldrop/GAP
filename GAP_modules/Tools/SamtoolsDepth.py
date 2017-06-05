@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepth"
 
 class SamtoolsDepth(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SamtoolsDepth, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SamtoolsDepth, self).__init__(platform, tool_id)
 
         # Module is splittable by chromosome
         self.can_split      = True
@@ -35,9 +35,6 @@ class SamtoolsDepth(Tool):
         bedtools   = kwargs.get("bedtools",    self.tools["bedtools"])
         target_bed = kwargs.get("target_bed",  self.resources["target_bed"])
 
-        # Output file name
-        depth_out = self.output["samtools_depth"]
-
         # Command to run samtools depth to get coverage depth from BAM at each position in genome
         depth_cmd = "%s depth -a %s" % (samtools, bam) if split_id is None else "%s depth -r %s -a %s" %(samtools, chrm, bam)
 
@@ -61,9 +58,15 @@ class SamtoolsDepth(Tool):
         return cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out", split_id=split_id)
-        self.generate_output_file_path("genome_file", "bedtools.genome")
+        self.generate_output_file_path(output_key="samtools_depth",
+                                       extension="samtoolsdepth.out",
+                                       split_id=split_id)
+
+        self.generate_output_file_path(output_key="genome_file",
+                                       extension="bedtools.genome",
+                                       split_id=split_id)
 
     def subset_depth_bed_command(self, bedtools, target_bed):
         #returns command for subsetting samtools depth output based on a target bed file

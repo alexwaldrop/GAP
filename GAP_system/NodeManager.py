@@ -5,10 +5,11 @@ from Node import Node
 
 class NodeManager(object):
 
-    def __init__(self, config, platform):
+    def __init__(self, platform):
 
-        self.config = config
-        self.platform = platform
+        self.platform       = platform
+        self.config         = self.platform.get_config()
+        self.pipeline_data  = self.platform.get_pipeline_data()
 
         self.requires   = dict()
         self.nodes      = dict()
@@ -30,7 +31,7 @@ class NodeManager(object):
             tool_data["tool_id"] = tool_id
 
             self.requires[tool_id] = tool_data.pop("input_from")
-            self.nodes[tool_id] = Node(self.config, self.platform, self.config["sample"], **tool_data)
+            self.nodes[tool_id] = Node(self.platform, **tool_data)
 
     def check_nodes(self):
 
@@ -47,9 +48,9 @@ class NodeManager(object):
             input_keys = list()
             for required_tool_id in self.requires[tool_id]:
                 if required_tool_id == "main_input":
-                    input_keys.extend( self.config["sample"]["gs_input"].keys() )
+                    input_keys.extend(self.pipeline_data.get_main_input_keys())
                 else:
-                    input_keys.extend( self.nodes[required_tool_id].define_output() )
+                    input_keys.extend(self.nodes[required_tool_id].define_output())
 
             logging.info("Checking I/O for module %s." % module_name)
 
@@ -130,7 +131,7 @@ class NodeManager(object):
                 input_data = list()
                 for required_tool_id in self.requires[tool_id]:
                     if required_tool_id == "main_input":
-                        input_data.append( self.config["sample"]["input"] )
+                        input_data.extend( self.pipeline_data.get_main_input() )
                     else:
                         input_data.append( self.nodes[required_tool_id].get_output() )
 

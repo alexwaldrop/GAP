@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsIndex"
 
 class SamtoolsIndex(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(SamtoolsIndex, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(SamtoolsIndex, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -28,5 +28,7 @@ class SamtoolsIndex(Tool):
         return index_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         bam = kwargs.get("bam", None)
-        self.declare_output_file_path("bam_idx", "%s.bai" % bam)
+        self.generate_output_file_path(output_key="bam_idx",
+                                       output_file_path="%s.bai" % bam)

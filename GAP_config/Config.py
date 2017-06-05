@@ -25,8 +25,14 @@ class Config(object):
         # Validating the config file
         self.validate_config()
 
-        # Parse config
-        self.parse_config()
+        # Re-format reference genome information contained in the config
+        self.format_reference_genome()
+
+        # Standardize formatting of directory strings in config
+        self.format_dirs()
+
+        # Convert relative cloud storage paths to absolute paths
+        self.make_cloud_paths_absolute()
 
     def read_config(self):
 
@@ -70,7 +76,7 @@ class Config(object):
         if not self.valid:
             exit(1)
 
-    def parse_config(self):
+    def format_reference_genome(self):
 
         # Obtaining genomic reference name
         ref_name = self.config["sample"]["ref"]
@@ -103,3 +109,36 @@ class Config(object):
                 chroms.append(chrom_set)
 
         self.config["sample"]["chrom_list"] = chroms
+
+    def format_dirs(self):
+        # Standardize formatting of directories specified in config
+        for path in self.config["paths"]:
+            # Check to make sure path is a string and not a hash (i.e. the tool/resource sublists)
+            if isinstance(self.config["paths"][path], basestring) and (path != "ref"):
+                # Check to make sure the option hasn't been set to an empty string
+                if self.config["paths"][path] is not None:
+                    self.config["paths"][path] = self.format_dir(self.config["paths"][path])
+
+    def format_dir(self, dir):
+        # Takes a directory path as a parameter and returns standard-formatted directory string '/this/is/my/dir/'
+        return dir.rstrip("/") + "/"
+
+    def make_cloud_paths_absolute(self):
+        # Converts relative paths to absolute paths
+        # ASSUMES ALL RELATIVE PATHS ARE LOCATED ON CLOUD STORAGE
+
+        # Make all cloud tool paths absolute
+        for file_type, file_name in self.config["paths"]["tools"].iteritems():
+            # Determine whether tool path is cloud or instance path
+            if not file_name.startswith("/"):
+                file_name = file_name.replace(self.config["paths"]["cloud_storage_tool_dir"],"")
+                file_name = os.path.join(self.config["paths"]["cloud_storage_tool_dir"], file_name)
+            self.config["paths"]["tools"][file_type] = file_name
+
+        # Make all cloud resource paths absolute
+        for file_type, file_name in self.config["paths"]["resources"].iteritems():
+            # Determine whether tool path is cloud or instance path
+            if not file_name.startswith("/"):
+                file_name = file_name.replace(self.config["paths"]["cloud_storage_resource_dir"], "")
+                file_name = os.path.join(self.config["paths"]["cloud_storage_resource_dir"], file_name)
+            self.config["paths"]["resources"][file_type] = file_name

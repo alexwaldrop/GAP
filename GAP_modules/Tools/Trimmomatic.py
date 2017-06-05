@@ -4,8 +4,8 @@ __main_class__ = "Trimmomatic"
 
 class Trimmomatic(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(Trimmomatic, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(Trimmomatic, self).__init__(platform, tool_id)
 
         self.can_split      = False
 
@@ -18,7 +18,7 @@ class Trimmomatic(Tool):
         self.req_tools      = ["trimmomatic", "java"]
         self.req_resources  = ["adapters"]
 
-        self.is_phred33     = self.sample_data["phred33"]
+        self.is_phred33     = self.config["sample"]["phred33"]
 
     def get_command(self, **kwargs):
 
@@ -52,8 +52,17 @@ class Trimmomatic(Tool):
 
     def init_output_file_paths(self, **kwargs):
 
-        self.generate_output_file_path("R1", "R1.trimmed.fastq")
-        self.generate_output_file_path("R1_unpair", "R1.trimmed_unpaired.fastq")
-        self.generate_output_file_path("R2", "R2.trimmed.fastq")
-        self.generate_output_file_path("R2_unpair", "R2.trimmed_unpaired.fastq")
-        self.generate_output_file_path("trim_report", ".trim_report.txt")
+        self.generate_output_file_path(output_key="R1",
+                                       extension="R1.trimmed.fastq")
+
+        self.generate_output_file_path(output_key="R1_unpair",
+                                       extension="R1.trimmed_unpaired.fastq")
+
+        self.generate_output_file_path(output_key="R2",
+                                       extension="R2.trimmed.fastq")
+
+        self.generate_output_file_path(output_key="R2_unpair",
+                                       extension="R2.trimmed_unpaired.fastq")
+
+        self.generate_output_file_path(output_key="trim_report",
+                                       extension=".trim_report.txt")

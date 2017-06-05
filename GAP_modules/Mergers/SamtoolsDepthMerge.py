@@ -4,8 +4,8 @@ __main_class__ = "SamtoolsDepthMerge"
 
 class SamtoolsDepthMerge(Merger):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(SamtoolsDepthMerge, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(SamtoolsDepthMerge, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus        = self.main_server_nr_cpus
         self.mem            = self.main_server_mem
@@ -27,4 +27,5 @@ class SamtoolsDepthMerge(Merger):
         return cat_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("samtools_depth", "samtoolsdepth.out")
+        self.generate_output_file_path(output_key="samtools_depth",
+                                       extension="samtoolsdepth.out")

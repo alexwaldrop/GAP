@@ -6,8 +6,8 @@ __main_class__= "BwaAligner"
 
 class BwaAligner(Tool):
     
-    def __init__(self, config, sample_data, tool_id):
-        super(BwaAligner, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(BwaAligner, self).__init__(platform, tool_id)
 
         self.can_split      = True
         self.splitter       = "BwaFastqSplitter"
@@ -24,17 +24,19 @@ class BwaAligner(Tool):
         self.req_tools      = ["bwa", "samtools"]
         self.req_resources  = ["ref"]
 
-        self.sample_name    = self.sample_data["sample_name"]
+        # Sample information for making read group header
+        sample              = self.pipeline_data.get_samples()[self.pipeline_data.get_samples().keys()[0]]
+        self.sample_name    = sample.name
+        self.lib_name       = sample["lib_name"]
+        self.seq_platform   = sample["seq_platform"]
 
     def get_rg_header(self, R1):
 
-        if "read_group_tag" in self.sample_data:
-            return self.sample_data["read_group_tag"]
-
         # Obtain the read header
         cmd = "head -n 1 %s" % R1
-        self.sample_data["main-server"].run_command("fastq_header", cmd, log=False)
-        out, err = self.sample_data["main-server"].get_proc_output("fastq_header")
+        main_instance = self.platform.get_main_instance()
+        main_instance.run_command("fastq_header", cmd, log=False)
+        out, err = main_instance.get_proc_output("fastq_header")
 
         if err != "":
             err_msg = "Could not obtain information for BwaAligner. "
@@ -47,15 +49,15 @@ class BwaAligner(Tool):
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
         rg_id = ":".join(fastq_header_data[0:4])        # Read Group ID
         rg_pu = fastq_header_data[-1]                   # Read Group Platform Unit
-        rg_sm = self.sample_data["sample_name"]         # Read Group Sample
-        rg_lb = self.sample_data["lib_name"]            # Read Group Library ID
-        rg_pl = self.sample_data["seq_platform"]        # Read Group Platform used
+        rg_sm = self.sample_name                        # Read Group Sample
+        rg_lb = self.lib_name                           # Read Group Library ID
+        rg_pl = self.seq_platform                       # Read Group Platform used
 
-        self.sample_data["read_group_tag"] = "\\t".join( ["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
-                                                          "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl] )
+        read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
+                                                          "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
 
         # Generating the read group header
-        return self.sample_data["read_group_tag"]
+        return read_group_header
 
     def get_command(self, **kwargs):
 
@@ -77,4 +79,6 @@ class BwaAligner(Tool):
 
     def init_output_file_paths(self, **kwargs):
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("bam", "sorted.bam", split_id=split_id)
+        self.generate_output_file_path(output_key="bam",
+                                       extension="sorted.bam",
+                                       split_id=split_id)

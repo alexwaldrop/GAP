@@ -4,8 +4,8 @@ __main_class__ = "GATKPrintReads"
 
 class GATKPrintReads(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(GATKPrintReads, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(GATKPrintReads, self).__init__(platform, tool_id)
 
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
@@ -61,5 +61,8 @@ class GATKPrintReads(Tool):
         return pr_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("bam", "recalibrated.bam", split_id=split_id)
+        self.generate_output_file_path(output_key="bam",
+                                       extension="recalibrated.bam",
+                                       split_id=split_id)

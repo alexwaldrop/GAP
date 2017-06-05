@@ -8,8 +8,8 @@ __main_class__ = "GATKCombineGVCF"
 
 class GATKCombineGVCF(Merger):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(GATKCombineGVCF, self).__init__(config, sample_data, tool_id, main_module_name)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(GATKCombineGVCF, self).__init__(platform, tool_id, main_module_name)
 
         self.nr_cpus      = self.main_server_nr_cpus
         self.mem          = self.main_server_mem
@@ -46,5 +46,9 @@ class GATKCombineGVCF(Merger):
         return comb_cmd
 
     def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path("gvcf", "g.vcf")
-        self.generate_output_file_path("gvcf_idx", "g.vcf.idx")
+
+        self.generate_output_file_path(output_key="gvcf",
+                                       extension="g.vcf")
+
+        self.generate_output_file_path(output_key="gvcf_idx",
+                                       extension="g.vcf.idx")

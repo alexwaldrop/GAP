@@ -4,8 +4,8 @@ from GAP_interfaces import Module
 
 class Splitter(Module):
 
-    def __init__(self, config, sample_data, tool_id, main_module_name=None):
-        super(Splitter, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id, main_module_name=None):
+        super(Splitter, self).__init__(platform, tool_id)
 
         self.input_keys  = None
         self.output_keys = None
@@ -66,35 +66,47 @@ class Splitter(Module):
     def init_output_file_paths(self, **kwargs):
         raise NotImplementedError("In module %s, the function \"init_output_file_paths\" was not implemented" % self.__class__.__name__)
 
-    def generate_output_file_path(self, output_key, extension, **kwargs):
+    def generate_output_file_path(self, output_key, **kwargs):
         # Generate the name of an output file for a module
         # Called inside 'get_command' function of module to get standardized names of output files
         # Automatically adds output key pair to module's dict of output files generated (i.e. self.output)
         # Throws error if generated filename collides with existing input/output filenames
 
-        # Get optional arguments
-        output_dir  = kwargs.get("output_dir",  self.tmp_dir)
-        split_id    = kwargs.get("split_id",    None)
-        split_name  = kwargs.get("split_name",  None)
-        sample      = self.config["sample"]["sample_name"]
+
+        output_file_path = kwargs.get("output_file_path", None)
+        split_id = kwargs.get("split_id", None)
 
         # Check to make sure a split_id has been provided
         if split_id is None:
-            logging.error("Failed to provide split index to generate_output_file_path function in module: %s." % self.__class__.__name__)
-            raise NotImplementedError("Failed to provide split index to generate_output_file_path function in module: %s." % self.__class__.__name__)
+            logging.error(
+                "Failed to provide split index to generate_output_file_path function in module: %s." % self.__class__.__name__)
+            raise NotImplementedError(
+                "Failed to provide split index to generate_output_file_path function in module: %s." % self.__class__.__name__)
 
-        # Get name of split
-        split_string = ".splitter.split.%s" % (str(split_name)) if split_name is not None else ".splitter.split.%s" % (str(split_id))
+        # If file_path is not specified in kwargs, automatically generate output filename
+        # Otherwise, add the name of the output file specified directly to self.output
+        if output_file_path is None:
+            output_dir  = kwargs.get("output_dir",  self.tmp_dir)
+            split_name  = kwargs.get("split_name",  None)
+            extension   = kwargs.get("extension",   None)
+            prefix      = self.pipeline_data.get_pipeline_name()
 
-        # Standardize formatting of extensions (set extension to nothing if no extension specified
-        extension = ".%s" % str(extension).lstrip(".")
 
-        # Generate standardized filename
-        output_file_name = "%s_%s_%s%s%s" % \
-                           (sample, self.main_module_name, self.tool_id, split_string, extension)
+            # Get name of split
+            split_string = ".splitter.split.%s" % (str(split_name)) if split_name is not None else ".splitter.split.%s" % (str(split_id))
 
-        # Add pathname to filename
-        output_file_path = os.path.join(output_dir, output_file_name)
+            # Standardize formatting of extensions (set extension to nothing if no extension specified
+            extension = ".%s" % str(extension).lstrip(".")
+
+            # Generate standardized filename
+            output_file_name = "%s_%s_%s%s%s" % (prefix,
+                                                 self.main_module_name,
+                                                 self.tool_id,
+                                                 split_string,
+                                                 extension)
+
+            # Add pathname to filename
+            output_file_path = os.path.join(output_dir, output_file_name)
 
         # Check to make sure output file path doesn't collide with existing filenames in the module
         self.check_for_path_collisions(output_key, output_file_path, split_id=split_id)

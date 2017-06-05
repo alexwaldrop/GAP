@@ -4,8 +4,8 @@ __main_class__ = "GATKHaplotypeCaller"
 
 class GATKHaplotypeCaller(Tool):
 
-    def __init__(self, config, sample_data, tool_id):
-        super(GATKHaplotypeCaller, self).__init__(config, sample_data, tool_id)
+    def __init__(self, platform, tool_id):
+        super(GATKHaplotypeCaller, self).__init__(platform, tool_id)
 
         self.can_split      = True
         self.splitter       = "GATKReferenceSplitter"
@@ -64,6 +64,12 @@ class GATKHaplotypeCaller(Tool):
         return hc_cmd
 
     def init_output_file_paths(self, **kwargs):
+
         split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path("gvcf", "g.vcf", split_id=split_id)
-        self.generate_output_file_path("gvcf_idx", "g.vcf.idx", split_id=split_id)
+        self.generate_output_file_path(output_key="gvcf",
+                                       extension="g.vcf",
+                                       split_id=split_id)
+
+        self.generate_output_file_path(output_key="gvcf_idx",
+                                       extension="g.vcf.idx",
+                                       split_id=split_id)
