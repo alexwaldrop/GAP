@@ -214,8 +214,9 @@ class GoogleReadySubscriber(GoogleSubscriber):
 
         # The message should be an instance
         try:
-            self.instances[msg].set_status(self.status_to_send)
-            logging.debug("(%s) Instance ready!" % msg)
+            if msg in self.instances:
+                self.instances[msg].set_status(self.status_to_send)
+                logging.debug("(%s) Instance ready!" % msg)
         except KeyError:
             logging.error("Ready message should be an instance! The following message was received instead: %s." % msg)
         except:
@@ -232,8 +233,9 @@ class GooglePreemptedSubscriber(GoogleSubscriber):
         try:
             log = json.loads(msg)
             inst_name = log["jsonPayload"]["resource"]["name"]
-            self.instances[inst_name].set_status(self.status_to_send)
-            logging.debug("(%s) Instance preempted!" % inst_name)
+            if inst_name in self.instances:
+                self.instances[inst_name].set_status(self.status_to_send)
+                logging.debug("(%s) Instance preempted!" % inst_name)
         except ValueError:
             logging.error("Preempted message should be a Google log in JSON format. The following message was received instead: %s." % msg)
         except:
