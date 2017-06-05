@@ -133,8 +133,6 @@ class NodeManager(object):
                         input_data.append( self.nodes[required_tool_id].get_output() )
 
                 # Launching the tool
-                print self.pipeline_data.get_main_input()
-                print input_data
                 self.nodes[tool_id].set_input(input_data)
                 self.nodes[tool_id].start()
 
