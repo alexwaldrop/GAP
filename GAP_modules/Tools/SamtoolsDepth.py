@@ -16,7 +16,7 @@ class SamtoolsDepth(Tool):
         self.mem            = 3
 
         # Define input/output keys
-        self.input_keys             = ["bam"]
+        self.input_keys             = ["bam", "bam_idx"]
         self.splitted_input_keys    = ["bam", "location"]
         self.output_keys            = ["samtools_depth"]
         self.splitted_output_keys   = ["samtools_depth"]

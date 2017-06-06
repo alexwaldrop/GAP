@@ -14,7 +14,7 @@ class GATKPrintReads(Tool):
         self.nr_cpus    = 2
         self.mem        = 5
 
-        self.input_keys             = ["bam", "BQSR_report"]
+        self.input_keys             = ["bam", "BQSR_report", "bam_idx"]
         self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
         self.output_keys            = ["bam"]
         self.splitted_output_keys   = ["bam"]
