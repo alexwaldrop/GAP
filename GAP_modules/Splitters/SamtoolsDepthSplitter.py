@@ -1,6 +1,5 @@
 from GAP_interfaces import Splitter
 import logging
-import operator
 
 __main_class__ = "SamtoolsDepthSplitter"
 

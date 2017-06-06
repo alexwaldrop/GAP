@@ -1,6 +1,5 @@
 import logging
 import operator
-import collections
 
 from GAP_interfaces import Splitter
 
