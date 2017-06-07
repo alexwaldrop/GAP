@@ -12,7 +12,7 @@ class SamtoolsFlagstat(Tool):
         self.nr_cpus        = self.main_server_nr_cpus
         self.mem            = self.main_server_mem
 
-        self.input_keys     = ["bam"]
+        self.input_keys     = ["bam", "bam_idx"]
         self.output_keys    = ["flagstat"]
 
         self.req_tools      = ["samtools"]

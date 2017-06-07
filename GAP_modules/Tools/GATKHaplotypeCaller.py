@@ -14,7 +14,7 @@ class GATKHaplotypeCaller(Tool):
         self.nr_cpus    = 8
         self.mem        = self.nr_cpus * 4 # 4GB/vCPU
 
-        self.input_keys             = ["bam"]
+        self.input_keys             = ["bam", "bam_idx"]
         self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
         self.output_keys            = ["gvcf", "gvcf_idx"]
         self.splitted_output_keys   = ["gvcf", "gvcf_idx"]

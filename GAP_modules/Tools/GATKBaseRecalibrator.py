@@ -14,7 +14,7 @@ class GATKBaseRecalibrator(Tool):
         self.nr_cpus        = self.config["platform"]["MS_nr_cpus"]
         self.mem            = self.config["platform"]["MS_mem"]
 
-        self.input_keys     = ["bam"]
+        self.input_keys     = ["bam", "bam_idx"]
         self.output_keys    = ["BQSR_report"]
 
         self.req_tools      = ["gatk", "java", "samtools"]
@@ -43,13 +43,9 @@ class GATKBaseRecalibrator(Tool):
                 continue
 
             data = line.split()
-
-            # If we reached the special chromosomes or the unaligned reads, get all the locations for analysis
-            if data[0] not in self.config["sample"]["chrom_list"]:
-                break
-
-            chrom_list.append(data[0])
-            total += int(data[2])
+            if data[0] != "*":
+                chrom_list.append(data[0])
+                total += int(data[2])
 
             # If we reached more than maximum number reads, then return the current available list
             if total >= int(max_nr_reads):
