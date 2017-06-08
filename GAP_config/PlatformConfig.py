@@ -1,11 +1,11 @@
-from Config import Config
+from INIConfig import INIConfig
 from GAP_IO import ResourceFile, PipelineFile
 
-class GAPConfig(Config):
+class PlatformConfig(INIConfig):
     # Special config extending base class to perform GAP-related functions
     def __init__(self, config_file, **kwargs):
-        config_spec_file = kwargs.get("config_spec_file", "GAP_config/GAPConfig.validate")
-        super(GAPConfig, self).__init__(config_file, config_spec_file)
+        config_spec_file = kwargs.get("config_spec_file", "config_schemas/GAPConfig.validate")
+        super(PlatformConfig, self).__init__(config_file, config_spec_file)
 
         # Convert all paths to PipelineFile objects
         self.parse_path_info()
