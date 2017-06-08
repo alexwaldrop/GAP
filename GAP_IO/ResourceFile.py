@@ -28,7 +28,7 @@ class ResourceFile(PipelineFile):
                 file_name = self.path.replace(self.containing_dir, "")
                 self.path = os.path.join(self.containing_dir, file_name)
 
-    def get_required_dir(self):
+    def get_containing_dir(self):
         return self.containing_dir
 
     def validate(self):
