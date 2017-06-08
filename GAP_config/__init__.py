@@ -1,2 +1,4 @@
 from Config import Config
-from GAPConfig import GAPConfig
+from INIConfig import INIConfig
+from JSONConfig import JSONConfig
+from PlatformConfig import PlatformConfig

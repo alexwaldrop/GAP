@@ -1,66 +1,43 @@
 import os.path
 import logging
 
-from configobj import *
-from validate import Validator
-
 class Config(dict):
-
+    # Base class for holding configuration data to be read from a file and validated against a spec/schema file
+    # Can be extended to parse different kinds of config files (e.g. JSON, INI, YAML)
     def __init__(self, config_file, config_spec_file):
 
         # Initializing the variables
-        self.config = None
         self.valid  = False
 
         self.config_file = config_file
         self.config_spec_file = config_spec_file
 
+        # Check files exist
+        self.check_files()
+
         # Reading config file
-        self.read_config()
+        self.config = self.read_config()
 
         # Validating the config file
         self.validate_config()
 
         super(Config, self).__init__(self.config)
 
-    def read_config(self):
-
+    def check_files(self):
         # Checking if the config file exists
         if not os.path.isfile(self.config_file):
-            logging.error("Config file not found!")
+            logging.error("Config file not found: %s" % self.config_file)
             exit(1)
 
+        # Checking if the config schema file exists
         if not os.path.isfile(self.config_spec_file):
-            logging.error("Config specification file not found!")
+            logging.error("Config specification file not found: %s" % self.config_spec_file)
             exit(1)
 
-        # Attempting to parse the config file
-        try:
-            self.config = ConfigObj(self.config_file, configspec=self.config_spec_file)
-        except:
-            logging.error("Config parsing error! Invalid config file format.")
-            raise
+    def read_config(self):
+        return None
 
     def validate_config(self):
+        pass
 
-        # Validating schema
-        validator = Validator()
-        results = self.config.validate(validator, preserve_errors=True)
 
-        # Reporting errors with file
-        if results != True:
-            error_string = "Invalid config error!\n"
-            for (section_list, key, _) in flatten_errors(self.config, results):
-                if key is not None:
-                    error_string += '\tThe key "%s" in the section "%s" failed validation\n' % (key, ', '.join(section_list))
-                else:
-                    logging.info('The following section was missing:%s \n' % (', '.join(section_list)) )
-
-            logging.error(error_string)
-
-            self.valid = False
-        else:
-            self.valid = True
-
-        if not self.valid:
-            exit(1)
