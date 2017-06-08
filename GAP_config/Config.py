@@ -4,7 +4,7 @@ import logging
 from configobj import *
 from validate import Validator
 
-class GAPConfig(dict):
+class Config(dict):
 
     def __init__(self, config_file, config_spec_file):
 
@@ -21,8 +21,7 @@ class GAPConfig(dict):
         # Validating the config file
         self.validate_config()
 
-        super(GAPConfig, self).__init__(self.config)
-
+        super(Config, self).__init__(self.config)
 
     def read_config(self):
 
