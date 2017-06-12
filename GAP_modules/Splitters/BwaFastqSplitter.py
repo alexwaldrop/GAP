@@ -34,7 +34,6 @@ class BwaFastqSplitter(Splitter):
         # Computing the average read length
         logging.info("Computing average read length in the FASTQ files.")
         read_len = self.get_read_len(R1, nr_reads, nr_cpus)
-        logging.info("Average read length: %d" % read_len)
 
         # Computing the number of lines to be split for each file considering:
         #  - The aligning speed which is in bps/vCPU
