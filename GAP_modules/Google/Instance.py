@@ -107,22 +107,20 @@ class Instance(object):
         if self.is_preemptible:
             args.append("--preemptible")
 
+        startup_script_location = "GAP_modules/Google/GoogleStartupScript.sh"
+
+        args.append("--metadata-from-file")
+        args.append("startup-script=%s" % startup_script_location)
+
         metadata_args = list()
+
         if self.start_up_script is not None:
             metadata_args.append("startup-script-url=%s" % self.start_up_script)
 
         if self.shutdown_script is not None:
             metadata_args.append("shutdown-script-url=%s" % self.shutdown_script)
 
-        metadata_args.append("is-nfs-server=%d" % self.is_server)
-
         metadata_args.append("ready-topic=%s" % self.ready_topic)
-
-        if self.main_server is None:
-            metadata_args.append("is-child=0")
-        else:
-            metadata_args.append("is-child=1")
-            metadata_args.append("main-server=%s" % self.main_server)
 
         args.append("--metadata")
         args.append(",".join(metadata_args))
@@ -196,6 +194,107 @@ class Instance(object):
 
         # Set as done resetting
         self.is_resetting = False
+
+    def install_packages(self, packages, wait=False):
+
+        # If no packages are provided to install
+        if not packages:
+            return
+
+        logging.info("(%s) Installing the following packages: %s" % (self.name, " ".join(packages)))
+
+        # Update apt
+        cmd = "sudo aptdcon --hide-terminal -c"
+        self.run_command("UpdateApt", cmd, log=False, proc_wait=True)
+
+        cmd = "yes | sudo aptdcon --hide-terminal -i \"%s\" !LOG0! " % " ".join(packages)
+        self.run_command("installPackages", cmd, log=False, proc_wait=wait)
+
+    def configure_CRCMOD(self):
+
+        # Install necessary packages
+        self.install_packages(["gcc", "python-dev", "python-setuptools"], wait=True)
+
+        # Install CRCMOD python package
+        logging.info("(%s) Configuring CRCMOD for fast data tranfer using gsutil." % self.name)
+        cmd = "sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod"
+        self.run_command("configCRCMOD", cmd, log=False, proc_wait=True)
+
+    def configure_RAID(self, wrk_dir):
+
+        # Install the required packages
+        self.install_packages(["mdadm"], wait=True)
+
+        # Setup the RAID system
+        logging.info("(%s) Configuring RAID-0 system by merging the Local SSDs." % self.name)
+        cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd)" % self.nr_local_ssd
+        self.run_command("configRAID", cmd, log=False, proc_wait=True)
+
+        # Format the RAID partition
+        logging.info("(%s) Formating RAID partition." % self.name)
+        cmd = "sudo mkfs -t ext4 /dev/md0"
+        self.run_command("formatRAID", cmd, log=False, proc_wait=True)
+
+        # Mount the RAID partition
+        logging.info("(%s) Mounting the RAID partition." % self.name)
+        cmd = "sudo mkdir -p %s && sudo mount -t ext4 /dev/md0 %s" % (wrk_dir, wrk_dir)
+        self.run_command("mountRAID", cmd, log=False, proc_wait=True)
+
+        # Change permission on the the RAID partition
+        logging.info("(%s) Changing permissions for the RAID partition." % self.name)
+        cmd = "sudo chmod -R 777 %s" % wrk_dir
+        self.run_command("chmodRAID", cmd, log=False, proc_wait=True)
+
+    def configure_NFS(self, wrk_dir):
+
+        # Install required packages
+        self.install_packages(["sysv-rc-conf", "nfs-kernel-server"], wait=True)
+
+        # Setup the runlevels
+        logging.info("(%s) Configuring the runlevels for NFS server." % self.name)
+        cmd = "sudo sysv-rc-conf nfs on && sudo sysv-rc-conf rpcbind on"
+        self.run_command("setupNFS", cmd, log=False, proc_wait=True)
+
+        # Export the NFS server
+        logging.info("(%s) Exporting the NFS server directory." % self.name)
+        cmd = "sudo sh -c \"echo '\n%s\t10.240.0.0/16(rw,sync,no_subtree_check,root_squash,nohide,sec=sys)\n' >> /etc/exports\" " % wrk_dir
+        self.run_command("exportNFS", cmd, log=False, proc_wait=True)
+
+        # Restart NFS server
+        logging.info("(%s) Restarting NFS server to load the new settings." % self.name)
+        cmd = "sudo service nfs-kernel-server restart"
+        self.run_command("restartNFS", cmd, log=False, proc_wait=True)
+
+    def configure_SSH(self, max_con=500):
+
+        # Increase the number of concurrent SSH connections
+        logging.info("(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_con))
+        cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config'" % max_con
+        self.run_command("configureSSH", cmd, log=False, proc_wait=True)
+
+        # Restart SSH daemon to load the settings
+        logging.info("(%s) Restarting SSH daemon to load the new settings." % self.name)
+        cmd = "sudo service sshd restart"
+        self.run_command("restartSSH", cmd, log=False, proc_wait=True)
+
+    def mount_main_server(self, wrk_dir):
+
+        # Installing required packages
+        self.install_packages(["nfs-common"], wait=True)
+
+        # Mounting the main server
+        logging.info("(%s) Mounting main server." % self.name)
+        cmd = "sudo mkdir -p %s && sudo mount -t nfs %s:%s %s !LOG0!" % (wrk_dir, self.main_server, wrk_dir, wrk_dir)
+        self.run_command("mountNFS", cmd, proc_wait=True)
+
+    def export_env_variables(self, env_variable, path):
+
+        # Set path to bash script that will export the environment variables
+        export_loc = "/etc/profile.d/pipeline_export.sh"
+
+        # Export the variable
+        cmd = "sudo bash -c 'echo \"%s=%s:\\$%s\" >> %s' " % (env_variable, path, env_variable, export_loc)
+        self.run_command("exportPaths", cmd, log=False, proc_wait=True)
 
     def set_status(self, new_status):
 
@@ -298,11 +397,12 @@ class Instance(object):
         custom_inst["mem"] = int(math.ceil(self.mem))
 
         # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
-        custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
         if self.nr_cpus != 1:
+            custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
             custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
         else:
-            custom_inst["mem"] = min(1, custom_inst["mem"])
+            custom_inst["mem"] = max(1, custom_inst["mem"])
+            custom_inst["mem"] = min(6.5, custom_inst["mem"])
 
         # Generating custom instance name
         custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
@@ -497,11 +597,8 @@ class Instance(object):
                     raise GoogleException(self.name)
 
             else:
-                # Check if the process failed on a preempted instance
-                if proc_obj.log:
-                    logging.debug("(%s) Process '%s' has failed on instance with id %s." % (self.name, proc_name, proc_obj.get_instance_id()))
 
-                # Waiting for maximum 1 minute for the preemption to be logged or receive a DEAD signal
+                # Waiting for maximum 30 minute for the preemption to be logged or receive a DEAD signal
                 preempted = False
                 cycle_count = 1
 
@@ -509,11 +606,9 @@ class Instance(object):
                 out, err = proc_obj.communicate()
                 if "ERROR: (gcloud.compute.ssh)" not in err:
                     #exit program if ssh error (from preemption) not found in error message
-                    if proc_obj.log:
-                        logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
-                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                    logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
-
 
                 # Waiting 30 minutes for the instance to be reported as preempted
                 while cycle_count < 900:
@@ -529,9 +624,8 @@ class Instance(object):
                 if preempted:
                     self.reset()
                 else:
-                    if proc_obj.log:
-                        logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
-                        logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
+                    logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise GoogleException(self.name)
 
         else:
@@ -565,8 +659,7 @@ class Instance(object):
                 if preempted:
                     self.reset()
                 elif not completed:
-                    if proc_obj.log:
-                        logging.error("(%s) Could not create instance!" % self.name)
+                    logging.error("(%s) Could not create instance!" % self.name)
                     raise GoogleException(self.name)
 
             elif proc_name == "destroy":

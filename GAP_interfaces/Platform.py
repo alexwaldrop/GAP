@@ -48,12 +48,6 @@ class Platform(object):
         main_instance_name = self.generate_main_instance_name()
         self.create_instance(main_instance_name, is_main_instance=True, **kwargs)
 
-        # Specify that main instance has launched
-        self.launched = True
-
-        # Initialize directory structure on main instance
-        self.make_dirs()
-
         # Transfer input data to main instance
         self.transfer_data()
 
@@ -72,30 +66,25 @@ class Platform(object):
 
     def make_dirs(self):
         # Create directory structure on main instance
-        # Create working directory
-        cmd = "mkdir -p %s" % self.wrk_dir
-        self.main_instance.run_command("createWrkDir", cmd)
 
-        # Create logging directory
-        cmd = "mkdir -p %s" % self.log_dir
-        self.main_instance.run_command("createLogDir", cmd)
+        logging.info("(%s) Creating the necessary directories on the instance." % self.main_instance.name)
 
-        # Create tmp directory
-        cmd = "mkdir -p %s" % self.tmp_dir
-        self.main_instance.run_command("createTmpDir", cmd)
+        # Create commands
+        commands = {
+            "log":     self.log_dir,
+            "tmp":     self.tmp_dir,
+            "tool":    self.tool_dir,
+            "res":     self.resource_dir,
+            "bin":     self.bin_dir,
+        }
 
-        # Create tool directory
-        cmd = "mkdir -p %s" % self.tool_dir
-        self.main_instance.run_command("createToolDir", cmd)
+        # Create directories
+        for dir_name, dir_path in commands.iteritems():
+            proc_name = "create%sDir" % dir_name.capitalize()
+            proc_cmd  = "mkdir -p %s" % dir_path
+            self.main_instance.run_command(proc_name, proc_cmd, log=False)
 
-        # Create resource directory
-        cmd = "mkdir -p %s" % self.resource_dir
-        self.main_instance.run_command("createTmpDir", cmd)
-
-        # Create bin directory
-        cmd = "mkdir -p %s" % self.bin_dir
-        self.main_instance.run_command("createBinDir", cmd)
-
+        # Wait for all directory creations
         self.main_instance.wait_all()
 
     def transfer_data(self):
@@ -170,8 +159,7 @@ class Platform(object):
     def change_permissions(self):
         # Set permissions to read/write/execute for all files/dirs in main instance working dir
         cmd = "sudo chmod -R 777 %s !LOG3!" % self.wrk_dir
-        self.main_instance.run_command("changeDirPermissions", cmd)
-        self.main_instance.wait_all()
+        self.main_instance.run_command("changeDirPermissions", cmd, proc_wait=True)
 
     def validate_main_instance_files(self):
         # Validate that all necessary files actually exist on the main instance
@@ -358,17 +346,26 @@ class Platform(object):
             kwargs["main_server"] = kwargs.get("main_server", self.main_instance.name)
             instance = self.init_split_instance(instance_name, **kwargs)
 
+        # Store the instance object
+        self.instances[instance_name] = instance
+
         # set value of main instance attribute if main instance
         if is_main_instance:
-            self.instances[instance_name] = instance
-            self.main_instance            = self.instances[instance_name]
-        else:
-            self.instances[instance_name] = instance
+            self.main_instance = instance
 
         # Create instance and wait for it to complete
         instance.create()
         instance.wait_process("create")
-        return instance
+
+        # Mark as launched
+        self.launched = True
+
+        # Run the startup tasks
+        self.startup_tasks(instance, is_main_instance=is_main_instance)
+
+        # Initialize directory structure on main instance
+        if is_main_instance:
+            self.make_dirs()
 
     def get_config(self):
         return self.config
@@ -378,6 +375,9 @@ class Platform(object):
 
     def get_main_instance(self):
         return self.main_instance
+
+    def startup_tasks(self, instance, is_main_instance=False):
+        pass
 
     @abc.abstractmethod
     def generate_main_instance_name(self):

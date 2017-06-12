@@ -86,6 +86,41 @@ class GooglePlatform(Platform):
 
         super(GooglePlatform, self).launch_platform()
 
+    def startup_tasks(self, instance, is_main_instance=False):
+
+        # Obtain the list of packages the user requests to be installed
+        packages = self.config["platform"]["startup_packages"]
+
+        # Add necessary packages by the platform
+        if "nfs-common" not in packages:
+            packages.append("nfs-common")
+
+        # Install the packges on the instance
+        instance.install_packages(packages, wait=True)
+
+        # Configure CRCMOD
+        instance.configure_CRCMOD()
+
+        # Configure SSH
+        instance.configure_SSH()
+
+        # Add BIN directory to path
+        instance.export_env_variables("PATH", self.bin_dir)
+
+        # Depending on the type of the instance, do the following
+        if is_main_instance:
+
+            # Configure RAID system
+            instance.configure_RAID(self.wrk_dir)
+
+            # Configure NFS system
+            instance.configure_NFS(self.wrk_dir)
+
+        else:
+
+            # Mount the main server
+            instance.mount_main_server(self.wrk_dir)
+
     def launch_pubsub_logging(self):
 
         # Generate variables
