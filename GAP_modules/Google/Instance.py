@@ -583,8 +583,16 @@ class Instance(object):
             if proc_name == "create":
                 logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
                 out, err = proc_obj.communicate()
-                logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
-                raise GoogleException(self.name)
+
+                # Check if an internal server error was received
+                if "- Internal Error" in err:
+                    logging.warning("(%s) The instance will be reset! A Google Internal Error was received:\n  %s" %
+                                    (self.name, err))
+                    self.reset()
+
+                else:
+                    logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    raise GoogleException(self.name)
 
             elif proc_name == "destroy":
                 # Check if the instance is still present on the cloud
@@ -604,7 +612,13 @@ class Instance(object):
 
                 #determine if user error or preempted
                 out, err = proc_obj.communicate()
-                if "ERROR: (gcloud.compute.ssh)" not in err:
+
+                if "- Internal Error" in err:
+                    logging.warning("(%s) The instance will be reset! A Google Internal Error was received:\n  %s" %
+                                    (self.name, err))
+                    self.reset()
+
+                elif "ERROR: (gcloud.compute.ssh)" not in err:
                     #exit program if ssh error (from preemption) not found in error message
                     logging.error("(%s) Process '%s' failed!"  % (self.name, proc_name))
                     logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
