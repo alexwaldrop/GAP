@@ -1,0 +1,16 @@
+[paths]
+    [[__many__]]
+        file_type       = string
+        path            = string
+        is_dir          = boolean(default=False)
+        is_basename     = boolean(default=False)
+        is_remote_path  = boolean(default=False)
+        is_executable   = boolean(default=False)
+        containing_dir  = string(default=None)
+
+[tools]
+
+[[__many__]]
+module          = string
+input_from      = force_list(default=list("main_input"))
+final_output    = force_list(default=list())

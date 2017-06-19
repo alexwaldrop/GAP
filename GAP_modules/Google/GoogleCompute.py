@@ -41,7 +41,7 @@ class GoogleCompute(object):
         self.bin_dir                = self.config["paths"]["instance_bin_dir"]
         self.bucket_tool_dir        = self.config["paths"]["cloud_storage_tool_dir"]
         self.bucket_resource_dir    = self.config["paths"]["cloud_storage_resource_dir"]
-        self.bucket_output_dir      = self.config["paths"]["cloud_storage_output_dir"]
+        self.bucket_output_dir      = self.config["paths"]["output_dir"]
 
         # Create clients for using Google PubSub and Google Stackdriver Logging
         self.pubsub         = GooglePubSub()

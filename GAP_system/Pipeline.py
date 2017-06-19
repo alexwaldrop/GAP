@@ -2,7 +2,7 @@ import logging
 import sys
 
 from GAP_system import PipelineData
-from GAP_config import Config
+from ConfigParsers import INIConfigParser
 from GAP_modules.Google import GooglePlatform
 from GAP_system import NodeManager
 
@@ -10,7 +10,7 @@ class Pipeline(object):
     def __init__(self, sample_sheet_file, config_file):
 
         # Parse and validate config file and store as a dictionary
-        self.config         = Config(config_file).config
+        self.config         = INIConfigParser(config_file).config
 
         # Configure pipeline logging
         self.configure_logging()
@@ -21,17 +21,22 @@ class Pipeline(object):
         self.platform       = None
         self.node_manager   = None
 
+        self.success        = True
+
     def run(self, **kwargs):
         try:
             self.run_pipeline(**kwargs)
         except KeyboardInterrupt:
+            self.success = False
             logging.info("Ctrl+C received! Now exiting!")
             raise
         except:
             logging.info("Now exiting!")
+            self.success = False
             self.finalize()
             raise
         finally:
+            self.post_status()
             self.clean_up()
 
     def run_pipeline(self, **kwargs):
@@ -61,6 +66,9 @@ class Pipeline(object):
     def finalize(self):
         if self.platform is not None:
             self.platform.finalize()
+
+    def post_status(self):
+        self.platform.post_status(is_success=self.success)
 
     def configure_logging(self):
 

@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": true,
+  "properties": {
+    "pipeline_id": {
+      "type": "integer"
+    },
+    "samples": {
+      "items": {
+        "properties": {
+          "files": {
+            "items": {
+              "properties": {
+                "file_type": {
+                  "type": "string"
+                },
+                "is_remote_file": {
+                  "default": true,
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "file_type",
+                "path",
+                "is_remote_file"
+              ],
+              "type": "object"
+            },
+            "minItems" : 1,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "lib_name": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "paired_end": {
+            "type": "boolean"
+          },
+          "seq_platform": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "files",
+          "lib_name",
+          "paired_end",
+          "name",
+          "seq_platform"
+        ],
+        "type": "object"
+      },
+      "minItems" : 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "pipeline_id",
+    "samples"
+  ],
+  "type": "object"
+}

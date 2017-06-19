@@ -3,20 +3,19 @@ import subprocess as sp
 import logging
 import json
 
-from GAP_modules.Google import GoogleException
-from GAP_modules.Google import Instance
-from GAP_modules.Google import GoogleReadySubscriber
-from GAP_modules.Google import GooglePreemptedSubscriber
-from GAP_modules.Google import GooglePubSub
-from GAP_modules.Google import GoogleLogging
-from GAP_interfaces.Platform import Platform
+from GoogleException import GoogleException
+from Instance import Instance
+from GoogleLogging import GoogleLogging
+from GooglePubSub import GooglePubSub, GooglePreemptedSubscriber, GoogleReadySubscriber
+from Platform import Platform
+from ConfigParsers import INIConfigParser
 
 class GooglePlatform(Platform):
 
-    def __init__(self, config, pipeline_data):
+    def __init__(self, name, config_file):
 
         # Call super constructor
-        super(GooglePlatform, self).__init__(config, pipeline_data)
+        super(GooglePlatform, self).__init__(name, config_file)
 
         # Get google access fields from JSON file
         self.key_location   = self.config["platform"]["service_account_key_file"]
@@ -29,7 +28,6 @@ class GooglePlatform(Platform):
         # Get Google compute zone from config
         self.zone           = self.config["platform"]["zone"]
 
-
         # Create clients for using Google PubSub and Google Stackdriver Logging
         self.pubsub         = GooglePubSub()
         self.logging        = GoogleLogging()
@@ -41,6 +39,13 @@ class GooglePlatform(Platform):
         # Name of PubSub topic/subscription for posting instance preemption status updates
         self.preempt_topic      = None
         self.preempt_subscriber = None
+
+    def parse_config(self, config_file):
+        # Extend abstract method to parse and validate platform configuration file
+        # Validates config against the config_spec_file found in the resources directory
+        config_parser = INIConfigParser(config_file=config_file,
+                                        config_spec_file="resources/config_schemas/Platform.validate")
+        return config_parser.get_validated_config()
 
     def authenticate(self):
 
@@ -60,7 +65,7 @@ class GooglePlatform(Platform):
 
         logging.info("Authentication to Google Cloud was successful.")
 
-    def launch_platform(self, **kwargs):
+    def launch_platform(self, input_data, **kwargs):
 
         # Check to see if disk image exists and is larger than requested boot disk size
         self.validate_disk_image("Main Instance",
@@ -74,27 +79,32 @@ class GooglePlatform(Platform):
                                  boot_disk_size=self.config["platform"]["split_boot_disk_size"])
 
         # Check startup script
-        if self.config["platform"]["start_up_script"] is not None:
-            self.validate_cloud_storage_file("Startup Script", self.config["platform"]["start_up_script"])
+        start_up_script = self.config["platform"]["start_up_script"]
+        if start_up_script is not None:
+            if not self.remote_file_exists(start_up_script):
+                logging.error("Unable to located startup-script specified in the config on Google Storage: %s."
+                              % start_up_script)
 
         # Check shutdown script
-        if self.config["platform"]["shutdown_script"] is not None:
-            self.validate_cloud_storage_file("Shutdown Script", self.config["platform"]["start_up_script"])
+        shutdown_script = self.config["platform"]["shutdown_script"]
+        if shutdown_script is not None:
+            if not self.remote_file_exists(shutdown_script):
+                logging.error("Unable to located shutdown-script specified in the config on Google Storage: %s."
+                              % shutdown_script)
 
         # Launch pubsub/logging for keeping track of instance creation/preemption on platform
         self.launch_pubsub_logging()
 
-        super(GooglePlatform, self).launch_platform()
+        super(GooglePlatform, self).launch_platform(input_data, **kwargs)
 
     def launch_pubsub_logging(self):
 
         # Generate variables
-        pipeline_name   = self.pipeline_data.pipeline_name
-        ready_topic     = "ready_topic_%s"      % pipeline_name
-        ready_sub       = "ready_sub_%s"        % pipeline_name
-        preempt_topic   = "preempted_topic_%s"  % pipeline_name
-        preempt_sub     = "preempted_sub_%s"    % pipeline_name
-        log_sink_name   = "preempted_sink_%s"   % pipeline_name
+        ready_topic     = "ready_topic_%s"      % self.name
+        ready_sub       = "ready_sub_%s"        % self.name
+        preempt_topic   = "preempted_topic_%s"  % self.name
+        preempt_sub     = "preempted_sub_%s"    % self.name
+        log_sink_name   = "preempted_sink_%s"   % self.name
         log_sink_dest   = "pubsub.googleapis.com/projects/%s/topics/%s" % (self.google_project, preempt_topic)
         log_sink_filter = "jsonPayload.event_subtype:compute.instances.preempted"
 
@@ -137,16 +147,16 @@ class GooglePlatform(Platform):
 
     def generate_main_instance_name(self):
         # Automated function to generate the name of the main instance
-        main_instance_name = "main-instance-%s" % self.pipeline_data.pipeline_id
+        main_instance_name = "main-instance-%s" % self.name
 
         # Format to ensure name conforms to google cloud naming conventions
         return self.format_instance_name(main_instance_name)
 
-    def generate_split_instance_name(self, tool_id, module_name, split_id):
+    def generate_split_instance_name(self, tool_id, module_name, split_id, **kwargs):
         # Automated function to generate a unique name for a split instance
         split_instance_name = "%s-%s-%s-split%d-instance" % (module_name,
                                                              tool_id,
-                                                             self.pipeline_data.pipeline_id,
+                                                             self.name,
                                                              split_id)
 
         # Format to ensure name conforms to google cloud naming conventions
@@ -205,7 +215,7 @@ class GooglePlatform(Platform):
 
         return Instance(self.config, instance_name, **kwargs)
 
-    def file_exists_on_cloud_storage(self, file_name):
+    def remote_file_exists(self, file_name, **kwargs):
         # Determine whether a file exists on Google Storage
         cmd = "gsutil ls %s" % file_name
         proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
@@ -213,7 +223,7 @@ class GooglePlatform(Platform):
 
         return len(err) == 0
 
-    def validate_cloud_output_directory(self):
+    def validate_output_dir(self, **kwargs):
 
         # Make sure an output directory is set for the platform
         if self.output_dir is None:
@@ -221,15 +231,15 @@ class GooglePlatform(Platform):
             exit(1)
 
         # Make sure output directory begins with 'gs://'
-        if self.output_dir[0:5] != "gs://":
+        if self.output_dir.get_path()[0:5] != "gs://":
             logging.error("Cloud output bucket specified in config does not begin with 'gs://': %s"
                           % self.output_dir)
             exit(1)
 
         # Make sure base bucket actually exists
-        bucket = self.output_dir.split("/")[0:3]
+        bucket = self.output_dir.get_path().split("/")[0:3]
         bucket = "/".join(bucket)
-        if not self.file_exists_on_cloud_storage(bucket):
+        if not self.remote_file_exists(bucket, **kwargs):
             logging.error("Cloud storage bucket '%s' doesn't exist. Can't write to output directory: %s."
                           % self.output_dir)
             exit(1)
@@ -292,7 +302,8 @@ class GooglePlatform(Platform):
                           %(disk_image_type, disk_image_name, boot_disk_size, disk_image_size, disk_image_type))
             exit(1)
 
-    def get_disk_image_info(self, disk_image_name):
+    @staticmethod
+    def get_disk_image_info(disk_image_name):
         # Returns information about a disk image for a project. Returns none if no image exists with the name.
 
         cmd = "gcloud compute images list --format=json"
@@ -307,7 +318,8 @@ class GooglePlatform(Platform):
 
         return None
 
-    def get_info_from_key_file(self, key_file, info_header):
+    @staticmethod
+    def get_info_from_key_file(key_file, info_header):
         # Parse JSON service account key file and return email address associated with account
         logging.info("Extracting %s from JSON key file." % info_header)
 

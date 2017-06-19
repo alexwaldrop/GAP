@@ -17,15 +17,13 @@ class Platform(object):
         self.pipeline_data  = pipeline_data
 
         # Set common directories as attributes so we don't have to type massively long variable names
-        self.wrk_dir                        = self.config["paths"]["instance_wrk_dir"]
-        self.log_dir                        = self.config["paths"]["instance_log_dir"]
-        self.tmp_dir                        = self.config["paths"]["instance_tmp_dir"]
-        self.tool_dir                       = self.config["paths"]["instance_tool_dir"]
-        self.resource_dir                   = self.config["paths"]["instance_resource_dir"]
-        self.bin_dir                        = self.config["paths"]["instance_bin_dir"]
-        self.cloud_storage_tool_dir         = self.config["paths"]["cloud_storage_tool_dir"]
-        self.cloud_storage_resource_dir     = self.config["paths"]["cloud_storage_resource_dir"]
-        self.cloud_storage_output_dir       = self.config["paths"]["cloud_storage_output_dir"]
+        self.wrk_dir                        = self.config["paths"]["wrk_dir"]
+        self.log_dir                        = self.config["paths"]["log_dir"]
+        self.tmp_dir                        = self.config["paths"]["tmp_dir"]
+        self.tool_dir                       = self.config["paths"]["tool_dir"]
+        self.resource_dir                   = self.config["paths"]["resource_dir"]
+        self.bin_dir                        = self.config["paths"]["bin_dir"]
+        self.output_dir                     = self.config["paths"]["output_dir"]
 
         # Boolean for whether platform has been launched
         self.launched   = False
@@ -36,7 +34,7 @@ class Platform(object):
 
         # Create name for cloud output directory for returning results
         output_subdirectory = "%s/" % self.pipeline_data.pipeline_name.rstrip("/")
-        self.cloud_storage_output_dir = os.path.join(self.cloud_storage_output_dir, output_subdirectory)
+        self.output_dir.set_path(os.path.join("%s" % self.output_dir, output_subdirectory))
 
     def launch_platform(self, **kwargs):
         # Checks and launches main instance where pipeline will be executed
@@ -90,7 +88,7 @@ class Platform(object):
 
         # Create resource directory
         cmd = "mkdir -p %s" % self.resource_dir
-        self.main_instance.run_command("createTmpDir", cmd)
+        self.main_instance.run_command("createResourceDir", cmd)
 
         # Create bin directory
         cmd = "mkdir -p %s" % self.bin_dir
@@ -101,24 +99,28 @@ class Platform(object):
     def transfer_data(self):
         # Transfer necessary files specified in config/sample sheet to main instance
 
-        # Transfer cloud tool directory to main instance
-        if self.cloud_storage_tool_dir is not None:
-            tools = "%s*" % self.cloud_storage_tool_dir
-            self.main_instance.transfer(job_name="copyTools",
-                                                   source_path=tools,
-                                                   dest_path=self.tool_dir,
-                                                   recursive=True,
-                                                   log_transfer=True)
+        # Transfer resources from remote storage if necessary
+        for resource_name, resource in self.config["paths"]["resources"].iteritems():
+            if resource.is_remote_path():
+                if resource.get_containing_dir() is not None:
+                    # Case: Transfer entire containing directory
+                    source_path = resource.get_containing_dir()
 
-        # Transfer cloud resource directory to main instance
-        if self.cloud_storage_resource_dir is not None:
-            resources = "%s*" % self.cloud_storage_resource_dir
-            self.main_instance.transfer(job_name="copyResources",
-                                                   source_path=resources,
-                                                   dest_path=self.resource_dir,
-                                                   recursive=True,
-                                                   log_transfer=True)
+                elif resource.is_basename():
+                    # Case: Transfer all files on remote source with the basename
+                    source_path = "%s*" % resource.get_path()
 
+                else:
+                    # Case: Transfer a single file
+                    source_path = resource.get_path()
+
+                self.main_instance.transfer(job_name="copy_%s" % resource_name,
+                                            source_path=source_path,
+                                            dest_path=self.resource_dir,
+                                            recursive=True,
+                                            log_transfer=True)
+
+        # TODO Sample data should make PipelineFiles
         # Transfer sample input data to main instance
         for sample_name, sample in self.pipeline_data.get_samples().iteritems():
             # Get sample data for next sample
@@ -136,17 +138,20 @@ class Platform(object):
     def update_file_paths(self):
         # Updates filenames in config/sample sheet after they've been transferred to main instance
 
-        # Update tool filenames
-        for file_type, file_path in self.config["paths"]["tools"].iteritems():
-            # Update path if transferred from cloud to instance
-            if file_path.startswith(self.cloud_storage_tool_dir):
-                self.config["paths"]["tools"][file_type] = file_path.replace(self.cloud_storage_tool_dir, self.tool_dir)
-
-        # Update resource filenames
-        for file_type, file_path in self.config["paths"]["resources"].iteritems():
-            # Update path if transferred from cloud to instance
-            if file_path.startswith(self.cloud_storage_resource_dir):
-                self.config["paths"]["resources"][file_type] = file_path.replace(self.cloud_storage_resource_dir, self.resource_dir)
+        # Update filenames of resources transferred from remote storage
+        for resource_name, resource in self.config["paths"]["resources"].iteritems():
+            if resource.is_remote_path():
+                if resource.get_containing_dir() is None:
+                    # Case: File transferred to top level of instance resource directory
+                    remote_file_name    = resource.get_path().split("/")[-1]
+                    ins_path            = os.path.join(self.resource_dir, remote_file_name)
+                else:
+                    # Case: File transferred within a larger directory from remote storage
+                    # File will be located in a subdirectory within the instance resource directory
+                    sub_dir             = resource.get_containing_dir().split("/")[-1]
+                    rel_path            = resource.get_path().replace(resource.get_containing_dir(), "")
+                    ins_path            = os.path.join(self.resource_dir, sub_dir, rel_path)
+                resource.set_path(ins_path)
 
         # Update names of sample input files
         for sample_name, sample in self.pipeline_data.get_samples().iteritems():
@@ -308,9 +313,9 @@ class Platform(object):
                     output_files = final_output[module_name][tool_id]
                     if len(output_files) > 1:
                         # Copy files to module-specific directory if module has >1 output file
-                        dest_dir = "%s%s/" % (self.cloud_storage_output_dir, module_name)
+                        dest_dir = "%s%s/" % (self.output_dir, module_name)
                     else:
-                        dest_dir = self.cloud_storage_output_dir
+                        dest_dir = self.output_dir
 
                     # Copy output files to destination directory
                     for i in range(len(output_files)):
@@ -338,9 +343,9 @@ class Platform(object):
         # Copy the logs
         try:
             self.main_instance.transfer("copyLogs",
-                                                  source_path=self.log_dir,
-                                                  dest_path=self.cloud_storage_output_dir,
-                                                  log_transfer=False)
+                                        source_path=self.log_dir,
+                                        dest_path=self.output_dir,
+                                        log_transfer=False)
             self.main_instance.wait_process("copyLogs")
 
         except BaseException as e:
@@ -378,6 +383,17 @@ class Platform(object):
 
     def get_main_instance(self):
         return self.main_instance
+
+    def post_status(self, is_success):
+        self.post_success() if is_success else self.post_failure()
+
+    def post_success(self):
+        # Empty method which can be extended to perform actions upon successful completion of pipelines
+        pass
+
+    def post_failure(self):
+        # Empty method which can be extended to perform actions upon pipeline failure
+        pass
 
     @abc.abstractmethod
     def generate_main_instance_name(self):
