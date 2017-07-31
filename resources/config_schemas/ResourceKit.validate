@@ -1,0 +1,8 @@
+[[__many__]]
+    resource_type   = string
+    path            = string
+    is_prefix       = boolean(default=False)
+    is_remote       = boolean(default=False)
+    is_executable   = boolean(default=False)
+    is_library      = boolean(default=False)
+    containing_dir  = string(default=None)
