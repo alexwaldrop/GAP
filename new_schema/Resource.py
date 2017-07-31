@@ -77,6 +77,3 @@ class Resource (object):
             to_return += "\t%s: %s" % (atts[i], vals[i])
 
         return to_return
-
-
-
