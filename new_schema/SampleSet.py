@@ -16,7 +16,7 @@ class SampleSet (object):
         self.samples   = self.__create_samples()
 
         # Check that sample-level metadata types are identical for every sample
-        self.__check_sample_metadata()
+        self.__check_samples()
 
         # Organize Sample input paths by path type
         self.paths     = self.__organize_paths_by_type()
@@ -32,7 +32,7 @@ class SampleSet (object):
             samples.append(Sample(sample_data))
         return samples
 
-    def __check_sample_metadata(self):
+    def __check_samples(self):
         # Check that all samples contain the same sample-level metadata types
         first = True
         required_data = None
@@ -42,6 +42,7 @@ class SampleSet (object):
                 required_data = metadata_keys
                 first = False
             elif metadata_keys != required_data:
+                # Check that all samples contain the same metadata
                     logging.error("Samples provided in SampleInputConfig have different sample-level metadata types! "
                                   "\nSamples must contain identical metadata types!")
                     raise IOError("One or more samples contains metadata not shared by all other samples!")
