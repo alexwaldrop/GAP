@@ -8,7 +8,7 @@ class SampleSet (object):
     def __init__(self, sample_data_json):
 
         # Parse and validate SampleSet config file
-        sample_data_spec     = "resources/config_schemas/SampleSet.validate"
+        sample_data_spec     = "../resources/config_schemas/SampleSet.validate"
         config_parser        = ConfigParser(sample_data_json, sample_data_spec)
         self.config          = config_parser.get_config()
 
@@ -52,7 +52,7 @@ class SampleSet (object):
         for sample in self.samples:
             sample_paths = sample.get_paths()
             for path_type, path in sample_paths.iteritems():
-                self.__add_data_type(paths, path_type, path)
+                self.__add_data(paths, path_type, path)
         return paths
 
     def __organize_data_by_type(self):
@@ -63,16 +63,16 @@ class SampleSet (object):
         for sample in self.samples:
             # Add sample name to data
             sample_name = sample.get_name()
-            self.__add_data_type(data, "sample_name", sample_name)
+            self.__add_data(data, "sample_name", sample_name)
 
             # Add sample-level metadata
             for sample_data_type, sample_data_val in sample.get_data().iteritems():
-                self.__add_data_type(data, sample_data_type, sample_data_val)
+                self.__add_data(data, sample_data_type, sample_data_val)
 
         # Add any data not associated with a sample as global metadata
         for global_data_type, global_data_val in self.config.iteritems():
             if global_data_type != "samples":
-                self.__add_data_type(data, global_data_type, global_data_val)
+                self.__add_data(data, global_data_type, global_data_val)
 
         # Add sample paths
         for path_type, path_data in self.paths.iteritems():
@@ -80,7 +80,7 @@ class SampleSet (object):
 
         return data
 
-    def __add_data_type(self, data, key, value):
+    def __add_data(self, data, key, value):
         # Add value of a data type to a dictionary
         if key in data:
             # If data type already appears in
