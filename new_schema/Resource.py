@@ -21,7 +21,7 @@ class Resource (object):
         self.__is_prefix = kwargs.pop("is_prefix", False)
 
         # Boolean flag for whether resource exists on remote storage disk
-        self.__is_remote = ":" in self.path
+        self.__is_remote = ":" in self.path if self.containing_dir is None else ":" in self.containing_dir
 
         # Boolean for whether resource is an executable
         self.__is_executable = kwargs.pop("is_executable", False)
