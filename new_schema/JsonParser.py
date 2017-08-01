@@ -9,11 +9,11 @@ class JsonParser(BaseParser):
     def __init__(self, config_file, config_spec_file):
         super(JsonParser, self).__init__(config_file, config_spec_file)
 
-    def __read_config(self):
+    def read_config(self):
         # Parse config data from JSON file and return JSON
         return self.parse_json(self.config_file)
 
-    def __validate_config(self):
+    def validate_config(self):
         # Parse config spec file
         spec = self.parse_json(self.config_spec_file)
 

@@ -10,7 +10,7 @@ class CfgParser(BaseParser):
     def __init__(self, config_file, config_spec_file):
         super(CfgParser, self).__init__(config_file, config_spec_file)
 
-    def __read_config(self):
+    def read_config(self):
         # Parse and return config data using ConfigObj
         try:
             return ConfigObj(self.config_file, configspec=self.config_spec_file)
@@ -18,7 +18,7 @@ class CfgParser(BaseParser):
             logging.error("Config parsing error! Config file is not valid INI: %s" % self.config_file)
             raise
 
-    def __validate_config(self):
+    def validate_config(self):
         # Validating schema
         validator = Validator()
         results = self.config.validate(validator, preserve_errors=True)

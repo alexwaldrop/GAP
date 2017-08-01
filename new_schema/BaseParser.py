@@ -32,16 +32,16 @@ class BaseParser(object):
             raise IOError("Config spec. file not found!")
 
     @abc.abstractmethod
-    def __read_config(self):
+    def read_config(self):
         pass
 
     @abc.abstractmethod
-    def __validate_config(self):
+    def validate_config(self):
         pass
 
     def __get_valid_config(self):
-        self.config = self.__read_config()
-        self.__validate_config()
+        self.config = self.read_config()
+        self.validate_config()
         return self.config
 
     def get_config(self):
