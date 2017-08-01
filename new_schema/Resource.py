@@ -48,7 +48,7 @@ class Resource (object):
         return self.path
 
     def get_type(self):
-        return self.file_type
+        return self.type
 
     def get_containing_dir(self):
         return self.containing_dir
@@ -68,12 +68,15 @@ class Resource (object):
     def set_path(self, path):
         self.path = path
 
-    def debug_print(self):
-        atts = [a for a in dir(self) if not a.startswith("__") and not callable(getattr(self, a))]
-        vals = [getattr(self, att) for att in atts]
-
-        to_return = ""
-        for i in range(len(atts)):
-            to_return += "\t%s: %s" % (atts[i], vals[i])
-
+    def __str__(self):
+        to_return = "=============\n"
+        to_return += "Name:\t%s\n" % self.name
+        to_return += "Type:\t%s\n" % self.type
+        to_return += "Path:\t%s\n" % self.path
+        to_return += "Containing_dir:\t%s\n" % self.containing_dir
+        to_return += "is_remote:\t%s\n" % self.__is_remote
+        to_return += "is_executable:\t%s\n" % self.__is_executable
+        to_return += "is_library:\t%s\n" % self.__is_library
+        to_return += "is_prefix:\t%s\n" % self.__is_prefix
+        to_return += "=============\n"
         return to_return

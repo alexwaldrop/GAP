@@ -6,7 +6,7 @@ class ResourceKit (object):
     def __init__(self, resource_config_file):
 
         # Parse and validate ResourceKit config file
-        resource_config_spec = "resources/config_schemas/ResourceKit.validate"
+        resource_config_spec = "../resources/config_schemas/ResourceKit.validate"
         config_parser        = ConfigParser(resource_config_file, resource_config_spec)
         self.config          = config_parser.get_config()
 
@@ -19,15 +19,16 @@ class ResourceKit (object):
         # Return dictionary of resource objects indexed by resource name
         resources = {}
         for resource_name, resource_data in self.config.iteritems():
-            path          = resource_data["path"]
-            resource_type = resource_data["resource_type"]
+            path          = resource_data.pop("path")
+            resource_type = resource_data.pop("resource_type")
             resources[resource_name] = Resource(resource_name, path, resource_type, **resource_data)
+            print resources[resource_name]
         return resources
 
     def __organize_by_type(self):
         # Returns resource dictionary organized by resource type instead of resource name
         resources = {}
-        for resource_name, resource in self.resources:
+        for resource_name, resource in self.resources.iteritems():
             resource_type = resource.get_type()
             if resource_type not in resources:
                 resources[resource_type] = {}

@@ -1,4 +1,4 @@
-[[__many__]]
+[__many__]
     resource_type   = string
     path            = string
     is_prefix       = boolean(default=False)
