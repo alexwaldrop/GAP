@@ -1,0 +1,22 @@
+PROC_MAX_NR_CPUS            = integer(1,32, default=16)
+PROC_MAX_MEM                = integer(1,208, default=32)
+workspace_dir               = string(default="/data/")
+
+[global_instance_params]
+zone                        = string(default="us-east1-b")
+service_account_key_file    = string(default="keys/Davelab_GAP_key.json")
+disk_image                  = string(default="davelab-image")
+boot_disk_size              = integer(1,500, default=60)
+is_boot_disk_ssd            = boolean(default=False)
+
+[main_instance_params]
+nr_cpus                     = integer(1, 16, default=8)
+mem                         = integer(1, 100, default=30)
+start_up_script             = string(default=None)
+shutdown_script             = string(default=None)
+
+[worker_instance_params]
+is_preemptible              = boolean(default=True)
+start_up_script             = string(default=None)
+shutdown_script             = string(default=None)
+max_reset                   = integer(default=5)
