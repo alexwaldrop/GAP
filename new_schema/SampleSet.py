@@ -1,3 +1,4 @@
+import os
 import logging
 
 from ConfigParser import ConfigParser
@@ -109,3 +110,33 @@ class SampleSet (object):
             return self.data
         else:
             return self.data[data_type]
+
+    def update_path(self, src_path, dest_dir):
+        # Searches in self.data for a path matching the src_path
+        # Updates path to refelct transfer to dest_dir
+
+        # Get name of file after transfer
+        file_name   = src_path.split("/")[-1]
+        new_path    = os.path.join(dest_dir, file_name)
+
+        # Search through paths to find the correct path to update
+        path_types      = self.paths.keys()
+        src_path_found  = False
+        for data_type, data in self.data.iteritems():
+            # Check to see if next type is a path
+            if data_type in path_types:
+                # Iterate through all path if mutliple paths of this type
+                if isinstance(data, list):
+                    for i in range(len(data)):
+                        if data[i] == src_path:
+                            self.data[data_type][i] = new_path
+                            src_path_found          = True
+                # Check to see if path is src_path if only one path of this type
+                elif data == src_path:
+                    self.data[data_type]    = new_path
+                    src_path_found          = True
+
+        # Throw error if no path found of type 'path_type' with path 'src_path'
+        if not src_path_found:
+            logging.error("Unable to update sample path '%s'as no sample paths matched!" % src_path)
+            raise IOError("Unable to update sample path!")
