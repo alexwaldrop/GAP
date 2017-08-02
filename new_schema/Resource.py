@@ -18,7 +18,7 @@ class Resource (object):
 
         # Boolean flag for whether path refers to an actual file or is a basename for a set of files
         # E.g. BWA index files may be listed as /path/to/bwa_index and refer to a set of files sharing a common suffix
-        self.__is_prefix = kwargs.pop("is_prefix", False)
+        self.__is_prefix = self.path.endswith("*")
 
         # Boolean flag for whether resource exists on remote storage disk
         self.__is_remote = ":" in self.path if self.containing_dir is None else ":" in self.containing_dir
@@ -40,6 +40,10 @@ class Resource (object):
             # Make all path absolute from containing directory
             file_name = self.path.replace(self.containing_dir, "")
             self.path = os.path.join(self.containing_dir, file_name)
+
+        if self.is_prefix():
+            # Remove wildcard character from path is path is prefix
+            self.path = self.path.replace("*","")
 
     def get_name(self):
         return self.name
@@ -67,6 +71,11 @@ class Resource (object):
 
     def set_path(self, path):
         self.path = path
+
+    def set_containing_dir(self, new_containing_dir):
+        self.path           = self.path.replace(self.containing_dir, "")
+        self.containing_dir = new_containing_dir
+        self.__standardize()
 
     def __str__(self):
         to_return = "=============\n"
