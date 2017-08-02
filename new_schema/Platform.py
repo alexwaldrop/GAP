@@ -20,8 +20,8 @@ class Platform(object):
         self.config         = config_parser.get_config()
 
         # Init platform variables from config
-        self.MAX_NR_CPUS        = self.config["MAX_NR_CPUS"]
-        self.MAX_MEM            = self.config["MAX_MEM"]
+        self.MAX_NR_CPUS        = self.config["PROC_MAX_NR_CPUS"]
+        self.MAX_MEM            = self.config["PROC_MAX_MEM"]
 
         # Define workspace directory names
         wrk_dir                 = self.config["workspace_dir"]
@@ -246,11 +246,6 @@ class Platform(object):
     @abc.abstractmethod
     def init_final_output_dir(self):
         # Create the final output directory with the main processor
-        pass
-
-    @abc.abstractmethod
-    def run_command(self, job_name, cmd, nr_cpus, mem, **kwargs):
-        # Create a processor capable of running a cmd with specified CPU/Mem requirements and run the job
         pass
 
     @abc.abstractmethod
