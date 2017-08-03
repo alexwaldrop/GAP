@@ -7,7 +7,10 @@ class Process(sp.Popen):
         super(Process, self).__init__(args,     **kwargs)
 
     def is_complete(self):
-        return self.poll() is not None
+        return self.complete
+
+    def set_complete(self):
+        self.complete = True
 
     def has_failed(self):
         ret_code = self.poll()
