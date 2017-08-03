@@ -229,7 +229,7 @@ class Platform(object):
         pass
 
     @abc.abstractmethod
-    def create_processor(self, name, nr_cpus, mem, **kwargs):
+    def create_processor(self, name, nr_cpus, mem):
         # Return a processor ready to run a process requiring the given amount of CPUs and Memory
         pass
 
