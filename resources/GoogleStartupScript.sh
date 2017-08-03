@@ -7,6 +7,9 @@ do
     sleep 2
 done
 
+# Updating the repositories
+sudo aptdcon --hide-terminal -c
+
 ############################################################################################*
 ###################### DO NOT EDIT COMMANDS ABOVE THIS SECTION #############################*
 ############### ADDITIONAL COMMANDS TO BE EXECUTED CAN BE PLACED BELOW #####################*
@@ -14,3 +17,12 @@ done
 
 
 
+
+
+############################################################################################*
+###################### DO NOT EDIT COMMANDS BELOW THIS SECTION #############################*
+############### ADDITIONAL COMMANDS TO BE EXECUTED CAN BE PLACED ABOVE #####################*
+############################################################################################*
+
+# Signal that instance is fully initialized
+echo "!STARTUPSCRIPTCOMPLETE!"
