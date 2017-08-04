@@ -3,7 +3,7 @@ class Argument(object):
 
     def __init__(self, name, is_required=False, is_resource=False, default_value=None):
 
-        self.name = name
+        self.__name = name
 
         self.__is_required = is_required
         self.__is_resource = is_resource
@@ -14,6 +14,9 @@ class Argument(object):
 
     def set(self, value):
         self.value = value
+
+    def get_name(self):
+        return self.__name
 
     def get_default_value(self):
         return self.__default_value
