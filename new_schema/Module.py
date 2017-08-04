@@ -6,13 +6,10 @@ from Argument import Argument
 class Module(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, node_id):
+    def __init__(self, module_id):
 
         # Initialize the module ID, defined in the config
-        self.node_id = node_id
-
-        # Initialize Current module name
-        self.name = self.__class__.__name__
+        self.module_id = module_id
 
         # Initialize the input arguments
         self.arguments = None
@@ -27,7 +24,7 @@ class Module(object):
     def add_argument(self, key, is_required=False, is_resource=False, default_value=None):
 
         if key in self.arguments:
-            logging.error("In module %s, the input argument '%s' is defined multiple time!" % (self.name, key))
+            logging.error("In module %s, the input argument '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Input argument '%s' has been defined multiple times!" % key)
 
         self.arguments[key] = Argument( key,
@@ -38,7 +35,7 @@ class Module(object):
     def add_output(self, key, value):
 
         if key in self.output:
-            logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.name, key))
+            logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
 
         self.output[key] = value
@@ -54,6 +51,9 @@ class Module(object):
     @abc.abstractmethod
     def define_command(self, platform, **kwargs):
         pass
+
+    def get_ID(self):
+        return self.module_id
 
     def get_keys(self):
         return self.input_keys, self.output_keys
@@ -86,7 +86,7 @@ class Module(object):
         if prefix is not None:
             path += prefix
         else:
-            path += "%s_%s" % (self.name, self.node_id)
+            path += self.module_id
 
         # Append split name if present
         if split_name is not None:

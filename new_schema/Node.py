@@ -39,7 +39,10 @@ class Node(object):
         # Get the class
         _class = _module.__dict__[module_name]
 
-        return _class(self.node_id)
+        # Generate the module ID
+        module_id = "%s_%s" % (self.__node_id, module_name)
+
+        return _class(module_id)
 
     def is_split_mode(self):
         return self.__split_mode
