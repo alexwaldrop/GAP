@@ -11,24 +11,24 @@ class Graph(object):
         self.config             = config_parser.get_config()
 
         # Generate graph
-        self.nodes, self.graph = self.__generate_graph()
+        self.nodes, self.adj_list = self.__generate_graph()
 
     def __generate_graph(self):
 
         nodes  = {}
-        graph  = {}
+        adj_list  = {}
 
         for node_id in self.config:
 
             node_data = self.config[node_id]
 
-            graph[node_id] = node_data.pop("input_from")
+            adj_list[node_id] = node_data.pop("input_from")
             nodes[node_id] = Node(node_id, **node_data)
 
-        return nodes, graph
+        return nodes, adj_list
 
-    def get_graph(self):
-        return self.graph
+    def get_adjacency_list(self):
+        return self.adj_list
 
     def get_nodes(self):
         return self.nodes
