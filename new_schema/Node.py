@@ -5,7 +5,7 @@ class Node(object):
 
     def __init__(self, node_id, **kwargs):
 
-        self.node_id                  = node_id
+        self.__node_id                = node_id
 
         # Get the module names
         self.__main_module_name       = kwargs.pop("main_module")
@@ -19,7 +19,7 @@ class Node(object):
         self.__final_output_keys      = kwargs.pop("final_output_keys")
 
         # Get the config inputs
-        self.__config_input           = kwargs.pop("args", {})
+        self.__config_input           = kwargs.pop("args", None)
 
         # Initialize modules
         self.main_module    = self.__load_module(self.__main_module_name)
@@ -40,6 +40,15 @@ class Node(object):
         _class = _module.__dict__[module_name]
 
         return _class(self.node_id)
+
+    def is_split_mode(self):
+        return self.__split_mode
+
+    def get_ID(self):
+        return self.__node_id
+
+    def get_config_input(self):
+        return self.__config_input
 
     def get_output_keys(self):
 
