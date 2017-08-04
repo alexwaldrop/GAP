@@ -21,6 +21,7 @@ class Thread(threading.Thread):
         self.err_msg = err_msg
 
         # Thread status
+        self.finished_lock  = threading.Lock()
         self.finished = False
 
     def run(self):
@@ -35,14 +36,16 @@ class Thread(threading.Thread):
         else:
             self.exception_queue.put(None)
         finally:
-            self.finished = True
+            with self.finished_lock:
+                self.finished = True
 
     @abc.abstractmethod
     def task(self):
         pass
 
     def is_done(self):
-        return self.finished
+        with self.finished_lock:
+            return self.finished
 
     def finalize(self):
 
