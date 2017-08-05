@@ -4,6 +4,9 @@ import subprocess as sp
 import threading
 import random
 import time
+import requests
+import math
+import json
 
 from Process import Process
 from Processor import Processor
@@ -24,13 +27,16 @@ class GoogleStandardProcessor(Processor):
         # Get required arguments
         self.zone               = kwargs.pop("zone")
         self.service_acct       = kwargs.pop("service_acct")
-        self.instance_type      = kwargs.pop("instance_type")
         self.boot_disk_size     = kwargs.pop("boot_disk_size")
         self.disk_image         = kwargs.pop("disk_image")
 
         # Get optional arguments
         self.is_boot_disk_ssd   = kwargs.pop("is_boot_disk_ssd",    False)
         self.nr_local_ssd       = kwargs.pop("nr_local_ssd",        0)
+
+        # Get maximum resource settings
+        self.MAX_NR_CPUS        = kwargs.get("PROC_MAX_NR_CPUS",    16)
+        self.MAX_MEM            = kwargs.get("PROC_MAX_MEM",        208)
 
         # Indicates that instance is not resettable
         self.is_preemptible = False
@@ -58,8 +64,11 @@ class GoogleStandardProcessor(Processor):
         # Set status to indicate that commands can't be run on processor because it's busy
         self.set_status(GoogleStandardProcessor.BUSY)
 
+        # Get Google instance type
+        instance_type = self.get_instance_type()
+
         logging.info("(%s) Process 'create' started!" % self.name)
-        logging.debug("(%s) Instance type is %s." % (self.name, self.instance_type))
+        logging.debug("(%s) Instance type is %s." % (self.name, instance_type))
 
         # Create base command
         args = list()
@@ -102,8 +111,8 @@ class GoogleStandardProcessor(Processor):
         args.append("--service-account")
         args.append(str(self.service_acct))
 
-        # Specify instance type
-        if "custom" in self.instance_type:
+        # Determine Google Instance type and insert into gcloud command
+        if "custom" in instance_type:
             args.append("--custom-cpu")
             args.append(str(self.nr_cpus))
 
@@ -111,10 +120,10 @@ class GoogleStandardProcessor(Processor):
             args.append(str(self.mem))
         else:
             args.append("--machine-type")
-            args.append(self.instance_type)
+            args.append(instance_type)
 
         # Add metadata to run base Google startup-script
-        startup_script_location = "../GoogleStartupScript.sh"
+        startup_script_location = "resources/GoogleStartupScript.sh"
         args.append("--metadata-from-file")
         args.append("startup-script=%s" % startup_script_location)
 
@@ -123,7 +132,8 @@ class GoogleStandardProcessor(Processor):
         self.wait_process("create")
 
         # Wait for ssh to initialize and startup script to complete after instance is live
-        self.__wait_until_ready()
+        self.wait_until_ready()
+        logging.info("(%s) Instance startup complete! %s is now live and ready to run commands!" % (self.name, self.name))
 
         # Update status to available and exit
         self.set_status(GoogleStandardProcessor.AVAILABLE)
@@ -174,7 +184,7 @@ class GoogleStandardProcessor(Processor):
         # Case: Process completed with errors
         if proc_obj.has_failed():
             # Check to see whether error is fatal
-            if self.__is_fatal_error(proc_name, err):
+            if self.is_fatal_error(proc_name, err):
                 logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
                 if len(err) > 0:
                     logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
@@ -182,8 +192,9 @@ class GoogleStandardProcessor(Processor):
 
         # Case: Process completed
         logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
+        return out, err
 
-    def export_env_variable(self, env_variable, path):
+    def set_env_variable(self, env_variable, path):
         # Set path to bash script that will export the environment variables
         export_loc  = "/etc/profile.d/pipeline_export.sh"
         # Export the variable
@@ -252,13 +263,13 @@ class GoogleStandardProcessor(Processor):
         self.run("restartSSH", cmd)
         self.wait_process("restartSSH")
 
-    def __adapt_cmd(self, cmd):
+    def adapt_cmd(self, cmd):
         # Adapt command for running on instance through gcloud ssh
         cmd = cmd.replace("'", "'\"'\"'")
         cmd = "gcloud compute ssh gap@%s --command '%s' --zone %s" % (self.name, cmd, self.zone)
         return cmd
 
-    def __is_fatal_error(self, proc_name, err_msg):
+    def is_fatal_error(self, proc_name, err_msg):
         # Check to see if program should exit due to error received
         if proc_name == "destroy":
             # Check if 'destroy' process actually deleted the instance, in which case program can continue running
@@ -268,34 +279,192 @@ class GoogleStandardProcessor(Processor):
                 return False
         return True
 
-    def __wait_until_ready(self):
+    def wait_until_ready(self):
         # Wait until startup-script has completed on instance
         # This signifies that the instance has initialized ssh and the instance environment is finalized
 
         logging.info("(%s) Waiting for instance startup-script completion..." % self.name)
         ready = False
         cycle_count = 1
-        finished_token = "!STARTUPSCRIPTCOMPLETE!"
 
         # Waiting 20 minutes for the instance to finish running
         while cycle_count < 600 and not ready:
             # Check the syslog to see if it contains text indicating the startup has completed
-            cmd         = "gcloud compute instances get-serial-port-output %s --zone %s | grep %s" % (self.name, self.zone, finished_token)
+            cmd         = 'gcloud compute instances describe %s --format json --zone %s' % (self.name, self.zone)
             proc        = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
             out, err    = proc.communicate()
 
             # Raise error if unable to get syslog from instance
             if len(err) > 0:
-                logging.error("(%s) Unable to poll startup! Received the following error: %s" % (self.name, err))
+                logging.error("(%s) Unable to poll startup! Received the following error:\n%s" % (self.name, err))
                 raise RuntimeError("Instance %s has failed!" % self.name)
 
-            # Check to see if syslog contains text indicating startup script has completed
-            ready = (out != '')
+            # Check to see if "READY" has been added to instance metadata indicating startup-script has complete
+            data = json.loads(out)
+            for item in data["metadata"]["items"]:
+                if item["key"] == "READY":
+                    ready = True
 
             # Sleep for a couple secs and try all over again if nothing was found
             time.sleep(2)
             cycle_count += 1
 
+        # Raise error if instance not initialized within the alloted timeframe
         if not ready:
             logging.error("(%s) Instance failed! 'Create' Process took more than 20 minutes!" % self.name)
             raise RuntimeError("Instance %s has failed!" % self.name)
+
+    def configure_NFS(self, exported_dir):
+
+        # Install required packages
+        self.install_packages(["sysv-rc-conf", "nfs-kernel-server"])
+
+        # Setup the runlevels
+        logging.info("(%s) Configuring the runlevels for NFS server." % self.name)
+        cmd = "sudo sysv-rc-conf nfs on && sudo sysv-rc-conf rpcbind on"
+        self.run("setupNFS", cmd)
+        self.wait_process("setupNFS")
+
+        # Export the NFS server
+        logging.info("(%s) Exporting the NFS server directory." % self.name)
+        cmd = "sudo sh -c \"echo '\n%s\t10.240.0.0/16(rw,sync,no_subtree_check,root_squash,nohide,sec=sys)\n' >> /etc/exports\" " % exported_dir
+        self.run("exportNFS", cmd)
+        self.wait_process("exportNFS")
+
+        # Restart NFS server
+        logging.info("(%s) Restarting NFS server to load the new settings." % self.name)
+        cmd = "sudo service nfs-kernel-server restart"
+        self.run("restartNFS", cmd)
+        self.wait_process("restartNFS")
+
+    def configure_RAID(self, raid_dir):
+
+        # Install the required packages
+        self.install_packages("mdadm")
+
+        # Setup the RAID system
+        logging.info("(%s) Configuring RAID-0 system by merging the Local SSDs." % self.name)
+        cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd)" % self.nr_local_ssd
+        self.run("configRAID", cmd)
+        self.wait_process("configRAID")
+
+        # Format the RAID partition
+        logging.info("(%s) Formating RAID partition." % self.name)
+        cmd = "sudo mkfs -t ext4 /dev/md0"
+        self.run("formatRAID", cmd)
+        self.wait_process("formatRAID")
+
+        # Mount the RAID partition
+        logging.info("(%s) Mounting the RAID partition." % self.name)
+        cmd = "sudo mkdir -p %s && sudo mount -t ext4 /dev/md0 %s" % (raid_dir, raid_dir)
+        self.run("mountRAID", cmd)
+        self.wait_process("mountRAID")
+
+        # Change permission on the the RAID partition
+        logging.info("(%s) Changing permissions for the RAID partition." % self.name)
+        cmd = "sudo chmod -R 777 %s" % raid_dir
+        self.run("chmodRAID", cmd)
+        self.wait_process("chmodRAID")
+
+    def get_instance_type(self):
+
+        # Making sure the values are not higher than possibly available
+        if self.nr_cpus > self.MAX_NR_CPUS:
+            logging.error("(%s) Cannot provision an instance with %d vCPUs. Maximum is %d vCPUs." % (self.name, self.nr_cpus, self.MAX_NR_CPUS))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+        if self.mem > self.MAX_MEM:
+            logging.error("(%s) Cannot provision an instance with %d GB RAM. Maximum is %d GB RAM." % (self.name, self.mem, self.MAX_MEM))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+
+        # Obtaining prices from Google Cloud Platform
+        try:
+            price_json_url = "https://cloudpricingcalculator.appspot.com/static/data/pricelist.json"
+
+            # Disabling low levels of logging from module requests
+            logging.getLogger("requests").setLevel(logging.WARNING)
+
+            prices = requests.get(price_json_url).json()["gcp_price_list"]
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not obtain instance prices. The following error appeared: %s." % e.message)
+            raise
+
+        # Defining instance types to mem/cpu ratios
+        ratio = dict()
+        ratio["highcpu"] = 1.80 / 2
+        ratio["standard"] = 7.50 / 2
+        ratio["highmem"] = 13.00 / 2
+
+        # Identifying needed predefined instance type
+        if self.nr_cpus == 1:
+            instance_type = "standard"
+        else:
+            ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
+            if ratio_mem_cpu <= ratio["highcpu"]:
+                instance_type = "highcpu"
+            elif ratio_mem_cpu <= ratio["standard"]:
+                instance_type = "standard"
+            else:
+                instance_type = "highmem"
+
+        # Initializing predefined instance data
+        predef_inst = {}
+
+        # Converting the number of cpus to the closest upper power of 2
+        predef_inst["nr_cpus"] = 2 ** int(math.ceil(math.log(self.nr_cpus, 2)))
+
+        # Computing the memory obtain on the instance
+        predef_inst["mem"] = predef_inst["nr_cpus"] * ratio[instance_type]
+
+        # Setting the instance type name
+        predef_inst["type_name"] = "n1-%s-%d" % (instance_type, predef_inst["nr_cpus"])
+
+        # Obtaining the price of the predefined instance
+        if self.is_preemptible:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()]["us"]
+        else:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()]["us"]
+
+        # Initializing custom instance data
+        custom_inst = {}
+
+        # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
+        if self.nr_cpus != 1:
+            custom_inst["nr_cpus"] = self.nr_cpus + self.nr_cpus % 2
+        else:
+            custom_inst["nr_cpus"] = 1
+
+        # Computing the memory as integer value in GB
+        custom_inst["mem"] = int(math.ceil(self.mem))
+
+        # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
+        custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        if self.nr_cpus != 1:
+            custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+        else:
+            custom_inst["mem"] = max(1, custom_inst["mem"])
+            custom_inst["mem"] = min(6.5, custom_inst["mem"])
+
+        # Generating custom instance name
+        custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
+
+        # Computing the price of a custom instance
+        if self.is_preemptible:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"]["us"]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"]["us"]
+        else:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"]["us"]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"]["us"]
+        custom_inst["price"] = custom_price_cpu * custom_inst["nr_cpus"] + custom_price_mem * custom_inst["mem"]
+
+        if predef_inst["price"] <= custom_inst["price"]:
+            self.nr_cpus = predef_inst["nr_cpus"]
+            self.mem = predef_inst["mem"]
+            return predef_inst["type_name"]
+        else:
+            self.nr_cpus = custom_inst["nr_cpus"]
+            self.mem = custom_inst["mem"]
+            return custom_inst["type_name"]
+
+
+

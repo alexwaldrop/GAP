@@ -25,4 +25,4 @@ sudo aptdcon --hide-terminal -c
 ############################################################################################*
 
 # Signal that instance is fully initialized
-echo "!STARTUPSCRIPTCOMPLETE!"
+gcloud --quiet compute instances add-metadata $(hostname) --metadata READY=TRUE
