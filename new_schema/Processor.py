@@ -37,9 +37,9 @@ class Processor(object):
 
             # Generating all the logging pipes
             log_cmd_null    = " >>/dev/null 2>&1 "
-            log_cmd_stdout  = " >>%s " % (log_file)
-            log_cmd_stderr  = " 2>>%s " % (log_file)
-            log_cmd_all     = " >>%s 2>&1 " % (log_file)
+            log_cmd_stdout  = " >>%s " % log_file
+            log_cmd_stderr  = " 2>>%s " % log_file
+            log_cmd_all     = " >>%s 2>&1 " % log_file
 
             # Replacing the placeholders with the logging pipes
             cmd = cmd.replace("!LOG0!", log_cmd_null)
@@ -48,7 +48,7 @@ class Processor(object):
             cmd = cmd.replace("!LOG3!", log_cmd_all)
 
         # Make any modifications to the command to allow it to be run on a specific platform
-        cmd = self.__adapt_cmd(cmd)
+        cmd = self.adapt_cmd(cmd)
 
         # Run command using subprocess popen and add Popen object to self.processes
         logging.info("(%s) Process '%s' started!" % (self.name, job_name))
@@ -81,7 +81,7 @@ class Processor(object):
         pass
 
     @abc.abstractmethod
-    def __adapt_cmd(self, cmd):
+    def adapt_cmd(self, cmd):
         pass
 
 
