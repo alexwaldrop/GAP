@@ -3,7 +3,7 @@
 import sys
 
 from Pipeline import Pipeline
-from Engine import Engine
+from PipelineWorker import PipelineWorker
 
 def main():
 
@@ -14,11 +14,11 @@ def main():
         # Load the pipeline
         pipeline.load()
 
-        # Create an engine
-        engine = Engine(pipeline)
+        # Create pipeline worker
+        pipeline_worker = PipelineWorker(pipeline)
 
-        # Run the engine
-        engine.run()
+        # Run the pipeline
+        pipeline_worker.run()
 
     finally:
         # Clean up the pipeline

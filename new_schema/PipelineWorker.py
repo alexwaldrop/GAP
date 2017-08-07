@@ -3,7 +3,7 @@ import time
 
 from NodeWorker import NodeWorker
 
-class Engine(object):
+class PipelineWorker(object):
 
     def __init__(self, pipeline):
 
