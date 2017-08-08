@@ -200,7 +200,7 @@ class GoogleStandardProcessor(Processor):
         # Export the variable
         cmd         = "sudo bash -c 'echo \"%s=%s:\\$%s\" >> %s' " % (env_variable, path, env_variable, export_loc)
         # Get job name
-        job_name    = "export_path_%s" % os.path.basename(path)
+        job_name    = "export_path_%s_%d" % (env_variable, random.randint(1,100000))
 
         # Run job and wait to finish
         self.run(job_name, cmd)
