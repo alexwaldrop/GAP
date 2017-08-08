@@ -66,11 +66,18 @@ class Processor(object):
         kwargs["stderr"] = sp.PIPE
 
         self.processes[job_name] = Process(cmd, **kwargs)
+        return self.processes[job_name]
 
     def wait(self):
         # Returns when all currently running processes have completed
         for proc_name, proc_obj in self.processes.iteritems():
             self.wait_process(proc_name)
+
+    def set_log_dir(self, new_log_dir):
+        self.log_dir = new_log_dir
+
+    def get_name(self):
+        return self.name
 
     @abc.abstractmethod
     def wait_process(self, proc_name):
