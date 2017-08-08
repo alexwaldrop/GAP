@@ -28,17 +28,14 @@ class PreemptionNotifier(threading.Thread):
         # Initialize PubSub topic/subscription for capturing/accesing logging info
         self.preempt_topic  = "preempted_topic_%s" % self.name
         self.preempt_sub    = "preempted_sub_%s" % self.name
-        self.pub_sub        = self.__init_pubsub()
+        self.pub_sub        = None
 
         # Initialize log sink to funnel messages from Google Stackdriver logging to PubSub topic
         self.google_project     = self.__get_key_field("project_id")
         self.log_sink_name      = "preempted_sink_%s" % self.name
         self.log_sink_dest      = "pubsub.googleapis.com/projects/%s/topics/%s" % (self.google_project, self.preempt_topic)
         self.log_sink_filter    = "jsonPayload.event_subtype:compute.instances.preempted"
-        self.log_sink           = self.__init_log_sink()
-
-        # Start the preemption notifier
-        self.start()
+        self.log_sink           = None
 
     def __init_pubsub(self):
         # Create PubSub topics and subscriptions for storing/accessing information related to instance preemption
@@ -46,9 +43,7 @@ class PreemptionNotifier(threading.Thread):
         pubsub = PubSub()
 
         # Create topic and subscription to that topic
-        logging.debug("Creating PubSub topic '%s'..." % self.preempt_topic)
         pubsub.create_topic(self.preempt_topic)
-        logging.debug("Creating subscription '%s' to topic '%s'..." % (self.preempt_sub, self.preempt_topic))
         pubsub.create_subscription(self.preempt_sub, self.preempt_topic)
 
         logging.info("Google Pub/Sub configured for preemption notifier.")
@@ -63,12 +58,17 @@ class PreemptionNotifier(threading.Thread):
         # Grant write permission to allow the preempted log sink to write to the preempted PubSub topic
         self.pub_sub.grant_write_permission(topic=self.preempt_topic,
                                             client_json_keyfile=self.key_file,
-                                            serv_acct=self.log_sink.get_serv_acct())
+                                            serv_acct=log_sink.get_serv_acct())
         return log_sink
 
     def run(self):
         # Periodically pull next message from PubSub subscription and check to see if instances have been preempted
         # If an instance has been preempted, set its instance status to DEAD
+
+        # Create PubSub topics/subscription and log sinks
+        self.pub_sub = self.__init_pubsub()
+        self.log_sink = self.__init_log_sink()
+
         while self.running:
 
             try:
@@ -96,6 +96,7 @@ class PreemptionNotifier(threading.Thread):
         try:
             log = json.loads(msg)
             inst_name = log["jsonPayload"]["resource"]["name"]
+            print "Instance preempted: %s" % inst_name
             if inst_name in self.processors:
                 # Set instance status to DEAD if preempted instance is mangaged by the notifier
                 self.processors[inst_name].set_status(GooglePreemptibleProcessor.DEAD)
@@ -111,8 +112,11 @@ class PreemptionNotifier(threading.Thread):
     def clean_up(self):
         # Remove PubSub topics and remove log sink
         logging.info("Destroying preemption notifier...")
-        self.log_sink.destroy()
-        self.pub_sub.clean_up()
+        self.stop()
+        if self.log_sink is not None:
+            self.log_sink.destroy()
+        if self.pub_sub is not None:
+            self.pub_sub.clean_up()
 
     def __get_key_field(self, field_name):
         # Parse JSON service account key file and return email address associated with account
