@@ -53,6 +53,9 @@ class Platform(object):
         # Initialize workspace directory structure
         self.init_workspace()
 
+        # Create final output directory
+        self.mkdir(self.final_output_dir)
+
         # Transfer remote resources to platform resource directory
         # Link exectuable files to workspace bin directory
         # Link library files to workspace lib directory
@@ -135,13 +138,42 @@ class Platform(object):
                 sample_set.update_path(path, dest_dir)
         logging.info("Input data successfully transferred to workspace!")
 
+    def get_main_processor(self):
+        # Create and return a main processor that's ready to run commands
+        logging.info("Creating main processor...")
+        main_processor = self.create_main_processor()
+
+        # Add to list of processors if not already there
+        if main_processor.name not in self.processors:
+            self.processors[main_processor.name] = main_processor
+
+        # Set log directory if not already done
+        main_processor.set_log_dir(self.get_workspace_dir("log"))
+
+        # Add workspace bin directory to PATH env variable
+        main_processor.set_env_variable("PATH", self.get_workspace_dir("bin"))
+
+        # Add workspace lib directory to LD_LIB_PATH env variable
+        main_processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
+
+        logging.info("Main processor '%s' ready to load platform!" % main_processor.name)
+        return main_processor
+
     def get_processor(self, name, nr_cpus, mem):
         # Ensure unique name for processor
-        name        = "%s-%s" % (name, self.__generate_unique_id())
+        name        = "%s-%s" % (name, self.generate_unique_id())
         logging.info("Creating processor '%s' with %s CPUs and %s GB of memory" % (name, nr_cpus, mem))
 
         # Create processor with requested resources (CPU/Mem)
         processor   = self.create_processor(name, nr_cpus, mem)
+
+        # Add to list of processors if not already there
+        name = processor.name
+        if name not in self.processors:
+            self.processors[name] = processor
+
+        # Set log directory
+        processor.set_log_dir(self.get_workspace_dir("log"))
 
         # Add workspace bin directory to PATH env variable
         processor.set_env_variable("PATH", self.get_workspace_dir("bin"))
@@ -149,8 +181,7 @@ class Platform(object):
         # Add workspace lib directory to LD_LIB_PATH env variable
         processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
 
-        self.processors[name] = processor
-        logging.info("Processor '%s' ready for processing!")
+        logging.info("Processor '%s' ready for processing!" % name)
         return processor
 
     def run_command(self, job_name, cmd, nr_cpus, mem):
@@ -176,13 +207,13 @@ class Platform(object):
         out, err = self.main_processor.wait_process(job_name)
         return out, err
 
-    def return_output(self, output_path, sub_dir=None, dest_filename=None, log_transfer=True):
+    def return_output(self, output_path, sub_dir=None, dest_file=None, log_transfer=True):
         logging.info("Returning output file: %s" % output_path)
         # Transfer output file to final output directory
         if sub_dir is None:
             self.transfer(src_path=output_path,
                           dest_dir=self.final_output_dir,
-                          dest_filename=dest_filename,
+                          dest_file=dest_file,
                           log_transfer=log_transfer)
         # Transfer output file to subdirectory within final output directory
         else:
@@ -190,7 +221,7 @@ class Platform(object):
             self.mkdir(dest_dir)
             self.transfer(src_path=output_path,
                           dest_dir=dest_dir,
-                          dest_filename=dest_filename,
+                          dest_file=dest_file,
                           log_transfer=log_transfer)
 
     def destroy_processor(self, processor_name):
@@ -244,11 +275,6 @@ class Platform(object):
         pass
 
     @abc.abstractmethod
-    def init_final_output_dir(self):
-        # Create the final output directory with the main processor
-        pass
-
-    @abc.abstractmethod
     def path_exists(self, path):
         # Determine if a path exists either locally on platform or remotely
         pass
@@ -266,7 +292,7 @@ class Platform(object):
 
     ####### PRIVATE UTILITY METHODS
     @staticmethod
-    def __generate_unique_id(id_len=6):
+    def generate_unique_id(id_len=6):
         return hashlib.md5(str(time.time())).hexdigest()[0:id_len]
 
     @staticmethod
