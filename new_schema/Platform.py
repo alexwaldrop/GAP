@@ -47,14 +47,19 @@ class Platform(object):
     def launch_platform(self, resource_kit, sample_set):
 
         # Loads platform capable of running pipeline
-        self.main_processor = self.create_main_processor()
+        self.main_processor = self.get_main_processor()
         self.launched = True
 
         # Initialize workspace directory structure
+        logging.info("Initializing workspace env...")
         self.init_workspace()
+        logging.info("Workspace successfully initialized!")
 
-        # Create final output directory
+        # Create final output directory and wait to make sure it was actually created
+        logging.info("Creating final output directory...")
         self.mkdir(self.final_output_dir)
+        self.main_processor.wait()
+        logging.info("Final output directory successfully create!")
 
         # Transfer remote resources to platform resource directory
         # Link exectuable files to workspace bin directory
@@ -63,6 +68,11 @@ class Platform(object):
 
         # Load input data on platform workspace
         self.load_input_data(sample_set)
+
+        # Make everything in the workspace accessible to everyone
+        logging.info("Updating workspace permissions...")
+        cmd = "sudo chmod -R 777 %s" % self.get_workspace_dir()
+        self.run_quick_command("update_wrkspace_perms", cmd)
 
     def install_resource_kit(self, resource_kit):
         # Transfers remote resources to workspace resource directory
@@ -77,7 +87,6 @@ class Platform(object):
 
         # For every resource:
         # Transfer to platform if remote
-        # Link bin/lib directories if necessary
         for resource_type, resource_names in resources.iteritems():
             for resource_name, resource in resource_names.iteritems():
                 if resource.is_remote():
@@ -97,13 +106,22 @@ class Platform(object):
 
                     # Transfer to resource directory
                     logging.info("Transferring remote resource '%s' with path %s..." % (resource_name, src_path))
-                    self.transfer(src_path=src_path, dest_dir=resource_dir, log_transfer=True)
+                    self.transfer(src_path=src_path,
+                                  dest_dir=resource_dir,
+                                  log_transfer=True,
+                                  job_name="transfer_%s" % resource_name)
 
                     # Update path to reflect transfer
                     src_path = src_path.replace("*", "")
                     resource_kit.update_path(src_path, resource_dir)
                     logging.info("Updated path: %s" % resource.get_path())
 
+        # Wait for all transfers to complete
+        self.main_processor.wait()
+
+        # Link bin/lib directories if necessary
+        for resource_type, resource_names in resources.iteritems():
+            for resource_name, resource in resource_names.iteritems():
                 # Link executable to workspace bin dir if executable
                 if resource.is_executable():
                     logging.info("Linking executable resource '%s' to workspace bin directory..." % resource_name)
@@ -112,7 +130,6 @@ class Platform(object):
                 if resource.is_library():
                     logging.info("Linking library resource '%s' to workspace lib directory..." % resource_name)
                     self.__link_path(resource.get_path(), lib_dir)
-
         logging.info("Resource kit successfully installed!")
 
     def load_input_data(self, sample_set):
@@ -121,21 +138,35 @@ class Platform(object):
         logging.info("Transferring sample input data to workspace...")
         paths       = sample_set.get_paths()
         dest_dir    = self.get_workspace_dir("wrk")
+        count = 1
         for path_type, path_data in paths.iteritems():
             if isinstance(path_data, list):
                 for path in path_data:
                     # Transfer file to workspace
                     logging.info("Transferring sample file: %s" % path)
-                    self.transfer(src_path=path, dest_dir=dest_dir, log_transfer=True)
+                    job_name = "transfer_user_input_%d" % count
+                    self.transfer(src_path=path,
+                                  dest_dir=dest_dir,
+                                  log_transfer=True,
+                                  job_name=job_name)
                     # Update path to reflect transfer
                     sample_set.update_path(path, dest_dir)
+                    count += 1
             else:
                 path = path_data
                 logging.info("Transferring sample file: %s" % path)
                 # Transfer file to workspace
-                self.transfer(src_path=path, dest_dir=dest_dir, log_transfer=True)
+                job_name = "transfer_user_input_%d" % count
+                self.transfer(src_path=path,
+                              dest_dir=dest_dir,
+                              log_transfer=True,
+                              job_name=job_name)
                 # Update path to reflect transfer
                 sample_set.update_path(path, dest_dir)
+                count += 1
+
+        # Wait for all transfers to complete
+        self.main_processor.wait()
         logging.info("Input data successfully transferred to workspace!")
 
     def get_main_processor(self):
@@ -280,7 +311,7 @@ class Platform(object):
         pass
 
     @abc.abstractmethod
-    def transfer(self, src_path, dest_dir, dest_file=None, log_transfer=True):
+    def transfer(self, src_path, dest_dir, dest_file=None, log_transfer=True, job_name=None):
         # Transfer a remote file from src_path to a local directory dest_dir
         # Log the transfer unless otherwise specified
         pass
