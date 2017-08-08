@@ -138,7 +138,7 @@ class GoogleStandardProcessor(Processor):
         # Update status to available and exit
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def destroy(self):
+    def destroy(self, wait=True):
         # Begin running command to destroy instance on Google Cloud
 
         # Return if instance has already been destroyed
@@ -163,8 +163,10 @@ class GoogleStandardProcessor(Processor):
 
         # Run command, wait for destroy to complete, and set status to 'OFF'
         self.processes["destroy"] = Process(" ".join(args), stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        self.wait_process("destroy")
-        self.set_status(GoogleStandardProcessor.OFF)
+
+        # Wait for delete to complete if requested
+        if wait:
+            self.wait_process("destroy")
 
     def wait_process(self, proc_name):
         # Get process from process list
@@ -189,6 +191,10 @@ class GoogleStandardProcessor(Processor):
                 if len(err) > 0:
                     logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                 raise RuntimeError("Instance %s has failed!" % self.name)
+
+        # Set status to 'OFF' if destroy is True
+        if proc_name is "destroy":
+            self.set_status(GoogleStandardProcessor.OFF)
 
         # Case: Process completed
         logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))

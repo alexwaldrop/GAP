@@ -27,7 +27,6 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         self.reset_count    = 0
 
     def reset(self):
-
         # Resetting takes place just for preemptible instances
         if not self.is_preemptible:
             return
@@ -45,7 +44,6 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
 
         # Destroying the instance
         self.destroy()
-        self.wait_process("destroy")
 
         # Removing old process(es)
         self.processes.pop("create", None)
@@ -59,7 +57,6 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
 
         # Recreating the instance
         self.create()
-        self.wait_process("create")
 
         # Rerunning all the commands
         if len(commands_to_run):
