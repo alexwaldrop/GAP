@@ -9,7 +9,7 @@ class ResourceKit (object):
     def __init__(self, resource_config_file):
 
         # Parse and validate ResourceKit config file
-        resource_config_spec = "../resources/config_schemas/ResourceKit.validate"
+        resource_config_spec = "resources/config_schemas/ResourceKit.validate"
         config_parser        = ConfigParser(resource_config_file, resource_config_spec)
         self.config          = config_parser.get_config()
 

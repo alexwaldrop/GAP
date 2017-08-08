@@ -9,7 +9,7 @@ class SampleSet (object):
     def __init__(self, sample_data_json):
 
         # Parse and validate SampleSet config file
-        sample_data_spec     = "../resources/config_schemas/SampleSet.validate"
+        sample_data_spec     = "resources/config_schemas/SampleSet.validate"
         config_parser        = ConfigParser(sample_data_json, sample_data_spec)
         self.config          = config_parser.get_config()
 
