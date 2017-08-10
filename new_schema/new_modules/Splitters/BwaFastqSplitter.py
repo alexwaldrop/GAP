@@ -3,35 +3,33 @@ import math
 from Module import Module
 
 class BwaFastqSplitter(Module):
+
     def __init__(self, module_id):
         super(BwaFastqSplitter, self).__init__(module_id)
 
         self.input_keys = ["R1", "R2", "nr_cpus", "mem"]
         self.output_keys = ["R1", "R2", "nr_cpus"]
 
-        # BWA-MEM aligning speed
+        # BWA-MEM aligning speed constant
         self.ALIGN_SPEED = 10 ** 8  # bps/vCPU for 10 mins of processing
-        self.MAX_NR_CPUS = self.max_nr_cpus
 
     def define_input(self):
         self.add_argument("R1",             is_required=True)
         self.add_argument("R2",             is_required=False)
         self.add_argument("nr_cpus",        is_required=True,   default_value=8)
-        self.add_argument("mem",            is_required=True,   default_value=12)
-        self.add_argument("align_speed",    is_required=True, default_value=10 ** 8)
+        self.add_argument("mem",            is_required=True,   default_value="nr_cpus * 2")
 
     def define_output(self, platform, spilt_name=None):
         # Obtaining the arguments
         R1          = self.get_arguments("R1").get_value()
         R2          = self.get_arguments("R2").get_value()
         nr_cpus     = self.get_arguments("nr_cpus").get_value()
-        align_speed = self.get_arguments("align_speed").get_value()
         max_nr_cpus = platform.get_max_nr_cpus()
 
         # Identifying the total number of reads
         try:
             logging.info("Counting the number of reads in the FASTQ files.")
-            nr_reads = self.get_nr_reads(platform, R1, nr_cpus)
+            nr_reads = self.__get_nr_reads(platform, R1, nr_cpus)
         except:
             logging.error("Unable to determine number of reads in FASTQ: %s" % R1)
             raise
@@ -39,7 +37,7 @@ class BwaFastqSplitter(Module):
         # Computing the average read length
         try:
             logging.info("Computing average read length in the FASTQ files.")
-            read_len = self.get_read_len(platform, R1, nr_reads)
+            read_len = self.__get_read_len(platform, R1, nr_reads)
             logging.info("Average read length: %d" % read_len)
         except:
             logging.error("Unable to determine average read length in FASTQ: %s" % R1)
@@ -49,7 +47,7 @@ class BwaFastqSplitter(Module):
         #  - The aligning speed which is in bps/vCPU
         #  - The maximum number of vCPUs alloed on the platform
         #  - The difference between read and read pair (divide by 2)
-        nr_reads_per_split = align_speed / read_len / 2 * max_nr_cpus
+        nr_reads_per_split = self.ALIGN_SPEED / read_len / 2 * max_nr_cpus
         nr_splits = int(math.ceil(nr_reads * 1.0 / nr_reads_per_split))
 
         # Set number of lines per split to be access in get_command()
@@ -63,20 +61,22 @@ class BwaFastqSplitter(Module):
             split_data = {"nr_cpus": max_nr_cpus,
                           "R1": r1_split,
                           "R2": r2_split}
-            self.add_output(platform, split_name, split_data)
+            self.add_output(platform, split_name, split_data, is_path=False)
 
         # Create final split using remaining CPUs
         # Determine number of CPUs available for last split
-        nr_cpus_needed = int(math.ceil(nr_reads * read_len * 2 * 1.0 / align_speed))
-        nr_cpus_remaining = nr_cpus_needed % max_nr_cpus
-        nr_cpus_remaining += nr_cpus_remaining % 2
-        split_name = "%02d" % int(nr_splits - 1)
-        r1_split = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq")
-        r2_split = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq") if R2 is not None else None
-        split_data = {"nr_cpus": nr_cpus_remaining,
+        nr_cpus_needed      = int(math.ceil(nr_reads * read_len * 2 * 1.0 / self.ALIGN_SPEED))
+        nr_cpus_remaining   = nr_cpus_needed % max_nr_cpus
+        nr_cpus_remaining   += nr_cpus_remaining % 2
+
+        # Make final split
+        split_name  = "%02d" % int(nr_splits - 1)
+        r1_split    = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq")
+        r2_split    = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq") if R2 is not None else None
+        split_data  = {"nr_cpus": nr_cpus_remaining,
                       "R1": r1_split,
                       "R2": r2_split}
-        self.add_output(platform, split_name, split_data)
+        self.add_output(platform, split_name, split_data, is_path=False)
 
     def get_command(self, platform):
 
@@ -92,18 +92,18 @@ class BwaFastqSplitter(Module):
         output_basename = self.output[split_name]["R1"].split(split_name)[0]
 
         # Generate command for splitting R1
-        split_r1_cmd = self.get_unix_split_cmd(R1, nr_cpus, output_basename, output_suffix=".R1.fastq")
+        split_r1_cmd = self.__get_unix_split_cmd(R1, nr_cpus, output_basename, output_suffix=".R1.fastq")
 
         if R2 is not None:
             # Generate command for splitting R2
-            split_r2_cmd = self.get_unix_split_cmd(R2, nr_cpus, output_basename, output_suffix=".R2.fastq")
+            split_r2_cmd = self.__get_unix_split_cmd(R2, nr_cpus, output_basename, output_suffix=".R2.fastq")
             cmd = "%s !LOG2! && %s !LOG2!" % (split_r1_cmd, split_r2_cmd)
         else:
             cmd = "%s !LOG2!" % split_r1_cmd
         return cmd
 
     @staticmethod
-    def get_nr_reads(platform, R1, nr_cpus):
+    def __get_nr_reads(platform, R1, nr_cpus):
         # Obtain the number of lines in the FASTQ
         if R1.endswith(".gz"):
             cmd = "pigz -p %d -d -k -c %s | wc -l" % (nr_cpus, R1)
@@ -114,7 +114,7 @@ class BwaFastqSplitter(Module):
         return nr_reads
 
     @staticmethod
-    def get_read_len(platform, R1, total_nr_reads):
+    def __get_read_len(platform, R1, total_nr_reads):
         # Return average read length of first 100k reads
 
         # Figure out number of lines to examine (in case input contains fewer than 100K fastq entries)
@@ -135,7 +135,7 @@ class BwaFastqSplitter(Module):
         total_bases = float(out)
         return int(total_bases/nr_reads)
 
-    def get_unix_split_cmd(self, fastq_file, nr_cpus, output_prefix, output_suffix):
+    def __get_unix_split_cmd(self, fastq_file, nr_cpus, output_prefix, output_suffix):
         # Return command for using the unix 'split' command to split a fastq file into chunks
         # Automatically detects whether to decompress fastq file
 

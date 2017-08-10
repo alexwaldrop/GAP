@@ -7,16 +7,15 @@ class BAMChromosomeSplitter(Module):
     def __init__(self, module_id):
         super(BAMChromosomeSplitter, self).__init__(module_id)
 
-        self.input_keys  = ["bam", "bam_idx", "samtools", "nr_splits"]
+        self.input_keys  = ["bam", "samtools", "nr_splits", "nr_cpus", "mem"]
         self.output_keys = ["bam", "is_aligned", "chroms"]
 
     def define_input(self):
         self.add_argument("bam",                is_required=True)
-        self.add_argument("bam_idx",            is_required=True)
         self.add_argument("samtools",           is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default=8)
-        self.add_argument("mem",                is_required=True, default=16)
         self.add_argument("nr_splits",          is_required=True, default=23)
+        self.add_argument("mem",                is_required=True, default="nr_cpus * 1.5")
 
     def define_output(self, platform, split_name=None):
         # Obtaining the arguments
@@ -27,32 +26,32 @@ class BAMChromosomeSplitter(Module):
         # Obtaining chromosome data from bam header
         try:
             logging.info("BAMChromosomeSplitter determining chromosomes to use for splits...")
-            chroms, remains = self.get_chrom_splits(platform, samtools, bam, nr_splits)
+            chroms, remains = self.__get_chrom_splits(platform, samtools, bam, nr_splits)
         except:
             logging.error("BAMChromosomeSplitter unable to determine chromosomes to use for splits!")
             raise
 
         # Add split info for named chromosomes
         for chrom in chroms:
-            split_info = {"split_name"  : chrom,
-                          "chroms"      : chrom,
+            split_name = chrom
+            split_info = {"chroms"      : chrom,
                           "is_aligned"  : True,
-                          "bam"         : self.generate_unique_filename(split_name=chrom, extension=".bam")}
-            self.add_output(platform, chrom, split_info)
+                          "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+            self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for all chromosomes that aren't named in config
-        split_info   = {"split_name"    : "remains",
-                        "chroms"        : remains,
+        split_name  = "remains"
+        split_info  = { "chroms"        : remains,
                         "is_aligned"    : True,
-                        "bam"           : self.generate_unique_filename(split_name="remains", extension=".bam")}
-        self.add_output(platform, "remains", split_info)
+                        "bam"           : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+        self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for unmapped reads
-        split_info = {"split_name"  : "unmapped",
-                      "chroms"      : None,
-                      "is_aligned"  : False,
-                      "bam"         : self.generate_unique_filename(split_name="unmapped", extension=".bam")}
-        self.add_output(platform, "unmapped", split_info)
+        split_name  = "unmapped"
+        split_info  = { "chroms"      : None,
+                        "is_aligned"  : False,
+                        "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+        self.add_output(platform, split_name, split_info, is_path=False)
 
     def define_command(self, platform):
         # Obtaining the arguments
@@ -87,7 +86,7 @@ class BAMChromosomeSplitter(Module):
         return "%s ; wait" % " & ".join(cmds)
 
     @staticmethod
-    def get_chrom_splits(platform, samtools, bam, nr_splits):
+    def __get_chrom_splits(platform, samtools, bam, nr_splits):
         # Returns two lists, one containing the names of chromosomes which will be considered separate splits
         # And another containing the names of chromosomes that will be lumped together an considered one split
         # Split chromosomes will be determined by the number of reads mapped to each chromosome

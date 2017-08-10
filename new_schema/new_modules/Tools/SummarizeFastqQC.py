@@ -14,7 +14,7 @@ class SummarizeFastQC(Module):
         self.add_argument("R2_fastqc",  is_required=False)
         self.add_argument("qc_parser",  is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
-        self.add_argument("mem",        is_required=True, default_value=3)
+        self.add_argument("mem",        is_required=True, default_value=1)
         self.add_argument("fastq_type")
 
     def define_output(self, platform, split_name=None):
@@ -31,25 +31,27 @@ class SummarizeFastQC(Module):
 
         # Get command for parsing R1 fastqc output
         r1_column_header = "R1_%s" % fastq_type if fastq_type is not None else None
-        r1_parse_cmd, r1_output = self.get_one_fastqc_cmd(r1_fastqc_dir,
-                                                          qc_parser,
-                                                          column_header_suffix=r1_column_header)
+        r1_parse_cmd, r1_output = self.__get_one_fastqc_cmd(r1_fastqc_dir,
+                                                            qc_parser,
+                                                            column_header_suffix=r1_column_header)
 
+        # cmd to summarize only R1 fastqc output and cat to correct output filename
         cmd = "%s ; cat %s > %s" % (r1_parse_cmd, r1_output, summary_file)
 
         # Conditionally append command for parsing R2 fastqc output
         if r2_fastqc_dir is not None:
             r2_column_header = "R2_%s" % fastq_type if fastq_type is not None else None
-            r2_parse_cmd, r2_output = self.get_one_fastqc_cmd(r2_fastqc_dir,
-                                                              qc_parser,
-                                                              column_header_suffix=r2_column_header)
-            # final command
+            r2_parse_cmd, r2_output = self.__get_one_fastqc_cmd(r2_fastqc_dir,
+                                                                qc_parser,
+                                                                column_header_suffix=r2_column_header)
+
+            # cmd to summarize R1 and R2 and paste together into a single output file
             cmd = "%s ; %s ; paste %s %s > %s !LOG2!" % (r1_parse_cmd, r2_parse_cmd,
                                                          r1_output, r2_output, summary_file)
         return cmd
 
     @staticmethod
-    def get_one_fastqc_cmd(fastqc_dir, qc_parser, column_header_suffix=None):
+    def __get_one_fastqc_cmd(fastqc_dir, qc_parser, column_header_suffix=None):
         # Get command for summarizing output from fastqc
 
         # Get input filename

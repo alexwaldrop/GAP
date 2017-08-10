@@ -27,6 +27,9 @@ class BwaAligner(Module):
         bam_out = self.generate_unique_file_name(split_name=split_name, extension=".sorted.bam")
         self.add_output(platform, "bam", bam_out)
 
+        # Declare that bam is sorted
+        self.add_output(platform, "bam_sorted", True, is_path=False)
+
     def define_command(self, platform):
         # Get arguments to run BWA aligner
         R1              = self.get_argument("R1").get_value()
@@ -43,7 +46,7 @@ class BwaAligner(Module):
         # Get read group header
         try:
             logging.info("Attempting to determine read group header for fastq file: %s" % R1)
-            rg_header = BwaAligner.get_rg_header(platform, R1, sample_name, lib_name, seq_platform)
+            rg_header = BwaAligner.__get_rg_header(platform, R1, sample_name, lib_name, seq_platform)
         except:
             logging.error("Module BwaAligner unable to determine read group header!")
             raise
@@ -67,7 +70,7 @@ class BwaAligner(Module):
         return cmd
 
     @staticmethod
-    def get_rg_header(platform, R1, sample_name, lib_name, seq_platform):
+    def __get_rg_header(platform, R1, sample_name, lib_name, seq_platform):
 
         # Obtain the read header
         cmd = "head -n 1 %s" % R1

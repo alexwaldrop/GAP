@@ -19,13 +19,13 @@ class FastQC(Module):
         # Declare R1 fastqc output filename
         r1 = self.get_arguments("R1").get_value()
         r1_out = "%s_fastqc" % r1.replace(".fastq.gz","").replace(".fastq","")
-        self.add_output("R1_fastqc", r1_out)
+        self.add_output(platform, "R1_fastqc", r1_out)
 
         # Conditionally declare R2 fastqc output filename
         r2 = self.get_arguments("R2").get_value()
         if r2 is not None:
             r2_out = "%s_fastqc" % r2.replace(".fastq.gz","").replace(".fastq","")
-            self.add_output("R2_fastqc", r2_out)
+            self.add_output(platform, "R2_fastqc", r2_out)
 
     def define_command(self, platform):
         # Generate command for running Fastqc

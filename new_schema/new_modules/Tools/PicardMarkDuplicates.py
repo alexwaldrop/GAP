@@ -5,7 +5,7 @@ class PicardMarkDuplicates(Module):
     def __init__(self, module_id):
         super(PicardMarkDuplicates, self).__init__(module_id)
 
-        self.input_keys             = ["bam", "bam_idx", "picard", "java", "nr_cpus", "mem"]
+        self.input_keys             = ["bam", "bam_idx", "picard", "java", "nr_cpus", "mem", "is_aligned"]
         self.splitted_output_keys   = ["bam", "MD_report"]
 
     def define_input(self):

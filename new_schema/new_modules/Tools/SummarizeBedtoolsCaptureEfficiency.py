@@ -11,8 +11,8 @@ class SummarizeBedtoolsCaptureEfficiency(Module):
     def define_input(self):
         self.add_argument("capture_bed",    is_required=True)
         self.add_argument("qc_parser",      is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=1)
-        self.add_argument("mem",            is_required=True, default_value=10)
+        self.add_argument("nr_cpus",        is_required=True, default_value=2)
+        self.add_argument("mem",            is_required=True, default_value=12)
         self.add_argument("target_type")
 
     def define_output(self, platform, split_name=None):

@@ -19,7 +19,6 @@ class SamtoolsDepth(Module):
         self.add_argument("mem",        is_required=True,   default_value=3)
         self.add_argument("location",   is_required=False)
 
-
     def define_output(self, platform, split_name=None):
         # Declare samtools depth out filename
         samtools_depth_out = self.generate_unique_file_name(split_name=split_name, extension=".samtools_depth.out")
@@ -57,7 +56,7 @@ class SamtoolsDepth(Module):
                                    % (samtools, bam, genome_file)
 
             # Command to subset results from samtools depth by a bed file
-            subset_output_cmd = SamtoolsDepth.get_subset_depth_bed_cmd(bedtools, target_bed)
+            subset_output_cmd = SamtoolsDepth.__get_subset_depth_bed_cmd(bedtools, target_bed)
 
             # Concatenate commands together
             cmd = "%s ; %s | %s > %s !LOG2!" \
@@ -70,7 +69,7 @@ class SamtoolsDepth(Module):
         return cmd
 
     @staticmethod
-    def get_subset_depth_bed_cmd(bedtools, target_bed, genome_file):
+    def __get_subset_depth_bed_cmd(bedtools, target_bed, genome_file):
         #returns command for subsetting samtools depth output based on a target bed file
 
         # convert depth output to bedfile

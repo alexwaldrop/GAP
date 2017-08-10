@@ -12,7 +12,7 @@ class SummarizeTrimmomatic(Module):
         self.add_argument("trim_report",        is_required=True)
         self.add_argument("qc_parser",          is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default=1)
-        self.add_argument("mem",                is_required=True, default=2)
+        self.add_argument("mem",                is_required=True, default=1)
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename

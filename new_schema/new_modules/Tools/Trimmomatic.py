@@ -15,7 +15,19 @@ class Trimmomatic (Module):
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("adapters",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
-        self.add_argument("mem",            is_required=True, default_value=10)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
+
+        # Optional trimmomatic arguments
+        self.add_arguments("LEADING",                   is_required=True, default_value=5)
+        self.add_arguments("TRAILING",                  is_required=True, default_value=5)
+        self.add_arguments("MINLEN",                    is_required=True, default_value=36)
+        self.add_arguments("SLIDINGWINDOW_SIZE",        is_required=True, default_value=4)
+        self.add_arguments("SLIDINGWINDOW_QUAL",        is_required=True, default_value=10)
+        self.add_arguments("keepBothReads",             is_required=True, default_value="true")
+        self.add_arguments("seed_mismatches",           is_required=True, default_value=2)
+        self.add_arguments("PALINDROME_CLIP_THRESHOLD", is_required=True, default_value=20)
+        self.add_arguments("SIMPLE_CLIP_THRESHOLD",     is_required=True, default_value=7)
+        self.add_arguments("MIN_ADAPTER_LEN",           is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
 
@@ -68,7 +80,7 @@ class Trimmomatic (Module):
         # Try to determine PHRED encoding from Fastq quality scores
         try:
             logging.info("Trimmomatic module determining PHRED encoding for fastq: %s" % R1)
-            phred_encoding = Trimmomatic.get_fastq_encoding(platform, R1, nr_cpus)
+            phred_encoding = Trimmomatic.__get_fastq_encoding(platform, R1, nr_cpus)
 
         except:
             logging.error("Unable to determine PHRED encoding for Trimmomatic module!")
@@ -87,11 +99,23 @@ class Trimmomatic (Module):
         jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
 
         # Set other Trimmomatic options
-        steps = ["ILLUMINACLIP:%s:2:20:7:1:true" % adapters,
-                 "LEADING:5",
-                 "TRAILING:5",
-                 "SLIDINGWINDOW:4:10",
-                 "MINLEN:36"]
+        leading             = self.get_arguments("LEADING").get_value()
+        trailing            = self.get_arguments("TRAILING").get_value()
+        minlen              = self.get_arguments("MINLEN").get_value()
+        window_size         = self.get_arguments("SLIDINGWINDOW_SIZE").get_value()
+        window_qual         = self.get_arguments("SLIDINGWINDOW_QUAL").get_value()
+        keep_pair           = self.get_arguments("keepBothReads").get_value()
+        mismatches          = self.get_arguments("seed_mismatches").get_value()
+        pal_clip_thresh     = self.get_arguments("PALINDROME_CLIP_THRESHOLD").get_value()
+        simple_clip_thresh  = self.get_arguments("SIMPLE_CLIP_THRESHOLD").get_value()
+        min_adapt_len       = self.get_arguments("MIN_ADAPTER_LEN").get_value()
+
+        steps = ["ILLUMINACLIP:%s:%d:%d:%d:%d:%s" % (adapters, mismatches, pal_clip_thresh,
+                                                     simple_clip_thresh, min_adapt_len, keep_pair),
+                 "LEADING:%d" % leading,
+                 "TRAILING:%d" % trailing,
+                 "SLIDINGWINDOW:%d:%d" % (window_size, window_qual),
+                 "MINLEN:%d" % minlen]
 
         if R2 is not None:
             # Generate command for paired-end trimmomatic
@@ -120,7 +144,7 @@ class Trimmomatic (Module):
         return cmd
 
     @staticmethod
-    def get_fastq_encoding(platform, fastq, nr_cpus):
+    def __get_fastq_encoding(platform, fastq, nr_cpus):
         # Determine phred quality encoding from FASTQ
         # Algorithm taken from http://onetipperday.sterding.com/2012/10/code-snip-to-decide-phred-encoding-of.html
         if fastq.endswith(".gz"):

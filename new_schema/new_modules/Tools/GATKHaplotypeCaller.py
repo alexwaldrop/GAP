@@ -18,7 +18,7 @@ class GATKHaplotypeCaller(Module):
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value=32)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 3.5")
         self.add_argument("location")
         self.add_argument("excluded_location")
 

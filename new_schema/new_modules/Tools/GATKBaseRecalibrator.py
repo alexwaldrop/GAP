@@ -20,8 +20,8 @@ class GATKBaseRecalibrator(Module):
         self.add_argument("samtools",       is_required=True, is_resource=True)
         self.add_argument("ref",            is_required=True, is_resource=True)
         self.add_argument("dbsnp",          is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=1)
-        self.add_argument("mem",            is_required=True, default_value=12)
+        self.add_argument("nr_cpus",        is_required=True, default_value=8)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
         self.add_argument("max_nr_reads",   is_required=True, default_value=2.5*10**7)
 
     def define_output(self, platform, split_name=None):
@@ -62,7 +62,7 @@ class GATKBaseRecalibrator(Module):
         # Limit the number of reads processed
         try:
             logging.info("Determining chromosomes to include for BQSR...")
-            chrom_list = GATKBaseRecalibrator.get_chrom_locations(platform, bam, max_nr_reads, samtools)
+            chrom_list = GATKBaseRecalibrator.__get_chrom_locations(platform, bam, max_nr_reads, samtools)
         except:
             logging.error("Unable to determine the number of chromosomes for BQSR!")
             raise
@@ -80,8 +80,7 @@ class GATKBaseRecalibrator(Module):
         return cmd
 
     @staticmethod
-    def get_chrom_locations(platform, bam, max_nr_reads, samtools):
-
+    def __get_chrom_locations(platform, bam, max_nr_reads, samtools):
         # Obtaining the chromosome alignment information
         cmd = "%s idxstats %s" % (samtools, bam)
         out, err = platform.run_quick_command("bam_idxstats", cmd)

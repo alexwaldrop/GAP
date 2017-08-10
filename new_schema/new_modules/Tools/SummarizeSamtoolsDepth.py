@@ -12,7 +12,7 @@ class SummarizeSamtoolsDepth(Module):
         self.add_argument("samtools_depth",     is_required=True)
         self.add_argument("qc_parser",          is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default=1)
-        self.add_argument("mem",                is_required=True, default=10)
+        self.add_argument("mem",                is_required=True, default=12)
         self.add_argument("depth_cutoffs",      is_required=True, default=[1,5,10,15,25,50,100])
 
     def define_output(self, platform, split_name=None):

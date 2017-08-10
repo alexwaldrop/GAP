@@ -6,12 +6,11 @@ class SamtoolsDepthSplitter(Module):
     def __init__(self, module_id):
         super(SamtoolsDepthSplitter, self).__init__(module_id)
 
-        self.input_keys     = ["bam", "bam_idx", "samtools", "nr_splits", "nr_cpus", "mem"]
+        self.input_keys     = ["bam", "samtools", "nr_splits", "nr_cpus", "mem"]
         self.output_keys    = ["bam", "location"]
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
-        self.add_argument("bam_idx",        is_required=True)
         self.add_argument("samtools",       is_required=True,   is_resource=True)
         self.add_argument("nr_splits",      is_required=True,   default_value=25)
         self.add_argument("nr_cpus",        is_required=True,   default_value=1)
@@ -28,7 +27,7 @@ class SamtoolsDepthSplitter(Module):
         # Obtaining chromosome data from bam header
         try:
             logging.info("SamtoolsDepthSplitter determining chromosomes to use for splits...")
-            chrom_list, remains = self.get_chrom_splits(platform, samtools, bam, nr_splits)
+            chrom_list, remains = self.__get_chrom_splits(platform, samtools, bam, nr_splits)
         except:
             logging.error("SamtoolDepthSplitter unable to determine chromosomes to use for splits!")
             raise
@@ -37,15 +36,16 @@ class SamtoolsDepthSplitter(Module):
         # Process each chromosome separately and process the rest in one single run
         for chrom in chrom_list:
             split_name = chrom
-            split_data = {"bam" : bam, "location" : chrom}
-            self.add_output(platform, split_name, split_data)
+            split_data = {"bam"         : bam,
+                          "location"    : chrom}
+            self.add_output(platform, split_name, split_data, is_path=False)
 
     def get_command(self, **kwargs):
         # No command needs to be run
         return None
 
     @staticmethod
-    def get_chrom_splits(platform, samtools, bam, nr_splits):
+    def __get_chrom_splits(platform, samtools, bam, nr_splits):
         # Returns two lists, one containing the names of chromosomes which will be considered separate splits
         # And another containing the names of chromosomes that will be lumped together an considered one split
         # Split chromosomes will be determined by the number of reads mapped to each chromosome
