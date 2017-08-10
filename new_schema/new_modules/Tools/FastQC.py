@@ -8,12 +8,12 @@ class FastQC(Module):
         self.output_keys = ["R1_fastqc", "R2_fastqc"]
 
     def define_input(self):
-        self.add_argument("R1", is_required=True)
+        self.add_argument("R1",         is_required=True)
         self.add_argument("R2")
-        self.add_argument("fastqc", is_required=True, is_resource=True)
-        self.add_argument("java", is_required=True, is_resource=True)
-        self.add_argument("nr_cpus", is_required=True, default_value=2)
-        self.add_argument("mem", is_required=True, default_value=5)
+        self.add_argument("fastqc",     is_required=True, is_resource=True)
+        self.add_argument("java",       is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=5)
 
     def define_output(self, platform, split_name=None):
         # Declare R1 fastqc output filename

@@ -8,17 +8,16 @@ class SamtoolsFlagstat(Module):
         self.output_keys = ["flagstat"]
 
     def define_input(self):
-        self.add_argument("bam", is_required=True)
-        self.add_argument("bam_idx", is_required=True)
-        self.add_argument("samtools", is_required=True, is_resource=True)
-        self.add_argument("nr_cpus", is_required=True, default_value=1)
-        self.add_argument("mem", is_required=True, default_value=5)
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("samtools",   is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
         # Declare bam index output filename
-        wrk_dir     = self.platform.get_workspace_dir()
-        flagstat    = self.generate_unique_file(prefix=wrk_dir, split_name=split_name, extension=".flagstat.out")
-        self.add_output("flagstat", flagstat)
+        flagstat = self.generate_unique_file_name(split_name=split_name, extension=".flagstat.out")
+        self.add_output(platform, "flagstat", flagstat)
 
     def define_command(self, platform):
         # Define command for running samtools index from a platform

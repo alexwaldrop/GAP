@@ -33,11 +33,16 @@ class Module(object):
                                         is_resource=is_resource,
                                         default_value=default_value)
 
-    def add_output(self, key, value):
+    def add_output(self, platform, key, value):
 
         if key in self.output:
             logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
+
+        # Enforce output to be in platform workspace
+        wrkspace_dir = platform.get_workspace_dir()
+        value = value.lstrip(wrkspace_dir)
+        value = os.path.join(wrkspace_dir, value)
 
         self.output[key] = value
 
@@ -79,19 +84,19 @@ class Module(object):
 
         return cmd
 
-    def generate_file_name(self, file_prefix, split_name=None, extension=".dat"):
+    def generate_unique_file_name(self, prefix=None, split_name=None, extension=".dat"):
 
-        path = file_prefix
-
-        if file_prefix is not None:
-            path = os.path.join(path, file_prefix)
+        # Generate file basename
+        if prefix is None:
+            path = "%s.%s" % (prefix, self.module_id)
         else:
-            path = os.path.join(path, self.module_id)
+            path = self.module_id
 
         # Append split name if present
         if split_name is not None:
-            path += "_%s" % split_name
+            path += ".%s" % split_name
 
-        # Append extension
+        # Standardize and append extension
+        extension = ".%s" % extension.lstrip(".")
         path += extension
         return path
