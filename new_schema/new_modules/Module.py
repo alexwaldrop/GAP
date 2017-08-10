@@ -33,16 +33,16 @@ class Module(object):
                                         is_resource=is_resource,
                                         default_value=default_value)
 
-    def add_output(self, platform, key, value):
-
+    def add_output(self, platform, key, value, is_path=True):
         if key in self.output:
             logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
 
-        # Enforce output to be in platform workspace
-        wrkspace_dir = platform.get_workspace_dir()
-        value = value.lstrip(wrkspace_dir)
-        value = os.path.join(wrkspace_dir, value)
+        if is_path:
+            # Enforce output to be in platform workspace
+            wrkspace_dir = platform.get_workspace_dir()
+            value = value.lstrip(wrkspace_dir)
+            value = os.path.join(wrkspace_dir, value)
 
         self.output[key] = value
 
