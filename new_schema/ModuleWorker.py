@@ -63,32 +63,49 @@ class ModuleWorker(Thread):
         # Get the arguments from the module
         arguments = self.module_obj.get_arguments()
 
+        # Set nr_cpus
+        nr_cpus_arg = arguments["nr_cpus"]
+        self.__set_argument("nr_cpus", nr_cpus_arg)
+        if not nr_cpus_arg.is_set():
+            # Set special case for maximum nr_cpus
+            if nr_cpus_arg.default_value.lower() == "max":
+                nr_cpus_arg.set(self.platform.get_max_nr_cpus())
+            else:
+                nr_cpus_arg.set(nr_cpus_arg.get_default_value())
+
+        # Set mem
+        mem_arg = arguments["mem"]
+        self.__set_argument("mem", mem_arg)
+        if not mem_arg.is_set():
+            # Set special case for maximum mem
+            if mem_arg.default_value.lower() == "max":
+                mem_arg.set(self.platform.get_max_mem())
+            # Set special case if memory is scales with nr_cpus
+            elif "nr_cpus" in mem_arg.default_value.lower():
+                nr_cpus     = nr_cpus_arg.get_value()
+                mem_expr    = mem_arg.get_value().lower()
+                mem_arg.set(eval(mem_expr.replace("nr_cpus", nr_cpus)))
+            # Set default value
+            else:
+                mem_arg.set(mem_arg.get_default_value())
+
+        # Set the rest of the args
         for arg in arguments:
 
             # Obtain the argument key
             arg_key = arg.get_name()
 
-            # Set the argument depending if it is a resource
-            if arg.is_resource():
-                self.__set_resource_argument(arg_key, arg)
-            else:
-                self.__set_argument(arg_key, arg)
+            if arg_key not in ["nr_cpus", "mem"]:
 
-            # If not set yet, set with the default variable
-            if not arg.is_set():
-                default_value = arg.get_default_value()
-
-                # Set special case for maximum nr_cpus
-                if arg_key == "nr_cpus" and default_value.lower() == "max":
-                    arg.set(self.platform.get_max_nr_cpus())
-
-                # Set special case for maximum mem
-                elif arg_key == "mem" and default_value.lower() == "max":
-                    arg.set(self.platform.get_max_mem())
-
-                # Set default variable
+                # Set the argument depending if it is a resource
+                if arg.is_resource():
+                    self.__set_resource_argument(arg_key, arg)
                 else:
-                    arg.set(default_value)
+                    self.__set_argument(arg_key, arg)
+
+                # If not set yet, set with the default variable
+                if not arg.is_set():
+                    arg.set(arg.get_default_value())
 
             # If still not set yet, raise an exception if the argument is required
             if not arg.is_set() and arg.is_mandatory():
