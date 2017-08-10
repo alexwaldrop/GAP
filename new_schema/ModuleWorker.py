@@ -1,4 +1,5 @@
 import logging
+import math
 
 from Thread import Thread
 
@@ -84,7 +85,12 @@ class ModuleWorker(Thread):
             elif "nr_cpus" in mem_arg.default_value.lower():
                 nr_cpus     = nr_cpus_arg.get_value()
                 mem_expr    = mem_arg.get_value().lower()
-                mem_arg.set(eval(mem_expr.replace("nr_cpus", nr_cpus)))
+                mem         = math.ceil(eval(mem_expr.replace("nr_cpus", nr_cpus)))
+                if mem < self.platform.get_max_mem():
+                    mem_arg.set(mem)
+                else:
+                    # Set to max memory if amount of memory requested exceeds limit
+                    mem_arg.set(self.platform.get_max_mem())
             # Set default value
             else:
                 mem_arg.set(mem_arg.get_default_value())
