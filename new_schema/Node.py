@@ -57,7 +57,8 @@ class Node(object):
 
         # Return output keys. get_keys() returns input_keys and output_keys.
         if self.__split_mode:
-            return self.split_module.get_keys()[1]
+            return self.merge_module.get_keys()[1]
+
         else:
             return self.main_module.get_keys()[1]
 
