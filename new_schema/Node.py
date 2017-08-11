@@ -23,9 +23,8 @@ class Node(object):
 
         # Initialize modules
         self.main_module    = self.__load_module(self.__main_module_name)
-        if self.__split_mode:
-            self.split_module   = self.__load_module(self.__splitter_module_name)
-            self.merge_module   = self.__load_module(self.__merger_module_name)
+        self.split_module   = self.__load_module(self.__splitter_module_name) if self.__split_mode else None
+        self.merge_module   = self.__load_module(self.__merger_module_name) if self.__split_mode else None
 
     def __load_module(self, module_name):
 
@@ -33,7 +32,8 @@ class Node(object):
         try:
             _module = importlib.import_module("Modules.%s" % module_name)
         except:
-            logging.error("Module %s could not be imported!" % module_name)
+            logging.error("Module %s could not be imported! "
+                          "Check the module name spelling and ensure the module exists." % module_name)
             raise
 
         # Get the class
