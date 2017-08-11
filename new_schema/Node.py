@@ -19,7 +19,7 @@ class Node(object):
         self.__final_output_keys      = kwargs.pop("final_output_keys")
 
         # Get the config inputs
-        self.__config_input           = kwargs.pop("args", None)
+        self.__config_input           = kwargs.pop("args", [])
 
         # Initialize modules
         self.main_module    = self.__load_module(self.__main_module_name)
