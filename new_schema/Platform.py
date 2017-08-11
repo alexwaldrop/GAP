@@ -188,7 +188,8 @@ class Platform(object):
         main_processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
 
         logging.info("Main processor '%s' ready to load platform!" % main_processor.name)
-        return main_processor
+
+        return self.processors[main_processor.name]
 
     def get_processor(self, name, nr_cpus, mem):
         # Ensure unique name for processor
@@ -212,8 +213,9 @@ class Platform(object):
         # Add workspace lib directory to LD_LIB_PATH env variable
         processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
 
-        logging.info("Processor '%s' ready for processing!" % name)
-        return processor
+        logging.info("Processor '%s' ready for processing!")
+
+        return self.processors[name]
 
     def run_command(self, job_name, cmd, nr_cpus, mem):
         # Create a processor capable of running a cmd with specified CPU/Mem requirements and run the job
