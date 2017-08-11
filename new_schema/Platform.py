@@ -270,6 +270,9 @@ class Platform(object):
     def get_max_mem(self):
         return self.MAX_MEM
 
+    def get_final_output_dir(self):
+        return self.final_output_dir
+
     def get_workspace_dir(self, sub_dir=None):
         if sub_dir is None:
             return self.workspace["wrk"]
