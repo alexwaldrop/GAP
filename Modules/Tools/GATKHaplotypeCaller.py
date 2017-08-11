@@ -1,45 +1,60 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "GATKHaplotypeCaller"
+class GATKHaplotypeCaller(Module):
 
-class GATKHaplotypeCaller(Tool):
+    def __init__(self, module_id):
+        super(GATKHaplotypeCaller, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(GATKHaplotypeCaller, self).__init__(platform, tool_id)
+        self.input_keys = ["bam", "bam_idx", "BQSR_report", "location",
+                           "excluded_location", "gatk", "java", "ref",
+                           "nr_cpus", "mem"]
 
-        self.can_split      = True
-        self.splitter       = "GATKReferenceSplitter"
-        self.merger         = "GATKCatVariants"
+        self.output_keys = ["gvcf", "gvcf_idx"]
 
-        self.nr_cpus    = 8
-        self.mem        = self.nr_cpus * 4 # 4GB/vCPU
+    def define_input(self):
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("gatk",               is_required=True, is_resource=True)
+        self.add_argument("java",               is_required=True, is_resource=True)
+        self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=8)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 3.5")
+        self.add_argument("location")
+        self.add_argument("excluded_location")
 
-        self.input_keys             = ["bam", "bam_idx"]
-        self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
-        self.output_keys            = ["gvcf", "gvcf_idx"]
-        self.splitted_output_keys   = ["gvcf", "gvcf_idx"]
+    def define_output(self, platform, split_name=None):
+        # Declare GVCF output filename
+        gvcf = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf")
+        self.add_output(platform, "gvcf", gvcf)
+        # Declare GVCF index output filename
+        gvcf_idx = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf.idx")
+        self.add_output(platform, "gvcf_idx", gvcf_idx)
 
-        self.req_tools      = ["gatk", "java"]
-        self.req_resources  = ["ref"]
+    def define_command(self, platform):
+        # Get input arguments
+        bam     = self.get_arguments("bam").get_value()
+        BQSR    = self.get_arguments("BQSR_report").get_value()
+        gatk    = self.get_arguments("gatk").get_value()
+        java    = self.get_arguments("java").get_value()
+        ref     = self.get_arguments("ref").get_value()
+        L       = self.get_arguments("location").get_value()
+        XL      = self.get_arguments("excluded_location").get_value()
+        nr_cpus = self.get_arguments("nr_cpus").get_value()
+        mem     = self.get_arguments("mem").get_value()
 
-    def get_command(self, **kwargs):
-        # Obtaining the arguments
-        bam            = kwargs.get("bam",               None)
-        BQSR           = kwargs.get("BQSR_report",       None)
-        L              = kwargs.get("location",          None)
-        XL             = kwargs.get("excluded_location", None)
-        nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
-        mem            = kwargs.get("mem",               self.mem)
+        # Get output file
+        gvcf    = self.get_output("gvcf")
 
         # Set JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
 
         # Generating the haplotype caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % self.output["gvcf"])
+        opts.append("-o %s" % gvcf)
         opts.append("-nct %d" % nr_cpus)
-        opts.append("-R %s" % self.resources["ref"])
+        opts.append("-R %s" % ref)
         opts.append("-ERC GVCF")
         if BQSR is not None:
             opts.append("-BQSR %s" % BQSR)
@@ -59,17 +74,8 @@ class GATKHaplotypeCaller(Tool):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating command for base recalibration
-        hc_cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
-
-        return hc_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path(output_key="gvcf",
-                                       extension="g.vcf",
-                                       split_id=split_id)
-
-        self.generate_output_file_path(output_key="gvcf_idx",
-                                       extension="g.vcf.idx",
-                                       split_id=split_id)
+        cmd = "%s %s -jar %s -T HaplotypeCaller %s !LOG3!" % (java,
+                                                              jvm_options,
+                                                              gatk,
+                                                              " ".join(opts))
+        return cmd

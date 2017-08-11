@@ -1,54 +1,53 @@
-import logging
-import hashlib
-import time
+from Modules import Module
 
-from GAP_interfaces import Merger
+class GATKCombineGVCF(Module):
 
-__main_class__ = "GATKCombineGVCF"
+    def __init__(self, module_id):
+        super(GATKCombineGVCF, self).__init__(module_id)
 
-class GATKCombineGVCF(Merger):
-
-    def __init__(self, platform, tool_id, main_module_name=None):
-        super(GATKCombineGVCF, self).__init__(platform, tool_id, main_module_name)
-
-        self.nr_cpus      = self.main_server_nr_cpus
-        self.mem          = self.main_server_mem
-
-        self.input_keys   = ["gvcf"]
+        self.input_keys   = ["gvcf", "gvcf_idx", "gatk", "java", "nr_cpus", "mem"]
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
-        self.req_tools      = ["gatk", "java"]
-        self.req_resources  = ["ref"]
+    def define_input(self):
+        self.add_argument("gvcf",               is_required=True)
+        self.add_argument("gvcf_idx",           is_required=True)
+        self.add_argument("gatk",               is_required=True, is_resource=True)
+        self.add_argument("java",               is_required=True, is_resource=True)
+        self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value=12)
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        # Declare merged GVCF output filename
+        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        self.add_output(platform, "gvcf", gvcf)
+        # Declare GVCF index output filename
+        gvcf_idx = self.generate_unique_file_name(extension=".g.vcf.idx")
+        self.add_output(platform, "gvcf_idx", gvcf_idx)
+
+    def define_command(self, platform):
 
         # Obtaining the arguments
-        gvcf_list      = kwargs.get("gvcf",            None)
-        mem            = kwargs.get("mem",             self.mem)
+        gvcf_list   = self.get_arguments("gvcf").get_value()
+        gatk        = self.get_arguments("gatk").get_value()
+        java        = self.get_arguments("java").get_value()
+        ref         = self.get_arguments("ref").get_value()
+        mem         = self.get_arguments("mem").get_value()
+        gvcf_out    = self.get_output("gvcf")
 
-        if gvcf_list is None:
-            logging.error("Cannot merge as no inputs were received. Check if the previous module does return the gvcf paths to merge.")
-            return None
-
-        # Generating variables
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
+        # Generating JVM options
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
 
         # Generating the combine options
         opts = list()
-        opts.append("-o %s" % self.output["gvcf"])
-        opts.append("-R %s" % self.resources["ref"])
+        opts.append("-o %s" % gvcf_out)
+        opts.append("-R %s" % ref)
         for gvcf_input in gvcf_list:
             opts.append("-V %s" % gvcf_input)
 
         # Generating the combine command
-        comb_cmd = "%s %s -jar %s -T CombineGVCFs %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
-
-        return comb_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="gvcf",
-                                       extension="g.vcf")
-
-        self.generate_output_file_path(output_key="gvcf_idx",
-                                       extension="g.vcf.idx")
+        cmd = "%s %s -jar %s -T CombineGVCFs %s !LOG3!" % (java,
+                                                                jvm_options,
+                                                                gatk,
+                                                                " ".join(opts))
+        return cmd

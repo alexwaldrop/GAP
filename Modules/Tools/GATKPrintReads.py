@@ -1,47 +1,59 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "GATKPrintReads"
+class GATKPrintReads(Module):
 
-class GATKPrintReads(Tool):
+    def __init__(self, module_id):
+        super(GATKPrintReads, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(GATKPrintReads, self).__init__(platform, tool_id)
+        self.input_keys             = ["bam", "bam_idx", "BQSR_report", "bam_idx", "location",
+                                       "excluded_location", "gatk", "java", "ref", "nr_cpus", "mem"]
 
-        self.can_split      = True
-        self.splitter       = "GATKReferenceSplitter"
-        self.merger         = "SamtoolsBAMMerge"
-
-        self.nr_cpus    = 2
-        self.mem        = 5
-
-        self.input_keys             = ["bam", "BQSR_report", "bam_idx"]
-        self.splitted_input_keys    = ["bam", "BQSR_report", "location", "excluded_location"]
         self.output_keys            = ["bam"]
-        self.splitted_output_keys   = ["bam"]
 
-        self.req_tools      = ["gatk", "java"]
-        self.req_resources  = ["ref"]
+    def define_input(self):
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("BQSR_report",        is_required=True)
+        self.add_argument("gatk",               is_required=True, is_resource=True)
+        self.add_argument("java",               is_required=True, is_resource=True)
+        self.add_argument("ref",                is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
+        self.add_argument("location")
+        self.add_argument("excluded_location")
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        # Declare bam output filename
+        bam = self.generate_unique_name(split_name=split_name, extension=".recalibrated.bam")
+        self.add_output(platform, "bam", bam)
+
+    def define_command(self, platform):
         # Obtaining the arguments
-        bam            = kwargs.get("bam",               None)
-        L              = kwargs.get("location",          None)
-        XL             = kwargs.get("excluded_location", None)
-        BQSR           = kwargs.get("BQSR_report",       None)
-        nr_cpus        = kwargs.get("nr_cpus",           self.nr_cpus)
-        mem            = kwargs.get("mem",               self.mem)
+        bam     = self.get_arguments("bam").get_value()
+        BQSR    = self.get_arguments("BQSR_report").get_value()
+        gatk    = self.get_arguments("gatk").get_value()
+        java    = self.get_arguments("java").get_value()
+        ref     = self.get_arguments("ref").get_value()
+        L       = self.get_arguments("location").get_value()
+        XL      = self.get_arguments("excluded_location").get_value()
+        nr_cpus = self.get_arguments("nr_cpus").get_value()
+        mem     = self.get_arguments("mem").get_value()
 
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
+        # Get output file
+        output_bam = self.get_output("bam")
 
-        # Generating the haplotype caller options
+        # Generate JVM options
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
+
+        # Generating the PrintReads caller options
         opts = list()
         opts.append("-I %s" % bam)
-        opts.append("-o %s" % self.output["bam"])
+        opts.append("-o %s" % output_bam)
         opts.append("-nct %d" % nr_cpus)
-        opts.append("-R %s" % self.resources["ref"])
+        opts.append("-R %s" % ref)
         opts.append("-BQSR %s" % BQSR)
 
-        # Limit the locations to be processes
+        # Limit the locations to be processed
         if L is not None:
             if isinstance(L, list):
                 for included in L:
@@ -55,14 +67,9 @@ class GATKPrintReads(Tool):
             else:
                 opts.append("-XL \"%s\"" % XL)
 
-        # Generating command for recalibrating the BAM file
-        pr_cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["gatk"], " ".join(opts))
-
-        return pr_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        split_id = kwargs.get("split_id", None)
-        self.generate_output_file_path(output_key="bam",
-                                       extension="recalibrated.bam",
-                                       split_id=split_id)
+        # Generating command for GATK PrintReads
+        cmd = "%s %s -jar %s -T PrintReads %s !LOG3!" % (java,
+                                                         jvm_options,
+                                                         gatk,
+                                                         " ".join(opts))
+        return cmd

@@ -1,34 +1,34 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "SummarizeSamtoolsFlagstat"
+class SummarizeSamtoolsFlagstat(Module):
 
-class SummarizeSamtoolsFlagstat(Tool):
+    def __init__(self, module_id):
+        super(SummarizeSamtoolsFlagstat, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(SummarizeSamtoolsFlagstat, self).__init__(platform, tool_id)
-
-        self.can_split      = False
-
-        self.nr_cpus        = 1
-        self.mem            = self.config["platform"]["MS_mem"]
-
-        self.input_keys     = ["flagstat"]
+        self.input_keys     = ["flagstat", "qc_parser", "nr_cpus", "mem"]
         self.output_keys    = ["summary_file"]
 
-        self.req_tools      = ["qc_parser"]
-        self.req_resources  = []
+        # Command should be run on main processor
+        self.quick_command = True
 
-    def get_command(self, **kwargs):
+    def define_input(self):
+        self.add_argument("flagstat",   is_required=True)
+        self.add_argument("qc_parser",  is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default=1)
+        self.add_argument("mem",        is_required=True, default=1)
+
+    def define_output(self, platform, split_name=None):
+        # Declare output summary filename
+        summary_file = self.generate_unique_file_name(split_name=split_name, extension=".flagstat.summary.txt")
+        self.add_output(platform, "summary_file", summary_file)
+
+    def define_command(self, platform):
 
         # Get options from kwargs
-        input = kwargs.get("flagstat",  None)
+        input           = self.get_arguments("flagstat").get_value()
+        qc_parser       = self.get_arguments("qc_parser").get_value()
+        summary_file    = self.get_output("summary_file")
 
         # Generating command to parse samtools flagstat output
-        cmd = "%s flagstat -i %s > %s !LOG2!" % (self.tools["qc_parser"], input, self.output["summary_file"])
-
+        cmd = "%s flagstat -i %s > %s !LOG2!" % (qc_parser, input, summary_file)
         return cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="summary_file",
-                                       extension="flagstat.summary.txt")

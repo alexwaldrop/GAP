@@ -1,33 +1,33 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "SamtoolsFlagstat"
+class SamtoolsFlagstat(Module):
+    def __init__(self, module_id):
+        super(SamtoolsFlagstat, self).__init__(module_id)
 
-class SamtoolsFlagstat(Tool):
+        self.input_keys = ["bam", "bam_idx", "samtools", "nr_cpus", "mem"]
+        self.output_keys = ["flagstat"]
 
-    def __init__(self, platform, tool_id):
-        super(SamtoolsFlagstat, self).__init__(platform, tool_id)
+        # Command should be run on main processor
+        self.quick_command = True
 
-        self.can_split      = False
+    def define_input(self):
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("samtools",   is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
-        self.nr_cpus        = self.main_server_nr_cpus
-        self.mem            = self.main_server_mem
+    def define_output(self, platform, split_name=None):
+        # Declare bam index output filename
+        flagstat = self.generate_unique_file_name(split_name=split_name, extension=".flagstat.out")
+        self.add_output(platform, "flagstat", flagstat)
 
-        self.input_keys     = ["bam", "bam_idx"]
-        self.output_keys    = ["flagstat"]
+    def define_command(self, platform):
+        # Define command for running samtools index from a platform
+        bam         = self.get_arguments("bam").get_value()
+        samtools    = self.get_arguments("samtools").get_value()
+        flagstat    = self.get_output("flagstat")
 
-        self.req_tools      = ["samtools"]
-        self.req_resources  = ["ref"]
-
-    def get_command(self, **kwargs):
-
-        bam = kwargs.get("bam", None)
-
-        # Generating flagstat command
-        cmd = "%s flagstat %s > %s" % (self.tools["samtools"], bam, self.output["flagstat"])
-
+        # Generating Flagstat command
+        cmd = "%s flagstat %s > %s" % (samtools, bam, flagstat)
         return cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="flagstat",
-                                       extension="flagstat.out")

@@ -1,63 +1,65 @@
-import os
+from Modules import Module
 
-from GAP_interfaces import Tool
+class BedtoolsCaptureEfficiency(Module):
 
-__main_class__ = "BedtoolsCaptureEfficiency"
+    def __init__(self, module_id):
+        super(BedtoolsCaptureEfficiency, self).__init__(module_id)
 
-class BedtoolsCaptureEfficiency(Tool):
+        self.input_keys     = ["bam", "bam_idx", "bedtools", "samtools",
+                               "target_bed", "subsample_perc", "nr_cpus", "mem"]
 
-    def __init__(self, platform, tool_id):
-        super(BedtoolsCaptureEfficiency, self).__init__(platform, tool_id)
-
-        self.can_split      = False
-
-        self.nr_cpus        = self.main_server_nr_cpus
-        self.mem            = self.main_server_mem
-
-        # I/O keys
-        self.input_keys     = ["bam"]
         self.output_keys    = ["capture_bed"]
 
-        # Required tools and resources
-        self.req_tools      = ["bedtools", "samtools"]
-        self.req_resources  = ["target_bed"]
+    def define_input(self):
+        self.add_argument("bam",            is_required=True)
+        self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("target_bed",     is_required=True, is_resource=True)
+        self.add_argument("samtools",       is_required=True, is_resource=True)
+        self.add_argument("bedtools",       is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",        is_required=True, default_value=1)
+        self.add_argument("mem",            is_required=True, default_value=12)
+        self.add_argument("subsample_perc", is_required=True, default_value=0.25)
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        # Declare capture bed output filename
+        capture_bed = self.generate_unique_file_name(split_name=split_name, extension="capture.out")
+        self.add_output(platform, "capture_bed", capture_bed)
 
-        # Get command for running bedtools intersect to determine capture efficiency for a bam over a set of BED-formatted targets
-        # Obtaining the arguments
-        bam                = kwargs.get("bam",                 None)
-        subsample_perc     = kwargs.get("subsample_perc",      0.25)
-        samtools           = kwargs.get("samtools",            self.tools["samtools"])
-        bedtools           = kwargs.get("bedtools",            self.tools["bedtools"])
-        target_bed         = kwargs.get("target_bed",          self.resources["target_bed"])
+        # Declare bedtools genome filename
+        genome_file = self.generate_unique_file_name(split_name=split_name, extension="bedtools.genome")
+        self.add_output(platform, "genome_file", genome_file)
+
+    def get_command(self, platform):
+        # Get command to run bedtools intersect to determine capture efficiency of a bam
+        # Capture efficiency: Percent of reads overalapping a set of regions
+
+        # Get input arguments
+        bam                 = self.get_arguments("bam").get_value()
+        subsample_perc      = self.get_arguments("subsample_perc").get_value()
+        samtools            = self.get_arguments("samtools").get_value()
+        bedtools            = self.get_arguments("bedtools").get_value()
+        target_bed          = self.get_arguments("target_bed").get_value()
+
+        # Get output file names
+        genome_file         = self.get_output("genome_file")
+        capture_bed         = self.get_output("capture_bed")
 
         # Make genome file to specify sort order of chromosomes in BAM
         make_genome_file_cmd = "%s idxstats %s | awk 'BEGIN{OFS=\"\\t\"}{print $1,$2}' > %s !LOG2!" % \
-                               (samtools, bam, self.output["genome_file"])
+                               (samtools, bam, genome_file)
 
         # Case: Run bedtools intersect on subsampled bam
         if (subsample_perc < 1.0) and (subsample_perc > 0.0):
             # generate command for subsampling bam file
             subsample_cmd = "%s view -s %f -b %s" % (samtools, subsample_perc, bam)
             intersect_cmd = "%s intersect -a stdin -b %s -c -sorted -bed -g %s > %s !LOG2!" \
-                            % (bedtools, target_bed, self.output["genome_file"], self.output["capture_bed"])
+                            % (bedtools, target_bed, genome_file, capture_bed)
             intersect_cmd = subsample_cmd + " | " + intersect_cmd
 
         # Case: Run bedtools intersect on full bam
         else:
             intersect_cmd = "%s intersect -a %s -b %s -c -sorted -bed -g %s > %s !LOG2!" \
-                            % (bedtools, bam, target_bed, self.output["genome_file"], self.output["capture_bed"])
+                            % (bedtools, bam, target_bed, genome_file, capture_bed)
 
         intersect_cmd = "%s ; %s" % (make_genome_file_cmd, intersect_cmd)
-
         return intersect_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="capture_bed",
-                                       extension="capture.out")
-
-        self.generate_output_file_path(output_key="genome_file",
-                                       extension="bedtools.genome")
-

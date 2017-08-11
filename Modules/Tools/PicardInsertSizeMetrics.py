@@ -1,46 +1,54 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "PicardInsertSizeMetrics"
+class PicardInsertSizeMetrics(Module):
 
-class PicardInsertSizeMetrics(Tool):
+    def __init__(self, module_id):
+        super(PicardInsertSizeMetrics, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(PicardInsertSizeMetrics, self).__init__(platform, tool_id)
-
-        self.can_split      = False
-
-        self.nr_cpus        = self.main_server_nr_cpus
-        self.mem            = self.main_server_mem
-
-        self.input_keys     = ["bam"]
+        self.input_keys     = ["bam", "bam_idx", "picard", "java", "num_reads", "nr_cpus", "mem"]
         self.output_keys    = ["insert_size_report", "insert_size_histogram"]
 
-        self.req_tools      = ["picard", "java"]
-        self.req_resources  = []
+        # Command should be run on main processor
+        self.quick_command = True
 
-        self.num_reads      = 1000000 #self.config["general"]["num_reads_picard_insert_size"]
-        # TODO add to config to specify num reads
+    def define_input(self):
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("picard",             is_required=True, is_resource=True)
+        self.add_argument("java",               is_required=True, is_resource=True)
+        self.add_argument("num_reads",          is_required=True, default_value=1000000)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value=5)
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        # Declare insert size report filename
+        report_file = self.generate_unique_file_name(split_name=split_name, extension="insertsize.out")
+        self.add_output(platform, "insert_size_report", report_file)
+
+        # Declare insert size report filename
+        hist_file = self.generate_unique_file_name(split_name=split_name, extension="insertsize.hist.pdf")
+        self.add_output(platform, "insert_size_histogram", hist_file)
+
+    def define_command(self, platform):
 
         # Obtaining the arguments
-        bam    = kwargs.get("bam", None)
-        mem    = kwargs.get("mem", self.mem)
+        bam         = self.get_arguments("bam").get_value()
+        picard      = self.get_arguments("picard").get_value()
+        java        = self.get_arguments("java").get_value()
+        num_reads   = self.get_arguments("num_reads").get_value()
+        mem         = self.get_arguments("mem").get_value()
+
+        # Output file
+        report_out  = self.get_output("insert_size_report")
+        hist_out    = self.get_output("insert_size_histogram")
+
+        # Generate JVM options
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
 
         # Generate cmd to run picard insert size metrics
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, self.tmp_dir)
         cmd = "%s %s -jar %s CollectInsertSizeMetrics HISTOGRAM_FILE=%s INPUT=%s OUTPUT=%s STOP_AFTER=%d !LOG2!" \
-                     % (self.tools["java"], jvm_options, self.tools["picard"],
-                        self.output["insert_size_histogram"], bam,
-                        self.output["insert_size_report"],
-                        self.num_reads)
-
+                     % (java, jvm_options, picard,
+                        hist_out, bam,
+                        report_out,
+                        num_reads)
         return cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="insert_size_histogram",
-                                       extension="insert_size_histogram.pdf")
-
-        self.generate_output_file_path(output_key="insert_size_report",
-                                       extension="insertsize.out")

@@ -1,72 +1,68 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "PicardMarkDuplicates"
+class PicardMarkDuplicates(Module):
 
-class PicardMarkDuplicates(Tool):
+    def __init__(self, module_id):
+        super(PicardMarkDuplicates, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(PicardMarkDuplicates, self).__init__(platform, tool_id)
-
-        self.can_split      = True
-        self.splitter       = "BAMChromosomeSplitter"
-        self.merger         = "SamtoolsBAMMerge"
-
-        self.nr_cpus        = 2
-        self.mem            = 10
-
-        self.input_keys             = ["bam"]
-        self.splitted_input_keys    = ["bam", "is_aligned"]
-        self.output_keys            = ["bam", "MD_report"]
+        self.input_keys             = ["bam", "bam_idx", "picard", "java", "nr_cpus", "mem", "is_aligned"]
         self.splitted_output_keys   = ["bam", "MD_report"]
 
-        self.req_tools      = ["picard", "java"]
-        self.req_resources  = []
+    def define_input(self):
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("is_aligned", is_required=True, default_value=True)
+        self.add_argument("picard",     is_required=True, is_resource=True)
+        self.add_argument("java",       is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=10)
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
 
-        # Obtaining the arguments
-        bam        = kwargs.get("bam",         None)
-        is_aligned = kwargs.get("is_aligned",  True)
-        mem        = kwargs.get("mem",         self.mem)
+        if self.get_argument("is_aligned").get_value():
+            # Declare bam output filename
+            bam = self.generate_unique_file_name(split_name=split_name, extension=".mrkdup.bam")
+            self.add_output(platform, "bam", bam)
+
+            # Declare mark duplicate report filename
+            md_report = self.generate_unique_file_name(split_name=split_name, extension=".mrkdup.metrics.txt")
+            self.add_output(platform, "MD_report", md_report)
+        else:
+            # If not 'is_aligned' return dummy files
+            self.add_output(platform, "bam", self.get_argument("bam").get_value())
+            self.add_output(platform, "MD_report", "")
+
+    def define_command(self, platform):
+        # Get input arguments
+        bam         = self.get_arguments("bam").get_value()
+        is_aligned  = self.get_arguments("is_aligned").get_value()
+        mem         = self.get_arguments("mem").get_value()
+        picard      = self.get_arguments("picard").get_value()
+        java        = self.get_arguments("java").get_value()
+
+        # Get output filenames
+        output_bam  = self.get_output("bam")
+        md_report   = self.get_output("md_report")
 
         # If the obtained bam contains unaligned reads, skip the process
         if not is_aligned:
             return None
 
-        # Generating variables
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, self.tmp_dir)
+        # Generate JVM arguments
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, platform.get_workspace_dir("tmp"))
 
-        # Generating the marking duplicates options
+        # Generate MarkDuplicates options
         mark_dup_opts = list()
         mark_dup_opts.append("INPUT=%s" % bam)
-        mark_dup_opts.append("OUTPUT=%s" % self.output["bam"])
-        mark_dup_opts.append("METRICS_FILE=%s" % self.output["MD_report"])
+        mark_dup_opts.append("OUTPUT=%s" % output_bam)
+        mark_dup_opts.append("METRICS_FILE=%s" % md_report)
         mark_dup_opts.append("ASSUME_SORTED=TRUE")
         mark_dup_opts.append("REMOVE_DUPLICATES=FALSE")
         mark_dup_opts.append("VALIDATION_STRINGENCY=LENIENT")
 
         # Generating command for marking duplicates
-        mark_dup_cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (self.tools["java"], jvm_options, self.tools["picard"], " ".join(mark_dup_opts))
-
-        return mark_dup_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        bam         = kwargs.get("bam",         None)
-        split_id    = kwargs.get("split_id",    None)
-        is_aligned  = kwargs.get("is_aligned",  True)
-
-        if is_aligned:
-            self.generate_output_file_path(output_key="bam",
-                                           extension="mrkdup.bam",
-                                           split_id=split_id)
-
-            self.generate_output_file_path(output_key="MD_report",
-                                           extension="mrkdup_metrics.txt",
-                                           split_id=split_id)
-        else:
-            self.generate_output_file_path(output_key="bam",
-                                           output_file_path=bam)
-
-            self.generate_output_file_path(output_key="MD_report",
-                                           output_file_path="")
+        cmd = "%s %s -jar %s MarkDuplicates %s !LOG3!" % (java,
+                                                          jvm_options,
+                                                          picard,
+                                                          " ".join(mark_dup_opts))
+        return cmd

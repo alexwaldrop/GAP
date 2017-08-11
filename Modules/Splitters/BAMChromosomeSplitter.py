@@ -1,115 +1,99 @@
 import logging
 import operator
+from Modules import Module
 
-from GAP_interfaces import Splitter
+class BAMChromosomeSplitter(Module):
 
-__main_class__ = "BAMChromosomeSplitter"
+    def __init__(self, module_id):
+        super(BAMChromosomeSplitter, self).__init__(module_id)
 
-class BAMChromosomeSplitter(Splitter):
+        self.input_keys  = ["bam", "samtools", "nr_splits", "nr_cpus", "mem"]
+        self.output_keys = ["bam", "is_aligned", "chroms"]
 
-    def __init__(self, platform, tool_id, main_module_name=None):
-        super(BAMChromosomeSplitter, self).__init__(platform, tool_id, main_module_name)
+    def define_input(self):
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("samtools",           is_required=True, is_resource=True)
+        self.add_argument("nr_splits",          is_required=True, default=23)
+        self.add_argument("nr_cpus",            is_required=True, default=8)
+        self.add_argument("mem",                is_required=True, default="nr_cpus * 1.5")
 
-        self.nr_cpus     = self.main_server_nr_cpus
-        self.mem         = self.main_server_mem
-
-        self.input_keys  = ["bam", "bam_idx"]
-        self.output_keys = ["bam", "is_aligned"]
-
-        self.req_tools      = ["samtools"]
-        self.req_resources  = []
-
-        # Number of splits BAM file will be divided among
-        self.nr_chrom_splits = self.config["general"]["nr_splits"]
-
-    def init_split_info(self, **kwargs):
+    def define_output(self, platform, split_name=None):
         # Obtaining the arguments
-        bam           = kwargs.get("bam",           None)
+        bam         = self.get_arguments("bam").get_value()
+        samtools    = self.get_arguments("samtools").get_value()
+        nr_splits   = self.get_arguments("nr_splits").get_value()
 
         # Obtaining chromosome data from bam header
-        chroms, remains = self.get_chrom_splits(bam)
+        try:
+            logging.info("BAMChromosomeSplitter determining chromosomes to use for splits...")
+            chroms, remains = self.__get_chrom_splits(platform, samtools, bam, nr_splits)
+        except:
+            logging.error("BAMChromosomeSplitter unable to determine chromosomes to use for splits!")
+            raise
 
         # Add split info for named chromosomes
         for chrom in chroms:
-            split_info = {"split_name"  : chrom,
-                          "chroms"      : chrom,
+            split_name = chrom
+            split_info = {"chroms"      : chrom,
                           "is_aligned"  : True,
-                          "bam"         : None}
-            self.output.append(split_info)
+                          "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+            self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for all chromosomes that aren't named in config
-        split_info   = {"split_name"    : "remains",
-                        "chroms"        : remains,
+        split_name  = "remains"
+        split_info  = { "chroms"        : remains,
                         "is_aligned"    : True,
-                        "bam"           : None}
-        self.output.append(split_info)
+                        "bam"           : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+        self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for unmapped reads
-        split_info = {"split_name"  : "unmapped",
-                      "chroms"      : None,
-                      "is_aligned"  : False,
-                      "bam"         : None}
-        self.output.append(split_info)
+        split_name  = "unmapped"
+        split_info  = { "chroms"      : None,
+                        "is_aligned"  : False,
+                        "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+        self.add_output(platform, split_name, split_info, is_path=False)
 
-    def init_output_file_paths(self, **kwargs):
-        for i in range(len(self.output)):
-            split_id    = i
-            split_name  = self.output[i]["split_name"]
-            self.generate_output_file_path(output_key="bam",
-                                           extension="bam",
-                                           split_id=split_id,
-                                           split_name=split_name)
-
-    def get_command(self, **kwargs):
-
+    def define_command(self, platform):
         # Obtaining the arguments
-        bam            = kwargs.get("bam",             None)
-        nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
+        bam         = self.get_arguments("bam").get_value()
+        samtools    = self.get_arguments("samtools").get_value()
+        nr_cpus     = self.get_arguments("nr_cpus").get_value()
 
         # Get names of chromosomes
         chroms  = [split["chroms"] for split in self.output if split["split_name"] not in ["remains", "unmapped"]]
         remains = [split["chroms"] for split in self.output if split["split_name"] == "remains"][0]
 
-        # Get names of output files
-        chrm_output_basename    = self.output[0]["bam"].split(self.output[0]["split_name"])[0]
-        remains_output          = [split["bam"] for split in self.output if split["split_name"] == "remains"][0]
-        unmapped_output         = [split["bam"] for split in self.output if split["split_name"] == "unmapped"][0]
+        # Get output file basename
+        split_name      = self.output.keys()[0]
+        output_basename = self.output[split_name]["bam"].split(split_name)[0]
 
         # Generating the commands
         cmds = list()
 
         # Obtaining the chromosomes in parallel
-        cmd = '%s view -@ %d -u -F 4 %s $chrom_name > %s$chrom_name.bam' % (self.tools["samtools"], nr_cpus, bam, chrm_output_basename)
+        cmd = '%s view -@ %d -u -F 4 %s $chrom_name > %s$chrom_name.bam' % (samtools, nr_cpus, bam, output_basename)
         cmds.append('for chrom_name in %s; do %s & done' % (" ".join(chroms), cmd))
 
         # Obtaining the remaining chromosomes from the bam header
-        cmds.append('%s view -@ %d -u -F 4 %s %s > %s'
-                    % (self.tools["samtools"], nr_cpus, bam, " ".join(remains), remains_output))
+        cmds.append('%s view -@ %d -u -F 4 %s %s > %sremains.bam'
+                    % (samtools, nr_cpus, bam, " ".join(remains), output_basename))
 
         # Obtaining the unaligned reads
-        cmds.append('%s view -@ %d -u -f 4 %s > %s'
-                    % (self.tools["samtools"], nr_cpus, bam, unmapped_output))
+        cmds.append('%s view -@ %d -u -f 4 %s > %sunmapped.bam'
+                    % (samtools, nr_cpus, bam, output_basename))
 
         # Parallel split of the files
         return "%s ; wait" % " & ".join(cmds)
 
-    def get_chrom_splits(self, bam):
+    @staticmethod
+    def __get_chrom_splits(platform, samtools, bam, nr_splits):
         # Returns two lists, one containing the names of chromosomes which will be considered separate splits
         # And another containing the names of chromosomes that will be lumped together an considered one split
         # Split chromosomes will be determined by the number of reads mapped to each chromosome
 
         # Obtaining the chromosome alignment information
-        main_instance = self.platform.get_main_instance()
-        cmd = "%s idxstats %s" % (self.tools["samtools"], bam)
-        main_instance.run_command("bam_splitter_idxstats", cmd, log=False)
-        out, err = main_instance.get_proc_output("bam_splitter_idxstats")
-
-        if err != "":
-            err_msg = "Could not obtain information for %s. " % self.main_module_name
-            err_msg += "The following command was run: \n  %s. " % cmd
-            err_msg += "The following error appeared: \n  %s." % err
-            logging.error(err_msg)
-            exit(1)
+        cmd = "%s idxstats %s" % (samtools, bam)
+        out, err = platform.run_quick_command("bam_splitter_idxstats", cmd)
 
         # Parse output to get number of reads mapping to each chromosome
         chrom_data  = dict()
@@ -131,7 +115,7 @@ class BAMChromosomeSplitter(Splitter):
         # Create list of split and lumped chromosome by adding chromosomes in order of size until number of splits is reached
         chroms = list()
         i = 0
-        while (i < self.nr_chrom_splits-1) and (len(remains) > 0):
+        while (i < nr_splits-1) and (len(remains) > 0):
             # Create split for next largest chromosome if any more chromosomes are left
             chroms.append(sorted_chrom_names[i])
             # Remove chromosome name from list of chromosomes to be lumped together

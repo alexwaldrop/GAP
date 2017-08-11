@@ -71,57 +71,43 @@ def main():
 
     configure_logging(3)
 
-
-
-    gp = GooglePlatform("derpity2", google_plat_config, "gs://testtesttest6969696969696/output_dir/newstuff/newerstuff/theabsoluteneweststuff/")
-    reskit = ResourceKit(res_config)
-    ss = SampleSet(sample_file)
-
-    try:
-
-
-        gp.launch_platform(reskit, ss)
-
-        r1 = ss.get_data("R1")
-        r2 = ss.get_data("R2")
-        print
-        print r1
-        print r2
-        print
-
-        fastqc   = reskit.get_resources("fastqc")["fastqc"].get_path()
-        qcparser = reskit.get_resources("qc_parser")["qc_parser"].get_path()
-        java     = reskit.get_resources("java")["java"].get_path()
-
-        # Run fastqc
-        fastqc_cmd = "%s -t %d --java %s --nogroup --extract %s %s !LOG3! ; sleep 300" % (fastqc, 3, java, r1, r2)
-        gp.run_command("fastqc", fastqc_cmd, 3, 10)
-        r1_out = os.path.join(gp.get_workspace_dir(),"%s_fastqc" % r1.replace(".fastq.gz", "").replace(".fastq", ""))
-
-        # Run QCParser
-        fastqc_summary_file = os.path.join(r1_out, "fastqc_data.txt")
-        output = "%s.fastqcsummary.txt" % fastqc_summary_file.split("_fastqc")[0]
-        qc_parser_cmd = "%s fastqc -i %s -p DERP > %s !LOG2!" % (qcparser, fastqc_summary_file, output)
-        gp.run_quick_command("qc_parser", qc_parser_cmd)
-
-        gp.return_output(r1_out)
-        gp.return_output(output)
-        gp.return_output(gp.get_workspace_dir("log"), log_transfer=False)
-
-        gp.main_processor.wait()
-
-        #gp.init_workspace()
-
-        #gp.run_command("get_file_1", "touch /poop/output1.txt", 1, 10)
-        #gp.run_command("get_file_2", "touch /poop/output2.txt", 1, 10)
-
-        #gp.return_output("/poop/output1.txt", "doodoo")
-        #gp.return_output("/poop/output2.txt")
-        #gp.return_output(gp.get_workspace_dir("log"))
-
-    except Exception:
-        raise
-    finally:
-        gp.clean_up()
+    #
+    # gp = GooglePlatform("derpity2", google_plat_config, "gs://testtesttest6969696969696/output_dir/newstuff/newerstuff/theabsoluteneweststuff/")
+    # reskit = ResourceKit(res_config)
+    # ss = SampleSet(sample_file)
+    #
+    # try:
+    #
+    #
+    #     gp.launch_platform(reskit, ss)
+    #
+    #     r1 = ss.get_data("R1")
+    #     r2 = ss.get_data("R2")
+    #
+    #     fastqc   = reskit.get_resources("fastqc")["fastqc"].get_path()
+    #     qcparser = reskit.get_resources("qc_parser")["qc_parser"].get_path()
+    #     java     = reskit.get_resources("java")["java"].get_path()
+    #
+    #     # Run fastqc
+    #     fastqc_cmd = "%s -t %d --java %s --nogroup --extract %s %s !LOG3! ; sleep 300" % (fastqc, 3, java, r1, r2)
+    #     gp.run_command("fastqc", fastqc_cmd, 3, 10)
+    #     r1_out = os.path.join(gp.get_workspace_dir(),"%s_fastqc" % r1.replace(".fastq.gz", "").replace(".fastq", ""))
+    #
+    #     # Run QCParser
+    #     fastqc_summary_file = os.path.join(r1_out, "fastqc_data.txt")
+    #     output = "%s.fastqcsummary.txt" % fastqc_summary_file.split("_fastqc")[0]
+    #     qc_parser_cmd = "%s fastqc -i %s -p DERP > %s !LOG2!" % (qcparser, fastqc_summary_file, output)
+    #     gp.run_quick_command("qc_parser", qc_parser_cmd)
+    #
+    #     gp.return_output(r1_out)
+    #     gp.return_output(output)
+    #     gp.return_output(gp.get_workspace_dir("log"), log_transfer=False)
+    #
+    #     gp.main_processor.wait()
+    #
+    # except Exception:
+    #     raise
+    # finally:
+    #     gp.clean_up()
 
 main()

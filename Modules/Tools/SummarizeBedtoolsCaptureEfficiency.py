@@ -1,42 +1,41 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "SummarizeBedtoolsCaptureEfficiency"
+class SummarizeBedtoolsCaptureEfficiency(Module):
 
-class SummarizeBedtoolsCaptureEfficiency(Tool):
+    def __init__(self, module_id):
+        super(SummarizeBedtoolsCaptureEfficiency, self).__init__(module_id)
 
-    def __init__(self, platform, tool_id):
-        super(SummarizeBedtoolsCaptureEfficiency, self).__init__(platform, tool_id)
-
-        self.can_split      = False
-
-        self.nr_cpus        = 1
-        self.mem            = self.main_server_mem
-
-        self.input_keys     = ["capture_bed"]
+        self.input_keys     = ["capture_bed", "qc_parser", "nr_cpus", "mem"]
         self.output_keys    = ["summary_file"]
 
-        self.req_tools      = ["qc_parser"]
-        self.req_resources  = []
+    def define_input(self):
+        self.add_argument("capture_bed",    is_required=True)
+        self.add_argument("qc_parser",      is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",        is_required=True, default_value=2)
+        self.add_argument("mem",            is_required=True, default_value=12)
+        self.add_argument("target_type")
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        summary_file = self.generate_unique_file_name(split_name=split_name, extension=".capture.summary.txt")
+        self.add_output(platform, "summary_file", summary_file)
 
-        # Get options from kwargs
-        capture_bed         = kwargs.get("capture_bed",     None)
-        target_type         = kwargs.get("target_type",     None)
+    def define_command(self, platform):
+
+        # Get arguments to generate QCParser arguments
+        capture_bed = self.get_arguments("capture_bed").get_value()
+        qc_parser   = self.get_arguments("qc_parser").get_value()
+        target_type = self.get_arguments("target_type").get_value()
+
+        # Get output file
+        summary_file = self.get_output("summary_file")
 
         # Generating command to parse bedtools coverage output
-        cmd = "%s capture -i %s" % (self.tools["qc_parser"], capture_bed)
+        cmd = "%s capture -i %s" % (qc_parser, capture_bed)
 
         # Add option for name of target type
         if target_type is not None:
             cmd += " --targettype %s" % target_type
 
         # Write output to summary file
-        cmd += " > %s !LOG2!" % self.output["summary_file"]
-
+        cmd += " > %s !LOG2!" % summary_file
         return cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        self.generate_output_file_path(output_key="summary_file",
-                                       extension="capture.summary.txt")

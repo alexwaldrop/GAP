@@ -1,0 +1,11 @@
+[__many__]
+module          = string
+split           = boolean(default=False)
+split_module    = string(default=None)
+merge_module    = string(default=None)
+input_from      = force_list(default=list("main_input"))
+final_output    = force_list(default=list())
+    [[args]]
+
+
+

@@ -1,34 +1,32 @@
-from GAP_interfaces import Tool
+from Modules import Module
 
-__main_class__ = "SamtoolsIndex"
+class SamtoolsIndex(Module):
+    def __init__(self, module_id):
+        super(SamtoolsIndex, self).__init__(module_id)
 
-class SamtoolsIndex(Tool):
+        self.input_keys = ["bam", "samtools", "nr_cpus", "mem"]
+        self.output_keys = ["bam_idx"]
 
-    def __init__(self, platform, tool_id):
-        super(SamtoolsIndex, self).__init__(platform, tool_id)
+        # Command should be run on main processor
+        self.quick_command = True
 
-        self.can_split      = False
+    def define_input(self):
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("samtools",   is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
-        self.nr_cpus        = self.main_server_nr_cpus
-        self.mem            = self.main_server_mem
+    def define_output(self, platform, split_name=None):
+        # Declare bam index output filename
+        bam_idx = "%s.bai" % self.get_arguments("bam").get_value()
+        self.add_output(platform, "bam_idx", bam_idx)
 
-        self.input_keys     = ["bam"]
-        self.output_keys    = ["bam_idx"]
-
-        self.req_tools      = ["samtools"]
-        self.req_resources  = []
-
-    def get_command(self, **kwargs):
-
-        bam = kwargs.get("bam", None)
+    def define_command(self, platform):
+        # Define command for running samtools index from a platform
+        bam         = self.get_arguments("bam").get_value()
+        samtools    = self.get_arguments("samtools").get_value()
+        bam_idx     = self.get_output("bam_idx").get_value()
 
         # Generating indexing command
-        index_cmd = "%s index %s %s" % (self.tools["samtools"], bam, self.output["bam_idx"])
-
-        return index_cmd
-
-    def init_output_file_paths(self, **kwargs):
-
-        bam = kwargs.get("bam", None)
-        self.generate_output_file_path(output_key="bam_idx",
-                                       output_file_path="%s.bai" % bam)
+        cmd = "%s index %s %s" % (samtools, bam, bam_idx)
+        return cmd

@@ -1,31 +1,29 @@
-from GAP_interfaces import Merger
+from Modules import Module
 
-__main_class__ = "SamtoolsDepthMerge"
+class SamtoolsDepthMerge(Module):
+    def __init__(self, module_id):
+        super(SamtoolsDepthMerge, self).__init__(module_id)
 
-class SamtoolsDepthMerge(Merger):
-
-    def __init__(self, platform, tool_id, main_module_name=None):
-        super(SamtoolsDepthMerge, self).__init__(platform, tool_id, main_module_name)
-
-        self.nr_cpus        = self.main_server_nr_cpus
-        self.mem            = self.main_server_mem
-
-        self.input_keys     = ["samtools_depth"]
+        self.input_keys     = ["samtools_depth", "nr_cpus", "mem"]
         self.output_keys    = ["samtools_depth"]
 
-        self.req_tools      = []
-        self.req_resources  = []
+        #Command should be run on main processor
+        self.quick_command = True
 
-    def get_command(self, **kwargs):
+    def define_input(self):
+        self.add_argument("samtools_depth", is_required=True)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=1)
+        self.add_argument("mem",            is_required=True,   default_value=1)
 
-        # Obtaining the arguments
-        inputs = kwargs.get("samtools_depth", None)
+    def define_output(self, platform, split_name=None):
+        # Declare merged samtools depth output filename
+        merged_out = self.generate_unique_file_name(extension=".samtoolsdepth.out")
+        self.add_output(platform, "samtools_depth", merged_out)
+
+    def get_command(self, platform):
+        samtools_depth_in   = self.get_arguments("samtools_depth").get_value()
+        merged_out          = self.get_output("samtools_depth")
 
         # Generating command for concatenating multiple files together using unix Cat command
-        cat_cmd = "cat %s > %s !LOG2!" % (" ".join(inputs), self.output["samtools_depth"])
-
-        return cat_cmd
-
-    def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path(output_key="samtools_depth",
-                                       extension="samtoolsdepth.out")
+        cmd = "cat %s > %s !LOG2!" % (" ".join(samtools_depth_in),merged_out)
+        return cmd

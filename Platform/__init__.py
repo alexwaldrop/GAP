@@ -1,2 +1,0 @@
-from Platform import Platform
-from PlatformConfig import PlatformConfig

@@ -1,44 +1,42 @@
-import hashlib
-import time
-import logging
+from Modules import Module
 
-from GAP_interfaces import Merger
+class SamtoolsBAMMerge(Module):
 
-__main_class__ = "SamtoolsBAMMerge"
+    def __init__(self, module_id):
+        super(SamtoolsBAMMerge, self).__init__(module_id)
 
-class SamtoolsBAMMerge(Merger):
-
-    def __init__(self, platform, tool_id, main_module_name=None):
-        super(SamtoolsBAMMerge, self).__init__(platform, tool_id, main_module_name)
-
-        self.nr_cpus      = self.main_server_nr_cpus
-        self.mem          = self.main_server_mem
-
-        self.input_keys   = ["bam"]
+        self.input_keys   = ["bam", "bam_idx", "bam_sorted", "samtools", "nr_cpus", "mem"]
         self.output_keys  = ["bam"]
 
-        self.req_tools      = ["samtools"]
-        self.req_resources  = []
+    def define_input(self):
+        self.add_argument("bam",            is_required=True)
+        self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("bam_sorted",     is_required=True)
+        self.add_argument("samtools",       is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",        is_required=True, default_value=8)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
 
-    def get_command(self, **kwargs):
+    def define_output(self, platform, split_name=None):
+        # Declare merged bam output file
+        bam_out = self.generate_unique_file_name(extension=".bam")
+        self.add_output(platform, "bam", bam_out)
 
+    def define_command(self, platform):
         # Obtaining the arguments
-        nr_cpus        = kwargs.get("nr_cpus",         self.nr_cpus)
-        bam_list       = kwargs.get("bam",             None)
-        sorted_input   = kwargs.get("sorted_input",    True)
-
-        if bam_list is None:
-            logging.error("Cannot merge as no inputs were received. Check if the previous module does return the bam paths to merge.")
-            return None
+        bam_list        = self.get_arguments("bam").get_value()
+        samtools        = self.get_arguments("samtools").get_value()
+        nr_cpus         = self.get_arguments("nr_cpus").get_value()
+        sorted_input    = self.get_arguments("sorted_input").get_value()
+        output_bam      = self.get_output("bam")
 
         # Generating the merging command
         if sorted_input:
-            bam_merge_cmd = "%s merge -c -@%d %s %s" % (self.tools["samtools"], nr_cpus, self.output["bam"], " ".join(bam_list))
+            cmd = "%s merge -c -@%d %s %s" % (samtools,
+                                              nr_cpus,
+                                              output_bam,
+                                              " ".join(bam_list))
         else:
-            bam_merge_cmd = "%s cat -o %s %s" % (self.tools["samtools"], self.output["bam"], " ".join(bam_list))
-
-        return bam_merge_cmd
-
-    def init_output_file_paths(self, **kwargs):
-        self.generate_output_file_path(output_key="bam",
-                                       extension=".bam")
+            cmd = "%s cat -o %s %s" % (samtools,
+                                       output_bam,
+                                       " ".join(bam_list))
+        return cmd
