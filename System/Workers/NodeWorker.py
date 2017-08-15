@@ -144,9 +144,9 @@ class NodeWorker(Thread):
     def set_input(self, **kwargs):
 
         # Get the input values
-        self.input_data["node_input"]       = kwargs.get("node_input",      None)
-        self.input_data["sample_input"]     = kwargs.get("sample_input",    None)
-        self.input_data["resource_input"]   = kwargs.get("resource_input",  None)
+        self.input_data["node_input"]       = kwargs.get("node_input",      [])
+        self.input_data["sample_input"]     = kwargs.get("sample_input",    [])
+        self.input_data["resource_input"]   = kwargs.get("resource_input",  [])
 
         # Obtain the config input from the node object
         self.input_data["config_input"]     = self.node_obj.get_config_input()
