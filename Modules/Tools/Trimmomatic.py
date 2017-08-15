@@ -111,11 +111,11 @@ class Trimmomatic (Module):
         simple_clip_thresh  = self.get_arguments("SIMPLE_CLIP_THRESHOLD").get_value()
         min_adapt_len       = self.get_arguments("MIN_ADAPTER_LEN").get_value()
 
-        steps = ["ILLUMINACLIP:%s:%d:%d:%d:%d:%s" % (adapters, mismatches, pal_clip_thresh,
+        steps = ["ILLUMINACLIP:%s:%s:%s:%s:%s:%s" % (adapters, mismatches, pal_clip_thresh,
                                                      simple_clip_thresh, min_adapt_len, keep_pair),
-                 "LEADING:%d" % leading,
-                 "TRAILING:%d" % trailing,
-                 "SLIDINGWINDOW:%d:%d" % (window_size, window_qual),
+                 "LEADING:%s" % leading,
+                 "TRAILING:%s" % trailing,
+                 "SLIDINGWINDOW:%s:%s" % (window_size, window_qual),
                  "MINLEN:%d" % minlen]
 
         if R2 is not None:
@@ -124,7 +124,7 @@ class Trimmomatic (Module):
             R2_unpair_out   = self.get_output("R2_unpair")
 
             # Generating command
-            cmd = "%s %s -jar %s PE -threads %d %s %s %s %s %s %s %s %s > %s 2>&1" % (
+            cmd = "%s %s -jar %s PE -threads %s %s %s %s %s %s %s %s %s > %s 2>&1" % (
                 java,
                 jvm_options,
                 trimmomatic,
@@ -134,7 +134,7 @@ class Trimmomatic (Module):
                 trim_report)
         else:
             # Generate command for single-end trimmomatic
-            cmd = "%s %s -jar %s SE -threads %d %s %s %s %s > %s 2>&1" % (
+            cmd = "%s %s -jar %s SE -threads %s %s %s %s %s > %s 2>&1" % (
                 java,
                 jvm_options,
                 trimmomatic,
@@ -149,7 +149,7 @@ class Trimmomatic (Module):
         # Determine phred quality encoding from FASTQ
         # Algorithm taken from http://onetipperday.sterding.com/2012/10/code-snip-to-decide-phred-encoding-of.html
         if fastq.endswith(".gz"):
-            head_cmd = "pigz -p %d -d -k -c %s | head -n 400" % (nr_cpus, fastq)
+            head_cmd = "pigz -p %s -d -k -c %s | head -n 400" % (nr_cpus, fastq)
         else:
             head_cmd = "cat %s | head -n 400" % fastq
 
