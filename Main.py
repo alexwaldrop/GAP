@@ -138,9 +138,6 @@ def main():
     # Create pipeline object
     pipeline = Pipeline(args)
 
-    # Create pipeline worker
-    pipeline_worker = PipelineWorker(pipeline)
-
     try:
         # Load the pipeline components
         pipeline.load()
