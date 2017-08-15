@@ -10,6 +10,9 @@ class SampleValidator(Validator):
 
         sample_data = self.samples.get_data()
 
+        if "is_paired" not in sample_data:
+            return
+
         if isinstance(sample_data["sample_name"], list):
             for sample_name, is_paired, R1_path, R2_path in zip(sample_data["sample_name"],
                                                                 sample_data["is_paired"],
