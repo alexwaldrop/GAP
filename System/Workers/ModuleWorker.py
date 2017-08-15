@@ -95,10 +95,7 @@ class ModuleWorker(Thread):
                 mem_arg.set(mem_arg.get_default_value())
 
         # Set the rest of the args
-        for arg in arguments:
-
-            # Obtain the argument key
-            arg_key = arg.get_name()
+        for arg_key, arg in arguments.iteritems():
 
             if arg_key not in ["nr_cpus", "mem"]:
 
