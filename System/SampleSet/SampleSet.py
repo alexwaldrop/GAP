@@ -1,7 +1,7 @@
 import os
 import logging
 
-from ConfigParser import ConfigParser
+from Config import ConfigParser
 from Sample import Sample
 
 class SampleSet (object):

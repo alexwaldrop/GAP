@@ -8,15 +8,15 @@ class Node(object):
         self.__node_id                = node_id
 
         # Get the module names
-        self.__main_module_name       = kwargs.pop("main_module")
-        self.__splitter_module_name   = kwargs.pop("splitter")
-        self.__merger_module_name     = kwargs.pop("merger")
+        self.__main_module_name       = kwargs.pop("module")
+        self.__splitter_module_name   = kwargs.pop("split_module")
+        self.__merger_module_name     = kwargs.pop("merge_module")
 
         # Identify if the framework runs in split mode
-        self.__split_mode             = kwargs.pop("split_mode")
+        self.__split_mode             = kwargs.pop("split")
 
         # Get the final output keys
-        self.__final_output_keys      = kwargs.pop("final_output_keys")
+        self.__final_output_keys      = kwargs.pop("final_output")
 
         # Get the config inputs
         self.__config_input           = kwargs.pop("args", [])

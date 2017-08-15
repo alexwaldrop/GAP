@@ -135,7 +135,7 @@ def main():
     configure_argparser(argparser)
 
     # Parse the arguments
-    args = argparser.parse_args(sys.argv)
+    args = argparser.parse_args()
 
     # Configure logging
     configure_logging(args.verbosity_level)
@@ -151,10 +151,14 @@ def main():
         pipeline.load()
 
         # Create pipeline worker
-        pipeline_worker = PipelineWorker(pipeline)
+        #pipeline_worker = PipelineWorker(pipeline)
 
         # Run the pipeline
-        pipeline_worker.run()
+        #pipeline_worker.run()
+
+    except:
+        logging.error("Pipeline failed!")
+        raise
 
     finally:
         # Clean up the pipeline
