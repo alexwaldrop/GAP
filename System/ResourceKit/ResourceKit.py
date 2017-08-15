@@ -2,7 +2,7 @@ import os
 import logging
 
 from Config import ConfigParser
-from Resource import Resource
+from System.ResourceKit import Resource
 
 class ResourceKit (object):
     # Container class that parses and holds resource objects declared in an external config file

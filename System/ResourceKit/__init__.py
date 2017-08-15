@@ -1,2 +1,2 @@
-from ResourceKit import ResourceKit
 from Resource import Resource
+from ResourceKit import ResourceKit

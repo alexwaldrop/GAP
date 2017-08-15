@@ -14,7 +14,6 @@ class GraphValidator(Validator):
 
         # Obtain the input args from the modules present in the node
         node_args = {}
-        print(node.main_module.module_id)
         node_args.update( node.split_module.get_arguments() if node.is_split_mode() else {} )
         node_args.update( node.main_module.get_arguments() )
         node_args.update( node.merge_module.get_arguments() if node.is_split_mode() else {} )
@@ -101,11 +100,14 @@ class GraphValidator(Validator):
         # Obtain the node ID
         node_id = node.get_ID()
 
+        # Obtain nodes
+        nodes = self.graph.get_nodes()
+
         # Obtain the output keys from the parent nodes of the current node
         input_nodes = self.graph.get_adjacency_list()[ node.get_ID() ]
         keys_from_nodes = []
-        for node in input_nodes:
-            keys_from_nodes.extend(node.get_output_keys())
+        for node_id in input_nodes:
+            keys_from_nodes.extend(nodes[node_id].get_output_keys())
 
         # Obtain the config input from the graph config
         config_input = node.get_config_input()
@@ -205,9 +207,12 @@ class GraphValidator(Validator):
         final_output_keys = node.get_final_output_keys()
 
         # Obtain the output keys
-        out_keys = node.merge_module.get_keys()[1]
-        out_keys.extend(key for key in node.main_module.get_keys()[1] if key not in out_keys)
-        out_keys.extend(key for key in node.split_module.get_keys()[1] if key not in out_keys)
+        if node.is_split_mode():
+            out_keys = node.merge_module.get_keys()[1]
+            out_keys.extend(key for key in node.main_module.get_keys()[1] if key not in out_keys)
+            out_keys.extend(key for key in node.split_module.get_keys()[1] if key not in out_keys)
+        else:
+            out_keys = node.main_module.get_keys()[1]
 
         # Check if all final output keys are present in the output keys
         for final_key in final_output_keys:

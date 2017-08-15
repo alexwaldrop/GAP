@@ -1,2 +1,2 @@
-from SampleSet import SampleSet
 from Sample import Sample
+from SampleSet import SampleSet
