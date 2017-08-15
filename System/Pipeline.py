@@ -34,23 +34,26 @@ class Pipeline(object):
 
     def load(self):
 
-        # Load the graph
-        self.__graph      = Graph(self.__pipeline_config)
+        # Assume all validations are working
+        has_errors = False
 
-        # Validate the graph
-        GraphValidator(self.__graph).validate()
+        # Load resources
+        self.__resources = ResourceKit(self.__res_kit_config)
+
+        # Validate the resource kit
+        has_errors = ResourcesValidator(self.__resources).validate() or has_errors
 
         # Load the sample data
         self.__samples    = SampleSet(self.__sample_set_config)
 
         # Validate the sample set
-        SampleValidator(self.__samples).validate()
+        has_errors = SampleValidator(self.__samples).validate() or has_errors
 
-        # Load resources
-        self.__resources  = ResourceKit(self.__res_kit_config)
+        # Load the graph
+        self.__graph      = Graph(self.__pipeline_config)
 
-        # Validate the resource kit
-        ResourcesValidator(self.__resources).validate()
+        # Validate the graph
+        has_errors = GraphValidator(self.__graph).validate() or has_errors
 
         # Load platform
         plat_module     = importlib.import_module(self.__plat_module)
@@ -59,13 +62,23 @@ class Pipeline(object):
 
         # Validate the platform before the launch
         plat_validator = PlatfromValidator(self.__platform)
-        plat_validator.validate_before_launch()
+        has_errors = plat_validator.validate_before_launch() or has_errors
+
+        # Stop the pipeline before launching if there are any errors
+        if has_errors:
+            raise SystemError("One or more errors have been encountered during validation. "
+                              "See the above logs for more information")
 
         # Launch the platform
         self.__platform.launch_platform(self.__resources, self.__samples)
 
         # Validate the platform after launch
-        plat_validator.validate_after_launch()
+        has_errors = plat_validator.validate_after_launch() or has_errors
+
+        # Stop the pipeline if there are any errors
+        if has_errors:
+            raise SystemError("One or more errors have been encountered during validation. "
+                              "See the above logs for more information")
 
     def clean_up(self):
 
