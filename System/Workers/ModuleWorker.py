@@ -24,7 +24,7 @@ class ModuleWorker(Thread):
     def __set_resource_argument(self, arg_key, arg):
 
         # Search the argument key in the config input
-        if self.input_data["config_input"] is not None and arg_key in self.input_data["config_input"]:
+        if arg_key in self.input_data["config_input"]:
 
             # Obtain the resource name
             res_name = self.input_data["config_input"][arg_key]
@@ -36,7 +36,7 @@ class ModuleWorker(Thread):
             arg.set(resource_obj.get_path())
 
         # If not found in config input, search the argument key in the resource input
-        elif self.input_data["resource_input"] is not None and arg_key in self.input_data["resource_input"]:
+        elif arg_key in self.input_data["resource_input"]:
 
             # There should be only one resource of type "arg_key"
             resource_obj = self.input_data["resource_input"][arg_key].values()[0]
@@ -54,7 +54,7 @@ class ModuleWorker(Thread):
 
         # Search the key in each input type
         for input_type in input_order:
-            if self.input_data[input_type] is not None and arg_key in self.input_data[input_type]:
+            if arg_key in self.input_data[input_type]:
                 arg.set(self.input_data[input_type][arg_key])
                 break
 
@@ -142,11 +142,11 @@ class ModuleWorker(Thread):
     def set_input(self, **kwargs):
 
         # Get the input values
-        self.input_data["module_input"]     = kwargs.get("module_input",    None)
-        self.input_data["node_input"]       = kwargs.get("node_input",      None)
-        self.input_data["sample_input"]     = kwargs.get("sample_input",    None)
-        self.input_data["config_input"]     = kwargs.get("config_input",    None)
-        self.input_data["resource_input"]   = kwargs.get("resource_input",  None)
+        self.input_data["module_input"]     = kwargs.get("module_input",    [])
+        self.input_data["node_input"]       = kwargs.get("node_input",      [])
+        self.input_data["sample_input"]     = kwargs.get("sample_input",    [])
+        self.input_data["config_input"]     = kwargs.get("config_input",    [])
+        self.input_data["resource_input"]   = kwargs.get("resource_input",  [])
 
     def get_output(self):
         return self.module_obj.get_output()
