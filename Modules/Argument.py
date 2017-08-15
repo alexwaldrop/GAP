@@ -13,7 +13,7 @@ class Argument(object):
         self.__value = None
 
     def set(self, value):
-        self.value = value
+        self.__value = value
 
     def get_name(self):
         return self.__name
@@ -22,10 +22,10 @@ class Argument(object):
         return self.__default_value
 
     def get_value(self):
-        return self.value
+        return self.__value
 
     def is_set(self):
-        return self.value is not None
+        return self.__value is not None
 
     def is_mandatory(self):
         return self.__is_required
