@@ -1,7 +1,7 @@
 import logging
 
-from Parsers.JsonParser import JsonParser
-from Parsers.CfgParser import CfgParser
+from Parsers import JsonParser
+from Parsers import CfgParser
 
 class ConfigParser(object):
     # Class for parsing, validating, and storing configuration information from external file

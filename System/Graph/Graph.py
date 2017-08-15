@@ -1,4 +1,4 @@
-from Config.ConfigParser import ConfigParser
+from Config import ConfigParser
 from Node import Node
 
 class Graph(object):

@@ -4,8 +4,8 @@ import sys
 import argparse
 import logging
 
-from Pipeline import Pipeline
-from PipelineWorker import PipelineWorker
+from System import Pipeline
+from System.Workers import PipelineWorker
 
 # Define the available platform modules
 available_plat_modules = {

@@ -4,10 +4,10 @@ from Graph import Graph
 from ResourceKit import ResourceKit
 from SampleSet import SampleSet
 
-from GraphValidator import GraphValidator
-from ResourceValidator import ResourcesValidator
-from SampleValidator import SampleValidator
-from PlatformValidator import PlatfromValidator
+from Validators import GraphValidator
+from Validators import PlatformValidator
+from Validators import ResourcesValidator
+from Validators import SampleValidator
 
 
 class Pipeline(object):
@@ -61,7 +61,7 @@ class Pipeline(object):
         self.__platform   = plat_class(self.__platform_config, self.__final_output_dir)
 
         # Validate the platform before the launch
-        plat_validator = PlatfromValidator(self.__platform)
+        plat_validator = PlatformValidator(self.__platform)
         has_errors = plat_validator.validate_before_launch() or has_errors
 
         # Stop the pipeline before launching if there are any errors

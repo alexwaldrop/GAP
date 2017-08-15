@@ -4,7 +4,7 @@ import abc
 import hashlib
 import time
 
-from ConfigParser import ConfigParser
+from Config import ConfigParser
 
 class Platform(object):
     __metaclass__ = abc.ABCMeta
