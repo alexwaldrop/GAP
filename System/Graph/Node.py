@@ -30,7 +30,7 @@ class Node(object):
 
         # Try importing the module
         try:
-            _module = importlib.import_module("Modules.%s" % module_name)
+            _module = importlib.import_module(module_name)
         except:
             logging.error("Module %s could not be imported! "
                           "Check the module name spelling and ensure the module exists." % module_name)
