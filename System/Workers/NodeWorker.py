@@ -68,8 +68,9 @@ class NodeWorker(Thread):
             main_workers[main_job_name] = ModuleWorker(self.platform, self.main_module, main_job_name)
 
             # Set input to the worker
-            main_workers[main_job_name].set_input(module_input=split_args, **self.input_data)
-
+            main_workers[main_job_name].set_input(module_input=split_args,
+                                                  split_name=split_name,
+                                                  **self.input_data)
             # Start processing the split
             main_workers[main_job_name].start()
 

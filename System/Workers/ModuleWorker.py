@@ -68,31 +68,40 @@ class ModuleWorker(Thread):
         self.__set_argument("nr_cpus", nr_cpus_arg)
         if not nr_cpus_arg.is_set():
             # Set special case for maximum nr_cpus
-            if nr_cpus_arg.default_value.lower() == "max":
-                nr_cpus_arg.set(self.platform.get_max_nr_cpus())
+            if isinstance(nr_cpus_arg.get_default_value(), basestring):
+                if nr_cpus_arg.get_default_value().lower() == "max":
+                    nr_cpus_arg.set(self.platform.get_max_nr_cpus())
             else:
                 nr_cpus_arg.set(nr_cpus_arg.get_default_value())
+
+        else:
+            # Make sure nr cpus is an integer
+            nr_cpus_arg.set(int(nr_cpus_arg.get_value()))
 
         # Set mem
         mem_arg = arguments["mem"]
         self.__set_argument("mem", mem_arg)
         if not mem_arg.is_set():
-            # Set special case for maximum mem
-            if mem_arg.default_value.lower() == "max":
-                mem_arg.set(self.platform.get_max_mem())
-            # Set special case if memory is scales with nr_cpus
-            elif "nr_cpus" in mem_arg.default_value.lower():
-                nr_cpus     = nr_cpus_arg.get_value()
-                mem_expr    = mem_arg.get_value().lower()
-                mem         = int(eval(mem_expr.replace("nr_cpus", str(nr_cpus))))
-                if mem < self.platform.get_max_mem():
-                    mem_arg.set(mem)
-                else:
-                    # Set to max memory if amount of memory requested exceeds limit
+            if isinstance(mem_arg.get_default_value(), basestring):
+                if mem_arg.get_default_value().lower() == "max":
+                    # Set special case for maximum mem
                     mem_arg.set(self.platform.get_max_mem())
+                elif "nr_cpus" in mem_arg.get_default_value().lower():
+                    # Set special case if memory is scales with nr_cpus (e.g. 'nr_cpus * 1.5')
+                    nr_cpus     = nr_cpus_arg.get_value()
+                    mem_expr    = mem_arg.get_default_value().lower()
+                    mem         = int(eval(mem_expr.replace("nr_cpus", str(nr_cpus))))
+                    if mem < self.platform.get_max_mem():
+                        mem_arg.set(mem)
+                    else:
+                    # Set to max memory if amount of memory requested exceeds limit
+                        mem_arg.set(self.platform.get_max_mem())
             # Set default value
             else:
                 mem_arg.set(mem_arg.get_default_value())
+        else:
+            # Make sure mem is an integer
+            mem_arg.set(int(mem_arg.get_value()))
 
         # Set the rest of the args
         for arg_key, arg in arguments.iteritems():
@@ -125,7 +134,7 @@ class ModuleWorker(Thread):
         mem     = args["mem"].get_value()
 
         # Get the module command
-        cmd = self.module_obj.generate_command(self.platform)
+        cmd = self.module_obj.get_command(self.platform, split_name=self.input_data["split_name"])
 
         # Run the module command if available
         if cmd is not None:
@@ -144,6 +153,7 @@ class ModuleWorker(Thread):
         self.input_data["sample_input"]     = kwargs.get("sample_input",    [])
         self.input_data["config_input"]     = kwargs.get("config_input",    [])
         self.input_data["resource_input"]   = kwargs.get("resource_input",  [])
+        self.input_data["split_name"]       = kwargs.get("split_name",      None)
 
     def get_output(self):
         return self.module_obj.get_output()

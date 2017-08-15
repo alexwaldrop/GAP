@@ -79,13 +79,13 @@ class Module(object):
             return self.output
         return self.output[key]
 
-    def get_command(self, platform, **kwargs):
+    def get_command(self, platform, split_name=None):
 
         # Define the output
-        self.define_output(platform, **kwargs)
+        self.define_output(platform, split_name)
 
         # Define the command
-        cmd = self.define_command(platform, **kwargs)
+        cmd = self.define_command(platform)
 
         return cmd
 
