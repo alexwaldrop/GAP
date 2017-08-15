@@ -11,16 +11,16 @@ class SummarizeSamtoolsDepth(Module):
     def define_input(self):
         self.add_argument("samtools_depth",     is_required=True)
         self.add_argument("qc_parser",          is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default=1)
-        self.add_argument("mem",                is_required=True, default=12)
-        self.add_argument("depth_cutoffs",      is_required=True, default=[1,5,10,15,25,50,100])
+        self.add_argument("nr_cpus",            is_required=True, default_value=1)
+        self.add_argument("mem",                is_required=True, default_value=12)
+        self.add_argument("depth_cutoffs",      is_required=True, default_value=[1,5,10,15,25,50,100])
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename
         summary_file = self.generate_unique_file_name(split_name=split_name, extension=".depth.summary.txt")
         self.add_output(platform, "summary_file", summary_file)
 
-    def get_command(self, platform):
+    def define_command(self, platform):
 
         # Get options from kwargs
         input           = self.get_arguments("samtools_depth").get_value()

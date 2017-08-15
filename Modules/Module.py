@@ -55,11 +55,11 @@ class Module(object):
         pass
 
     @abc.abstractmethod
-    def define_output(self, platform, **kwargs):
+    def define_output(self, platform, split_name=None):
         pass
 
     @abc.abstractmethod
-    def define_command(self, platform, **kwargs):
+    def define_command(self, platform):
         pass
 
     def get_ID(self):

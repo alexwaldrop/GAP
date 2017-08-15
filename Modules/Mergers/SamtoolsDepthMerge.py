@@ -20,7 +20,7 @@ class SamtoolsDepthMerge(Module):
         merged_out = self.generate_unique_file_name(extension=".samtoolsdepth.out")
         self.add_output(platform, "samtools_depth", merged_out)
 
-    def get_command(self, platform):
+    def define_command(self, platform):
         samtools_depth_in   = self.get_arguments("samtools_depth").get_value()
         merged_out          = self.get_output("samtools_depth")
 

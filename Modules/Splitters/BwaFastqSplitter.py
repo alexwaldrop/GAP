@@ -78,7 +78,7 @@ class BwaFastqSplitter(Module):
                       "R2"          : r2_split}
         self.add_output(platform, split_name, split_data, is_path=False)
 
-    def get_command(self, platform):
+    def define_command(self, platform):
 
         # Obtaining the arguments
         # Obtaining the arguments

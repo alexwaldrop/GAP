@@ -29,7 +29,7 @@ class BedtoolsCaptureEfficiency(Module):
         genome_file = self.generate_unique_file_name(split_name=split_name, extension="bedtools.genome")
         self.add_output(platform, "genome_file", genome_file)
 
-    def get_command(self, platform):
+    def define_command(self, platform):
         # Get command to run bedtools intersect to determine capture efficiency of a bam
         # Capture efficiency: Percent of reads overalapping a set of regions
 

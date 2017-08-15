@@ -40,7 +40,7 @@ class SamtoolsDepthSplitter(Module):
                           "location"    : chrom}
             self.add_output(platform, split_name, split_data, is_path=False)
 
-    def get_command(self, **kwargs):
+    def define_command(self, **kwargs):
         # No command needs to be run
         return None
 

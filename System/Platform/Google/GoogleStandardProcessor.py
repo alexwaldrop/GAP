@@ -1,4 +1,3 @@
-import os
 import logging
 import subprocess as sp
 import threading
@@ -8,7 +7,8 @@ import requests
 import math
 import json
 
-from Process import Process
+from Platform import Process
+
 from Processor import Processor
 
 class GoogleStandardProcessor(Processor):
