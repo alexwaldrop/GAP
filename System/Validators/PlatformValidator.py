@@ -7,27 +7,6 @@ class PlatformValidator(Validator):
 
         super(PlatformValidator, self).__init__(pipeline_obj)
 
-    def __check_final_output_dir(self):
-
-        final_output_dir = self.platform.get_final_output_dir()
-
-        # Check if the final output directory has been created
-        if not self.platform.path_exists(final_output_dir):
-
-            self.report_error("The final output directory path ('%s') does not exist!" % final_output_dir)
-
-    def validate_before_launch(self):
-
-        self.__check_final_output_dir()
-
-        # Identify if there are errors before printing them
-        has_errors = self.has_errors()
-
-        # Print the available reports
-        self.print_reports()
-
-        return has_errors
-
     def __check_workspace_dir(self):
 
         # Obtain all the workspace directories
@@ -86,7 +65,10 @@ class PlatformValidator(Validator):
                                       "Please ensure the the input data is defined correctly."
                                       % (sample_data["sample_name"], path_name, paths))
 
-    def validate_after_launch(self):
+    def validate(self):
+
+        # Check if final output directory exists
+        self.__check_final_output_dir()
 
         # Check if workspace dir is completely initialized
         self.__check_workspace_dir()

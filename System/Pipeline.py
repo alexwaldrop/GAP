@@ -16,21 +16,15 @@ class Pipeline(object):
 
         # Obtain the paths to the configuration file from the args
         self.__pipeline_config    = args.graph_config
-        print self.__pipeline_config
         self.__res_kit_config     = args.res_kit_config
-        print self.__res_kit_config
         self.__sample_set_config  = args.sample_set_config
-        print self.__sample_set_config
         self.__platform_config    = args.platform_config
-        print self.__platform_config
 
         # Obtain the platform module name
         self.__plat_module        = args.platform_module
-        print self.__plat_module
 
         # Obtain the final output directory
         self.__final_output_dir   = args.final_output_dir
-        print self.__final_output_dir
 
         # Obtain pipeline name and append to final output dir
         self.__name                 = args.pipeline_name
@@ -55,13 +49,11 @@ class Pipeline(object):
 
         # Load the graph
         self.__graph = Graph(self.__pipeline_config)
-        print "Derp3!"
 
         # Load platform
         plat_module = importlib.import_module(self.__plat_module)
         plat_class = plat_module.__dict__[self.__plat_module]
         self.__platform = plat_class(self.__name, self.__platform_config, self.__final_output_dir)
-        print "DERP4!"
 
         # Validate the resource kit
         has_errors = ResourcesValidator(self).validate() or has_errors
@@ -72,10 +64,6 @@ class Pipeline(object):
         # Validate the graph
         has_errors = GraphValidator(self).validate() or has_errors
 
-        # Validate the platform before the launch
-        plat_validator = PlatformValidator(self)
-        has_errors = plat_validator.validate_before_launch() or has_errors
-
         # Stop the pipeline before launching if there are any errors
         if has_errors:
             raise SystemError("One or more errors have been encountered during validation. "
@@ -84,8 +72,8 @@ class Pipeline(object):
         # Launch the platform
         self.__platform.launch_platform(self.__resources, self.__samples)
 
-        # Validate the platform after launch
-        has_errors = plat_validator.validate_after_launch() or has_errors
+        # Validate the platform
+        has_errors = PlatformValidator(self).validate() or has_errors
 
         # Stop the pipeline if there are any errors
         if has_errors:

@@ -55,6 +55,9 @@ class GraphValidator(Validator):
         # Check if each argument can be found in any of the sources
         for arg_key, arg_obj in args.iteritems():
 
+            # Assume the key is not found
+            found = False
+
             if arg_obj.is_resource():
 
                 # Check if resource key is defined in the resource kit
@@ -64,36 +67,42 @@ class GraphValidator(Validator):
                                       "in the resource config file." % (module.get_ID(), arg_key))
 
                 # Check if the resource type has more then one definitions, so the user has to select one
-                if len(resources[arg_key]) > 1 and arg_key not in config_input:
+                elif len(resources[arg_key]) > 1 and arg_key not in config_input:
                     self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
                                       "Please specify in the graph config, for node '%s', which resource '%s'"
                                       "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
 
+                # The resource was found
+                else:
+                    found = True
+
             else:
+
+                # Define the list of resources from where the input can come
                 input_sources = [module_input_keys,
                                  node_input_keys,
                                  self.samples.get_data(),
-                                 config_input,
-                                 self.resources.get_resources()]
+                                 config_input]
 
                 # Check if the key is found in any of the above input sources
-                found = False
                 for input_source in input_sources:
                     if input_source is not None and arg_key in input_source:
                         found = True
                         break
 
-                if found:
-                    continue
+            # Skip if the argument key has been found
+            if found:
+                continue
 
-            # Check if resource key has a default value
+            # Skip if there is a default value available
             if arg_obj.get_default_value() is not None:
                 continue
 
-            # Key will not be set during runtime
-            self.report_error("In module '%s', the defined argument '%s' will not be set during runtime. "
-                              "Please check the graph and resources definition and configuration"
-                              "files." % (module.get_ID(), arg_key))
+            # If still not found, check if the key is required
+            if arg_obj.is_mandatory():
+                self.report_error("In module '%s', the defined argument '%s' will not be set during runtime. "
+                                  "Please check the graph and resources definition and configuration files."
+                                  % (module.get_ID(), arg_key))
 
     def __check_node_input(self, node):
 
