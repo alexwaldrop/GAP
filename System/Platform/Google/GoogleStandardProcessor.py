@@ -122,7 +122,7 @@ class GoogleStandardProcessor(Processor):
             args.append(instance_type)
 
         # Add metadata to run base Google startup-script
-        startup_script_location = "resources/GoogleStartupScript.sh"
+        startup_script_location = "System/Platform/Google/GoogleStartupScript.sh"
         args.append("--metadata-from-file")
         args.append("startup-script=%s" % startup_script_location)
 
@@ -186,9 +186,8 @@ class GoogleStandardProcessor(Processor):
         if proc_obj.has_failed():
             # Check to see whether error is fatal
             if self.is_fatal_error(proc_name, err):
-                logging.info("(%s) Process '%s' failed!" % (self.name, proc_name))
-                if len(err) > 0:
-                    logging.info("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                logging.error("(%s) Process '%s' failed!" % (self.name, proc_name))
+                logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                 raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Set status to 'OFF' if destroy is True

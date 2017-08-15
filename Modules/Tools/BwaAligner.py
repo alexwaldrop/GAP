@@ -9,7 +9,7 @@ class BwaAligner(Module):
         self.input_keys = ["R1", "R2", "bwa", "samtools", "ref", "sample_name",
                            "lib_name", "seq_platform", "nr_cpus", "mem"]
 
-        self.output_keys = ["bam"]
+        self.output_keys = ["bam", "bam_sorted"]
 
     def define_input(self):
         self.add_argument("R1",             is_required=True)
@@ -33,15 +33,15 @@ class BwaAligner(Module):
 
     def define_command(self, platform):
         # Get arguments to run BWA aligner
-        R1              = self.get_argument("R1").get_value()
-        R2              = self.get_argument("R2").get_value()
-        bwa             = self.get_argument("bwa").get_value()
-        samtools        = self.get_argument("samtools").get_value()
-        ref             = self.get_argument("ref").get_value()
-        sample_name     = self.get_argument("sample_name").get_value()
-        lib_name        = self.get_argument("lib_name").get_value()
-        seq_platform    = self.get_argument("seq_platform").get_value()
-        nr_cpus         = self.get_argument("nr_cpus").get_value()
+        R1              = self.get_arguments("R1").get_value()
+        R2              = self.get_arguments("R2").get_value()
+        bwa             = self.get_arguments("bwa").get_value()
+        samtools        = self.get_arguments("samtools").get_value()
+        ref             = self.get_arguments("ref").get_value()
+        sample_name     = self.get_arguments("sample_name").get_value()
+        lib_name        = self.get_arguments("lib_name").get_value()
+        seq_platform    = self.get_arguments("seq_platform").get_value()
+        nr_cpus         = self.get_arguments("nr_cpus").get_value()
         bam_out         = self.get_output("bam")
 
         # Get read group header

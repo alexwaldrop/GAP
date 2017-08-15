@@ -20,7 +20,7 @@ class SampleSet (object):
         self.__check_samples()
 
         # Organize Sample input paths by path type
-        self.paths     = self.__organize_paths_by_type()
+        self.path_keys     = self.samples[0].get_paths().keys()
 
         # Organize global and sample-level metadata by data type
         self.data     = self.__organize_data_by_type()
@@ -48,15 +48,6 @@ class SampleSet (object):
                                   "\nSamples must contain identical metadata types!")
                     raise IOError("One or more samples contains metadata not shared by all other samples!")
 
-    def __organize_paths_by_type(self):
-        # Combine paths from all samples and organize them by path type
-        paths = {}
-        for sample in self.samples:
-            sample_paths = sample.get_paths()
-            for path_type, path in sample_paths.iteritems():
-                self.__add_data(paths, path_type, path)
-        return paths
-
     def __organize_data_by_type(self):
         # Combine global and sample-level data into single dictionary organized by data type
         data = dict()
@@ -71,14 +62,14 @@ class SampleSet (object):
             for sample_data_type, sample_data_val in sample.get_data().iteritems():
                 self.__add_data(data, sample_data_type, sample_data_val)
 
+            # Add sample paths
+            for sample_path_type, sample_path in sample.get_paths().iteritems():
+                self.__add_data(data, sample_path_type, sample_path)
+
         # Add any data not associated with a sample as global metadata
         for global_data_type, global_data_val in self.config.iteritems():
             if global_data_type != "samples":
                 self.__add_data(data, global_data_type, global_data_val)
-
-        # Add sample paths
-        for path_type, path_data in self.paths.iteritems():
-            data[path_type] = path_data
 
         return data
 
@@ -101,9 +92,9 @@ class SampleSet (object):
 
     def get_paths(self, path_type=None):
         if path_type is None:
-            return self.paths
+            return {key:self.data[key] for key in self.path_keys}
         else:
-            return self.paths[path_type]
+            return self.data[path_type]
 
     def get_data(self, data_type=None):
         if data_type is None:
@@ -120,7 +111,7 @@ class SampleSet (object):
         new_path    = os.path.join(dest_dir, file_name)
 
         # Search through paths to find the correct path to update
-        path_types      = self.paths.keys()
+        path_types      = self.path_keys
         src_path_found  = False
         for data_type, data in self.data.iteritems():
             # Check to see if next type is a path
@@ -129,8 +120,8 @@ class SampleSet (object):
                 if isinstance(data, list):
                     for i in range(len(data)):
                         if data[i] == src_path:
-                            self.data[data_type][i] = new_path
-                            src_path_found          = True
+                            self.data[data_type][i]     = new_path
+                            src_path_found              = True
                 # Check to see if path is src_path if only one path of this type
                 elif data == src_path:
                     self.data[data_type]    = new_path

@@ -161,10 +161,10 @@ def main():
         pipeline.load()
 
         # Create pipeline worker
-        #pipeline_worker = PipelineWorker(pipeline)
+        pipeline_worker = PipelineWorker(pipeline)
 
         # Run the pipeline
-        #pipeline_worker.run()
+        pipeline_worker.run()
 
     except:
         logging.error("Pipeline failed!")
