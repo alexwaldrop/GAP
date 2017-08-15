@@ -1,7 +1,7 @@
 import logging
 import time
 
-from NodeWorker import NodeWorker
+from System.Workers import NodeWorker
 
 class PipelineWorker(object):
 

@@ -1,5 +1,6 @@
 import logging
 import operator
+
 from Modules import Module
 
 class BAMChromosomeSplitter(Module):

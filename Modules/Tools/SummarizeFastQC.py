@@ -1,4 +1,5 @@
 import os
+
 from Modules import Module
 
 class SummarizeFastQC(Module):

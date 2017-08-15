@@ -2,7 +2,8 @@ import json
 import logging
 
 from jsonschema import Draft4Validator
-from BaseParser import BaseParser
+
+from Config.Parsers import BaseParser
 
 class JsonParser(BaseParser):
     # Class for parsing information from a JSON config file

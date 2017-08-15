@@ -1,14 +1,13 @@
 import os
 import importlib
 
-from Graph import Graph
-from ResourceKit import ResourceKit
-from SampleSet import SampleSet
-
-from Validators import GraphValidator
-from Validators import PlatformValidator
-from Validators import ResourcesValidator
-from Validators import SampleValidator
+from System.Graph import Graph
+from System.ResourceKit import ResourceKit
+from System.SampleSet import SampleSet
+from System.Validators import GraphValidator
+from System.Validators import PlatformValidator
+from System.Validators import ResourcesValidator
+from System.Validators import SampleValidator
 
 
 class Pipeline(object):

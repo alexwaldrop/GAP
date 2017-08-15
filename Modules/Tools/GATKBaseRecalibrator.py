@@ -1,4 +1,5 @@
 import logging
+
 from Modules import Module
 
 class GATKBaseRecalibrator(Module):

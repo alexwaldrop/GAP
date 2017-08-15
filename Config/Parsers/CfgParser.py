@@ -3,7 +3,7 @@ import logging
 from configobj import *
 from validate import Validator
 
-from BaseParser import BaseParser
+from Config.Parsers import BaseParser
 
 class CfgParser(BaseParser):
     # Class for parsing information from a JSON config file

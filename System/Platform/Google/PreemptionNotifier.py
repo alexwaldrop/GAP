@@ -1,10 +1,11 @@
 import logging
 import json
+import threading
+import time
+
 from LogSink import LogSink
 from PubSub import PubSub
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
-import threading
-import time
 
 class PreemptionNotifier(threading.Thread):
 

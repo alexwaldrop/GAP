@@ -2,7 +2,7 @@ import os
 import logging
 
 from Config import ConfigParser
-from Sample import Sample
+from System.SampleSet import Sample
 
 class SampleSet (object):
     # Container class that parses, holds, and provides access to Sample-level data declared in an external config file

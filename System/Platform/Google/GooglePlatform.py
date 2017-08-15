@@ -3,10 +3,10 @@ import logging
 import json
 import subprocess as sp
 
+from System.Platform import Platform
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from PreemptionNotifier import PreemptionNotifier
-from System.Platform import Platform
 
 class GooglePlatform(Platform):
     def __init__(self, name, platform_config_file, final_output_dir):

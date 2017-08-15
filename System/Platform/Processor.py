@@ -4,7 +4,7 @@ import abc
 from collections import OrderedDict
 import subprocess as sp
 
-from Process import Process
+from System.Platform import Process
 
 class Processor(object):
     __metaclass__ = abc.ABCMeta

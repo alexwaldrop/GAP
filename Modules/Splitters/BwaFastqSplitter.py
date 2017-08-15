@@ -1,5 +1,6 @@
 import logging
 import math
+
 from Modules import Module
 
 class BwaFastqSplitter(Module):

@@ -1,6 +1,6 @@
 
-from Thread import Thread
-from ModuleWorker import ModuleWorker
+from System.Workers import Thread
+from System.Workers import ModuleWorker
 
 class NodeWorker(Thread):
 

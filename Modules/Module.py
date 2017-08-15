@@ -2,7 +2,7 @@ import abc
 import logging
 import os
 
-from Argument import Argument
+from Modules import Argument
 
 class Module(object):
     __metaclass__ = abc.ABCMeta

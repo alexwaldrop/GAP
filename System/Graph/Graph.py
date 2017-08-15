@@ -1,5 +1,5 @@
 from Config import ConfigParser
-from Node import Node
+from System.Graph import Node
 
 class Graph(object):
 

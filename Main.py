@@ -126,6 +126,9 @@ def configure_logging(verbosity):
 
 def configure_import_paths():
 
+    # Add the current directory to path
+    sys.path.append(".")
+
     # Add the modules paths to the python path
     sys.path.append("./Modules/Tools/")
     sys.path.append("./Modules/Splitters/")
