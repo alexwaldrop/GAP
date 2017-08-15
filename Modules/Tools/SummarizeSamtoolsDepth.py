@@ -23,13 +23,13 @@ class SummarizeSamtoolsDepth(Module):
     def define_command(self, platform):
 
         # Get options from kwargs
-        input           = self.get_arguments("samtools_depth").get_value()
+        input_file      = self.get_arguments("samtools_depth").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
         cutoffs         = self.get_arguments("depth_cutoffs").get_value()
         summary_file    = self.get_output("summary_file")
 
         # Generating command to parse samtools depth output
-        cmd = "%s coverage -i %s" % (qc_parser, input)
+        cmd = "%s coverage -i %s" % (qc_parser, input_file)
 
         # Add options for coverage depth cutoffs to report
         for cutoff in cutoffs:

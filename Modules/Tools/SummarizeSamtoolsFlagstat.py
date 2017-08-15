@@ -14,8 +14,8 @@ class SummarizeSamtoolsFlagstat(Module):
     def define_input(self):
         self.add_argument("flagstat",   is_required=True)
         self.add_argument("qc_parser",  is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",    is_required=True, default=1)
-        self.add_argument("mem",        is_required=True, default=1)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename
@@ -25,10 +25,10 @@ class SummarizeSamtoolsFlagstat(Module):
     def define_command(self, platform):
 
         # Get options from kwargs
-        input           = self.get_arguments("flagstat").get_value()
+        input_file      = self.get_arguments("flagstat").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
         summary_file    = self.get_output("summary_file")
 
         # Generating command to parse samtools flagstat output
-        cmd = "%s flagstat -i %s > %s !LOG2!" % (qc_parser, input, summary_file)
+        cmd = "%s flagstat -i %s > %s !LOG2!" % (qc_parser, input_file, summary_file)
         return cmd

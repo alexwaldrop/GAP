@@ -15,8 +15,8 @@ class SummaryMerge(Module):
         self.add_argument("summary_file",       is_required=True)
         self.add_argument("qc_parser",          is_required=True, is_resource=True)
         self.add_argument("sample_name",        is_required=True)
-        self.add_argument("nr_cpus",            is_required=True, default=1)
-        self.add_argument("mem",                is_required=True, default=1)
+        self.add_argument("nr_cpus",            is_required=True, default_value=1)
+        self.add_argument("mem",                is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename

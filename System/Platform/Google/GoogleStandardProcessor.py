@@ -7,9 +7,8 @@ import requests
 import math
 import json
 
-from Platform import Process
-
-from Processor import Processor
+from System.Platform import Process
+from System.Platform import Processor
 
 class GoogleStandardProcessor(Processor):
 

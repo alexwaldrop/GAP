@@ -13,10 +13,11 @@ class Module(object):
         self.module_id = module_id
 
         # Initialize the input arguments
-        self.arguments = None
+        self.arguments = {}
+        self.define_input()
 
         # Initialize the output variables
-        self.output = None
+        self.output = {}
 
         # Initialize the lists of the input and output keys
         self.input_keys = None

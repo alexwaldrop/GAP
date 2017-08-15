@@ -56,7 +56,7 @@ class SamtoolsDepth(Module):
                                    % (samtools, bam, genome_file)
 
             # Command to subset results from samtools depth by a bed file
-            subset_output_cmd = SamtoolsDepth.__get_subset_depth_bed_cmd(bedtools, target_bed)
+            subset_output_cmd = SamtoolsDepth.__get_subset_depth_bed_cmd(bedtools, target_bed, genome_file)
 
             # Concatenate commands together
             cmd = "%s ; %s | %s > %s !LOG2!" \

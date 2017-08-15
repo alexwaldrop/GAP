@@ -1,3 +1,4 @@
+import os
 import importlib
 
 from Graph import Graph
@@ -28,9 +29,13 @@ class Pipeline(object):
         self.__plat_module        = args.platform_module
         print self.__plat_module
 
-        # Obtaint the final output directory
+        # Obtain the final output directory
         self.__final_output_dir   = args.final_output_dir
         print self.__final_output_dir
+
+        # Obtain pipeline name and append to final output dir
+        self.__name                 = args.pipeline_name
+        self.__final_output_dir     = os.path.join(self.__final_output_dir, self.__name)
 
         # Initialize pipeline components
         self.__graph      = None
@@ -56,20 +61,20 @@ class Pipeline(object):
         # Load platform
         plat_module = importlib.import_module(self.__plat_module)
         plat_class = plat_module.__dict__[self.__plat_module]
-        self.__platform = plat_class(self.__platform_config, self.__final_output_dir)
+        self.__platform = plat_class(self.__name, self.__platform_config, self.__final_output_dir)
         print "DERP4!"
 
         # Validate the resource kit
-        has_errors = ResourcesValidator(self.__resources).validate() or has_errors
+        has_errors = ResourcesValidator(self).validate() or has_errors
 
         # Validate the sample set
-        has_errors = SampleValidator(self.__samples).validate() or has_errors
+        has_errors = SampleValidator(self).validate() or has_errors
 
         # Validate the graph
-        has_errors = GraphValidator(self.__graph).validate() or has_errors
+        has_errors = GraphValidator(self).validate() or has_errors
 
         # Validate the platform before the launch
-        plat_validator = PlatformValidator(self.__platform)
+        plat_validator = PlatformValidator(self)
         has_errors = plat_validator.validate_before_launch() or has_errors
 
         # Stop the pipeline before launching if there are any errors

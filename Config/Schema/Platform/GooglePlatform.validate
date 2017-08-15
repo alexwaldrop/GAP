@@ -4,7 +4,7 @@ workspace_dir               = string(default="/data/")
 
 [global]
 zone                        = string(default="us-east1-b")
-service_account_key_file    = string(default="resources/keys/Davelab_GAP_key.json")
+service_account_key_file    = string(default="var/resources/keys/Davelab_GAP_key.json")
 apt_packages                = force_list
 
 [main_instance]

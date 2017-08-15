@@ -13,9 +13,9 @@ class BAMChromosomeSplitter(Module):
     def define_input(self):
         self.add_argument("bam",                is_required=True)
         self.add_argument("samtools",           is_required=True, is_resource=True)
-        self.add_argument("nr_splits",          is_required=True, default=23)
-        self.add_argument("nr_cpus",            is_required=True, default=8)
-        self.add_argument("mem",                is_required=True, default="nr_cpus * 1.5")
+        self.add_argument("nr_splits",          is_required=True, default_value=23)
+        self.add_argument("nr_cpus",            is_required=True, default_value=8)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 1.5")
 
     def define_output(self, platform, split_name=None):
         # Obtaining the arguments

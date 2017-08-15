@@ -19,7 +19,7 @@ class PicardMarkDuplicates(Module):
 
     def define_output(self, platform, split_name=None):
 
-        if self.get_argument("is_aligned").get_value():
+        if self.get_arguments("is_aligned").get_value():
             # Declare bam output filename
             bam = self.generate_unique_file_name(split_name=split_name, extension=".mrkdup.bam")
             self.add_output(platform, "bam", bam)
@@ -29,7 +29,7 @@ class PicardMarkDuplicates(Module):
             self.add_output(platform, "MD_report", md_report)
         else:
             # If not 'is_aligned' return dummy files
-            self.add_output(platform, "bam", self.get_argument("bam").get_value())
+            self.add_output(platform, "bam", self.get_arguments("bam").get_value())
             self.add_output(platform, "MD_report", "")
 
     def define_command(self, platform):

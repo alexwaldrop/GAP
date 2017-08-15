@@ -14,6 +14,7 @@ class GraphValidator(Validator):
 
         # Obtain the input args from the modules present in the node
         node_args = {}
+        print(node.main_module.module_id)
         node_args.update( node.split_module.get_arguments() if node.is_split_mode() else {} )
         node_args.update( node.main_module.get_arguments() )
         node_args.update( node.merge_module.get_arguments() if node.is_split_mode() else {} )
@@ -217,7 +218,7 @@ class GraphValidator(Validator):
     def validate(self):
 
         # Perform checking for each node in the graph
-        for node in self.graph.get_nodes():
+        for node in self.graph.get_nodes().itervalues():
 
             # Check node config input
             self.__check_config_input(node)

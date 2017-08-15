@@ -24,7 +24,7 @@ class GATKPrintReads(Module):
 
     def define_output(self, platform, split_name=None):
         # Declare bam output filename
-        bam = self.generate_unique_name(split_name=split_name, extension=".recalibrated.bam")
+        bam = self.generate_unique_file_name(split_name=split_name, extension=".recalibrated.bam")
         self.add_output(platform, "bam", bam)
 
     def define_command(self, platform):

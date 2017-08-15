@@ -14,8 +14,8 @@ class SummarizePicardInsertSizeMetrics(Module):
     def define_input(self):
         self.add_argument("insert_size_report", is_required=True)
         self.add_argument("qc_parser",          is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default=1)
-        self.add_argument("mem",                is_required=True, default=1)
+        self.add_argument("nr_cpus",            is_required=True, default_value=1)
+        self.add_argument("mem",                is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename
@@ -24,10 +24,10 @@ class SummarizePicardInsertSizeMetrics(Module):
 
     def define_command(self, **kwargs):
         # Get options from kwargs
-        input           = self.get_arguments("insert_size_report").get_value()
+        input_file      = self.get_arguments("insert_size_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
         summary_file    = self.get_output("summary_file").get_value()
 
         # Generating command to parse picard CollectInsertSizeMetrics output
-        cmd = "%s insertsize -i %s > %s !LOG2!" % (qc_parser, input, summary_file)
+        cmd = "%s insertsize -i %s > %s !LOG2!" % (qc_parser, input_file, summary_file)
         return cmd

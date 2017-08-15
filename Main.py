@@ -33,6 +33,13 @@ def configure_argparser(argparser_obj):
                                help="Path to config file containing input files "
                                     "and information for one or more samples.")
 
+    # Path to sample set config file
+    argparser_obj.add_argument("--name",
+                               action="store",
+                               dest="pipeline_name",
+                               required=True,
+                               help="Descriptive pipeline name. Will be appended to final output dir. Should be unique across runs.")
+
     # Path to pipeline graph config file
     argparser_obj.add_argument("--pipeline_config",
                                action='store',

@@ -6,7 +6,7 @@ import subprocess as sp
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from PreemptionNotifier import PreemptionNotifier
-from Platform import Platform
+from System.Platform import Platform
 
 class GooglePlatform(Platform):
     def __init__(self, name, platform_config_file, final_output_dir):
@@ -247,8 +247,12 @@ class GooglePlatform(Platform):
         logging.info("Cleaning up Google Cloud Platform.")
 
         # Remove dummy.txt from final output bucket
-        cmd = "gsutil rm %s" % os.path.join(self.final_output_dir,"dummy.txt")
-        self.run_quick_command("delete_dummy_output", cmd)
+        try:
+            cmd         = "gsutil rm %s" % os.path.join(self.final_output_dir,"dummy.txt")
+            proc        = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+            out, err    = proc.communicate()
+        except:
+            logging.info("(%s) Could not remove dummy input file on google cloud!")
 
         # Initiate destroy process on all the instances except the main processor
         for instance_name, instance_obj in self.processors.iteritems():

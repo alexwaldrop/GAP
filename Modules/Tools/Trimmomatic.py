@@ -18,16 +18,16 @@ class Trimmomatic (Module):
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
 
         # Optional trimmomatic arguments
-        self.add_arguments("LEADING",                   is_required=True, default_value=5)
-        self.add_arguments("TRAILING",                  is_required=True, default_value=5)
-        self.add_arguments("MINLEN",                    is_required=True, default_value=36)
-        self.add_arguments("SLIDINGWINDOW_SIZE",        is_required=True, default_value=4)
-        self.add_arguments("SLIDINGWINDOW_QUAL",        is_required=True, default_value=10)
-        self.add_arguments("keepBothReads",             is_required=True, default_value="true")
-        self.add_arguments("seed_mismatches",           is_required=True, default_value=2)
-        self.add_arguments("PALINDROME_CLIP_THRESHOLD", is_required=True, default_value=20)
-        self.add_arguments("SIMPLE_CLIP_THRESHOLD",     is_required=True, default_value=7)
-        self.add_arguments("MIN_ADAPTER_LEN",           is_required=True, default_value=1)
+        self.add_argument("LEADING",                   is_required=True, default_value=5)
+        self.add_argument("TRAILING",                  is_required=True, default_value=5)
+        self.add_argument("MINLEN",                    is_required=True, default_value=36)
+        self.add_argument("SLIDINGWINDOW_SIZE",        is_required=True, default_value=4)
+        self.add_argument("SLIDINGWINDOW_QUAL",        is_required=True, default_value=10)
+        self.add_argument("keepBothReads",             is_required=True, default_value="true")
+        self.add_argument("seed_mismatches",           is_required=True, default_value=2)
+        self.add_argument("PALINDROME_CLIP_THRESHOLD", is_required=True, default_value=20)
+        self.add_argument("SIMPLE_CLIP_THRESHOLD",     is_required=True, default_value=7)
+        self.add_argument("MIN_ADAPTER_LEN",           is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
 
