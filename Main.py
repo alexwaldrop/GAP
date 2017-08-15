@@ -118,7 +118,15 @@ def configure_logging(verbosity):
     logging.getLogger().setLevel(level)
 
 def configure_import_paths():
-    pass
+
+    # Add the modules paths to the python path
+    sys.path.append("./Modules/Tools/")
+    sys.path.append("./Modules/Splitters/")
+    sys.path.append("./Modules/Mergers/")
+
+    # Add the available platforms to the python path
+    for plat in available_plat_modules:
+        sys.path.append("./System/Platform/%s" % plat)
 
 def main():
 
