@@ -94,8 +94,9 @@ class PipelineWorker(object):
 
                 # Convert the input data from a list of dictionaries to a dictionary of lists
                 node_input = {}
-                for key in workers_output[0]:
-                    node_input[key] = [ worker_output[key] for worker_output in workers_output ]
+                if len(workers_output):
+                    for key in workers_output[0]:
+                        node_input[key] = [ worker_output[key] for worker_output in workers_output ]
 
                 # Set the input to the node worker
                 node_worker.set_input( node_input=node_input,
