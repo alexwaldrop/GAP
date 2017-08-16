@@ -88,7 +88,7 @@ class Module(object):
         cmd = self.define_command(platform)
         return cmd
 
-    def generate_unique_file_name(self, split_name=None, extension=".dat"):
+    def generate_unique_file_name(self, split_name=None, extension=".dat", containing_dir=None):
 
         # Generate file basename
         path = self.module_id
@@ -100,6 +100,11 @@ class Module(object):
         # Standardize and append extension
         extension = ".%s" % extension.lstrip(".")
         path += extension
+
+        # Join with containing dir if specified
+        if containing_dir is not None:
+            path = os.path.join(containing_dir, path)
+
         return path
 
     def is_quick_command(self):
