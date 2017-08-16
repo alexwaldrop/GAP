@@ -116,7 +116,7 @@ class Trimmomatic (Module):
                  "LEADING:%s" % leading,
                  "TRAILING:%s" % trailing,
                  "SLIDINGWINDOW:%s:%s" % (window_size, window_qual),
-                 "MINLEN:%d" % minlen]
+                 "MINLEN:%s" % minlen]
 
         if R2 is not None:
             # Generate command for paired-end trimmomatic
