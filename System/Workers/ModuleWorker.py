@@ -4,7 +4,7 @@ from Thread import Thread
 
 class ModuleWorker(Thread):
 
-    def __init__(self, platform, module_obj, job_name):
+    def __init__(self, platform, module_obj, job_name, split_name=None):
 
         # Get the name of the module that is processed
         self.module_id = module_obj.get_ID()
@@ -17,6 +17,7 @@ class ModuleWorker(Thread):
         self.platform   = platform
         self.module_obj = module_obj
         self.job_name   = job_name
+        self.split_name = split_name
 
         # Initialize the input data
         self.input_data     = {}
@@ -119,7 +120,7 @@ class ModuleWorker(Thread):
         mem     = args["mem"].get_value()
 
         # Get the module command
-        cmd = self.module_obj.get_command(self.platform, split_name=self.input_data["split_name"])
+        cmd = self.module_obj.get_command(self.platform, split_name=self.split_name)
 
         # Run the module command if available
         if cmd is not None:
@@ -138,7 +139,6 @@ class ModuleWorker(Thread):
         self.input_data["sample_input"]     = kwargs.get("sample_input",    [])
         self.input_data["config_input"]     = kwargs.get("config_input",    [])
         self.input_data["resource_input"]   = kwargs.get("resource_input",  [])
-        self.input_data["split_name"]       = kwargs.get("split_name",      None)
 
     def get_output(self):
         return self.module_obj.get_output()
