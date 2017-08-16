@@ -26,7 +26,7 @@ class SummarizeTrimmomatic(Module):
         # Get options from kwargs
         input_file      = self.get_arguments("trim_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
-        summary_file    = self.get_output("summary_file").get_value()
+        summary_file    = self.get_output("summary_file")
 
         # Generating command to parse Trimmomatic log for trimming stats
         cmd = "%s trimmomatic -i %s > %s !LOG2!" % (qc_parser, input_file, summary_file)
