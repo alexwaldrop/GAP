@@ -183,12 +183,20 @@ class GooglePlatform(Platform):
             # Check if path exists on google bucket storage
             cmd         = "gsutil ls %s" % path
             proc        = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            out, err    = proc.communicate()
+            return len(err) == 0
         else:
             # Check if file exists locally on main instance
             cmd     = "ls %s" % path
-            proc    = self.main_processor.run(job_name, cmd)
-        out, err = proc.communicate()
-        return len(err) == 0
+            self.main_processor.run(job_name, cmd)
+            try:
+                out, err = self.main_processor.wait_process(job_name)
+                return len(err) == 0
+            except RuntimeError:
+                return False
+            except:
+                logging.error("Unable to check path existence: %s" % path)
+                raise
 
     def transfer(self, src_path, dest_dir, dest_file=None, log_transfer=True, job_name=None, wait=False):
         # Transfer a remote file from src_path to a local directory dest_dir
