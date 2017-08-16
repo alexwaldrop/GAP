@@ -26,7 +26,7 @@ class SamtoolsBAMMerge(Module):
         bam_list        = self.get_arguments("bam").get_value()
         samtools        = self.get_arguments("samtools").get_value()
         nr_cpus         = self.get_arguments("nr_cpus").get_value()
-        sorted_input    = self.get_arguments("sorted_input").get_value()
+        sorted_input    = self.get_arguments("bam_sorted").get_value()
         output_bam      = self.get_output("bam")
 
         # Generating the merging command
