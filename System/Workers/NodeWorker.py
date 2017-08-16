@@ -1,3 +1,4 @@
+from copy import deepcopy
 
 from System.Workers import Thread
 from System.Workers import ModuleWorker
@@ -65,12 +66,13 @@ class NodeWorker(Thread):
             main_job_name = "%s_%s" % (self.main_module.get_ID(), split_name)
 
             # Create a ModuleWorker for each split
-            main_workers[main_job_name] = ModuleWorker(self.platform, self.main_module, main_job_name)
+            main_workers[main_job_name] = ModuleWorker(self.platform,
+                                                       deepcopy(self.main_module),
+                                                       main_job_name,
+                                                       split_name=split_name)
 
             # Set input to the worker
-            main_workers[main_job_name].set_input(module_input=split_args,
-                                                  split_name=split_name,
-                                                  **self.input_data)
+            main_workers[main_job_name].set_input(module_input=split_args, **self.input_data)
             # Start processing the split
             main_workers[main_job_name].start()
 
