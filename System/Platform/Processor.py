@@ -65,8 +65,8 @@ class Processor(object):
         kwargs["stdout"] = sp.PIPE
         kwargs["stderr"] = sp.PIPE
 
+        # Add process to list of processes
         self.processes[job_name] = Process(cmd, **kwargs)
-        return self.processes[job_name]
 
     def wait(self):
         # Returns when all currently running processes have completed
