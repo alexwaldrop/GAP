@@ -162,3 +162,6 @@ class PipelineWorker(object):
 
         # Copy the logs directory
         self.__copy_logs()
+
+        # Wait for copying to complete
+        self.platform.wait()
