@@ -86,9 +86,8 @@ class ModuleWorker(Thread):
         if isinstance(nr_cpus.get_value(), basestring) and nr_cpus.get_value().lower() == "max":
             # Set special case for maximum nr_cpus
             nr_cpus.set(self.platform.get_max_nr_cpus)
-        else:
-            # Make sure nr cpus is an integer
-            nr_cpus.set(int(nr_cpus.get_value()))
+        # Make sure nr cpus is an integer
+        nr_cpus.set(int(nr_cpus.get_value()))
 
         # Make special changes to mem
         mem = arguments["mem"]
@@ -106,9 +105,8 @@ class ModuleWorker(Thread):
                 else:
                     # Set to max memory if amount of memory requested exceeds limit
                     mem.set(self.platform.get_max_mem())
-        else:
-            # Make sure mem is an integer
-            mem.set(int(mem.get_value()))
+        # Make sure mem is an integer
+        mem.set(int(mem.get_value()))
 
     def task(self):
 
