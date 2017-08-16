@@ -91,7 +91,7 @@ class NodeWorker(Thread):
                     all_done = False
 
         # Obtain the main workers output
-        main_workers_output = [ worker.get_output() for worker in main_workers ]
+        main_workers_output = [ worker.get_output() for worker in main_workers.itervalues() ]
 
         # Convert the outputs from a list of dictionaries to a dictionary of lists
         self.main_output = {}
