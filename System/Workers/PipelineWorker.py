@@ -131,6 +131,9 @@ class PipelineWorker(object):
         # Get graph nodes
         nodes = self.graph.get_nodes()
 
+        # Initialize list of transfer job names
+        transfer_jobs = []
+
         # Return the final output for all node workers
         for node_id, final_output_paths in self.final_output.iteritems():
 
@@ -143,17 +146,27 @@ class PipelineWorker(object):
                 # Store more than one file in a sub-directory named as the main module
                 if isinstance(paths, list):
                     for path in paths:
-                        self.platform.return_output(path, sub_dir=main_module_name)
+                        job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
+                        self.platform.return_output(job_name, path, sub_dir=main_module_name)
+                        transfer_jobs.append(job_name)
                 else:
-                    self.platform.return_output(paths)
+                    job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
+                    self.platform.return_output(job_name, paths)
+                    transfer_jobs.append(job_name)
+
+        # Wait for transfers to complete
+        for job_name in transfer_jobs:
+            self.platform.wait_process(job_name)
 
     def __copy_logs(self):
 
         # Get the workspace log directory
-        log_dir = self.platform.get_workspace_dir(sub_dir="log")
+        log_dir     = self.platform.get_workspace_dir(sub_dir="log")
+        job_name    = "return_logs"
 
         # Transfer the log directory as final output
-        self.platform.return_output(log_dir, log_transfer=False)
+        self.platform.return_output(job_name, log_dir, log_transfer=False)
+        self.platform.wait_process(job_name)
 
     def __finalize(self):
 
