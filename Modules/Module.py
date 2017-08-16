@@ -46,7 +46,7 @@ class Module(object):
         if is_path:
             # Enforce output to be in platform workspace
             wrkspace_dir = platform.get_workspace_dir()
-            value = value.lstrip(wrkspace_dir)
+            value = value.replace(wrkspace_dir, "")
             value = os.path.join(wrkspace_dir, value)
 
         self.output[key] = value
@@ -86,16 +86,12 @@ class Module(object):
 
         # Define the command
         cmd = self.define_command(platform)
-
         return cmd
 
-    def generate_unique_file_name(self, prefix=None, split_name=None, extension=".dat"):
+    def generate_unique_file_name(self, split_name=None, extension=".dat"):
 
         # Generate file basename
-        if prefix is None:
-            path = "%s.%s" % (prefix, self.module_id)
-        else:
-            path = self.module_id
+        path = self.module_id
 
         # Append split name if present
         if split_name is not None:
