@@ -255,6 +255,9 @@ class Platform(object):
                           dest_file=dest_file,
                           log_transfer=log_transfer)
 
+    def wait(self):
+        self.main_processor.wait()
+
     def destroy_processor(self, processor_name):
         self.processors[processor_name].destroy()
         self.processors.pop(processor_name)
