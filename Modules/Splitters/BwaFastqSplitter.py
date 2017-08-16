@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 
 from Modules import Module
 
@@ -54,11 +55,17 @@ class BwaFastqSplitter(Module):
         # Set number of lines per split to be access in get_command()
         self.nr_lines_per_split = nr_reads_per_split * 4
 
+        # Get name of working directory where files will be output
+        wrk_dir = platform.get_workspace_dir()
+
         # Create new dictionary for each split
         for i in range(nr_splits - 1):
+            # Generate filenames with split names as they'll appear after being generated with unix split function
             split_name = "%02d" % i
-            r1_split = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq")
-            r2_split = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq") if R2 is not None else None
+            r1_split = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", containing_dir=wrk_dir)
+            r2_split = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", containing_dir=wrk_dir) if R2 is not None else None
+
+            # Create next split
             split_data = {"nr_cpus" : max_nr_cpus,
                           "R1"      : r1_split,
                           "R2"      : r2_split}
@@ -72,8 +79,10 @@ class BwaFastqSplitter(Module):
 
         # Make final split
         split_name  = "%02d" % int(nr_splits - 1)
-        r1_split    = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq")
-        r2_split    = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq") if R2 is not None else None
+        r1_split    = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", containing_dir=wrk_dir)
+        r2_split    = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", containing_dir=wrk_dir) if R2 is not None else None
+
+        # Create final split object
         split_data  = {"nr_cpus"    : nr_cpus_remaining,
                       "R1"          : r1_split,
                       "R2"          : r2_split}
