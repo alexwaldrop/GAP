@@ -40,7 +40,6 @@ class PipelineWorker(object):
 
         # Initialize completion flag and finalized node list
         done = False
-        completed = []
 
         while not done:
 
@@ -71,6 +70,9 @@ class PipelineWorker(object):
 
                     continue
 
+                # At this point, there are nodes that are not ready
+                done = False
+
                 # Check if node is still working
                 if node_worker.is_alive():
                     continue
@@ -78,7 +80,7 @@ class PipelineWorker(object):
                 # Node has not been processed yet. Check if all the required nodes are complete
                 ready = True
                 for required_node_id in adj_list[node_id]:
-                    if required_node_id not in completed:
+                    if required_node_id not in self.completed_nodes:
                         ready = False
                         break
 
