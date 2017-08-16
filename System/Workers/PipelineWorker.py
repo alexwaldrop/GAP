@@ -133,7 +133,7 @@ class PipelineWorker(object):
             for path_key, paths in final_output_paths.iteritems():
 
                 # Store more than one file in a sub-directory named as the main module
-                if len(paths) > 1:
+                if isinstance(paths, list):
                     for path in paths:
                         self.platform.return_output(path, sub_dir=main_module_name)
                 else:
