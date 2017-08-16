@@ -25,7 +25,7 @@ class SamtoolsIndex(Module):
         # Define command for running samtools index from a platform
         bam         = self.get_arguments("bam").get_value()
         samtools    = self.get_arguments("samtools").get_value()
-        bam_idx     = self.get_output("bam_idx").get_value()
+        bam_idx     = self.get_output("bam_idx")
 
         # Generating indexing command
         cmd = "%s index %s %s" % (samtools, bam, bam_idx)
