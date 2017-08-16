@@ -166,6 +166,8 @@ class PipelineWorker(object):
 
         # Transfer the log directory as final output
         self.platform.return_output(job_name, log_dir, log_transfer=False)
+
+        # Wait for transfer to complete
         self.platform.wait_process(job_name)
 
     def __finalize(self):
@@ -175,6 +177,3 @@ class PipelineWorker(object):
 
         # Copy the logs directory
         self.__copy_logs()
-
-        # Wait for copying to complete
-        self.platform.wait()
