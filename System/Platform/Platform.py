@@ -238,14 +238,15 @@ class Platform(object):
         out, err = self.main_processor.wait_process(job_name)
         return out, err
 
-    def return_output(self, output_path, sub_dir=None, dest_file=None, log_transfer=True):
+    def return_output(self, job_name, output_path, sub_dir=None, dest_file=None, log_transfer=True):
         logging.info("Returning output file: %s" % output_path)
         # Transfer output file to final output directory
         if sub_dir is None:
             self.transfer(src_path=output_path,
                           dest_dir=self.final_output_dir,
                           dest_file=dest_file,
-                          log_transfer=log_transfer)
+                          log_transfer=log_transfer,
+                          job_name=job_name)
         # Transfer output file to subdirectory within final output directory
         else:
             dest_dir = os.path.join(self.final_output_dir, sub_dir) + "/"
@@ -253,10 +254,11 @@ class Platform(object):
             self.transfer(src_path=output_path,
                           dest_dir=dest_dir,
                           dest_file=dest_file,
-                          log_transfer=log_transfer)
+                          log_transfer=log_transfer,
+                          job_name=job_name)
 
-    def wait(self):
-        self.main_processor.wait()
+    def wait_process(self, proc_name):
+        return self.main_processor.wait_process(proc_name)
 
     def destroy_processor(self, processor_name):
         self.processors[processor_name].destroy()
