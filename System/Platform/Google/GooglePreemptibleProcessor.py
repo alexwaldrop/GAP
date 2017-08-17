@@ -81,7 +81,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         elif "- Internal Error" in err_msg:
             # Check to see if error was result of internal google error
             # Reset the instance if error was due to internal google error
-            logging.warning("(%s) Instance will be reset! A Google Internal Error was received:\n%s" % self.name, err_msg)
+            logging.warning("(%s) Instance will be reset! A Google Internal Error was received:\n%s" % (self.name, err_msg))
             self.reset()
             return False
 
@@ -120,7 +120,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             # Check to see if instance has been preempted during creation
             if self.get_status() == GooglePreemptibleProcessor.DEAD:
                 # Reset if dead
-                logging.info("(%s) Instance preempted! Instance will be reset.")
+                logging.info("(%s) Instance preempted! Instance will be reset." % self.name)
                 self.reset()
 
                 # Reset cycle count to begin process all over again

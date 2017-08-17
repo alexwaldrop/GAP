@@ -21,7 +21,7 @@ class PreemptionNotifier(threading.Thread):
         self.key_file   = key_file
 
         # Boolean flag indicating whether notifier is currently running
-        self.running    = False
+        self.running    = True
 
         # Boolean flag indicating that notifier is a daemon running in the background
         self.daemon     = True
@@ -71,11 +71,12 @@ class PreemptionNotifier(threading.Thread):
         self.log_sink = self.__init_log_sink()
 
         while self.running:
-
             try:
+                # Periodically try to pull message from preempted subscription
                 msg, _ = PubSub.get_message(self.preempt_sub)
 
                 if msg is not None:
+                    # Process the message if one was pulled from subscription
                     self.process_message(msg)
                 else:
                     time.sleep(2)
@@ -97,11 +98,10 @@ class PreemptionNotifier(threading.Thread):
         try:
             log = json.loads(msg)
             inst_name = log["jsonPayload"]["resource"]["name"]
-            print "Instance preempted: %s" % inst_name
             if inst_name in self.processors:
                 # Set instance status to DEAD if preempted instance is mangaged by the notifier
                 self.processors[inst_name].set_status(GooglePreemptibleProcessor.DEAD)
-                logging.debug("(%s) Instance preempted!" % inst_name)
+                logging.warning("(%s) Instance preempted!" % inst_name)
         except ValueError:
             logging.error("Preempted message should be a Google log in JSON format. The following message was received instead: %s." % msg)
         except:
