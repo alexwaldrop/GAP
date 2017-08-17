@@ -35,7 +35,7 @@ class BedtoolsCaptureEfficiency(Module):
 
         # Get input arguments
         bam                 = self.get_arguments("bam").get_value()
-        subsample_perc      = self.get_arguments("subsample_perc").get_value()
+        subsample_perc      = float(self.get_arguments("subsample_perc").get_value())
         samtools            = self.get_arguments("samtools").get_value()
         bedtools            = self.get_arguments("bedtools").get_value()
         target_bed          = self.get_arguments("target_bed").get_value()
