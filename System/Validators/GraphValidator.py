@@ -63,15 +63,26 @@ class GraphValidator(Validator):
                 # Check if resource key is defined in the resource kit
                 resources = self.resources.get_resources()
                 if arg_key not in resources:
-                    self.report_error("In module '%s', the resource argument '%s' has no definition "
-                                      "in the resource config file." % (module.get_ID(), arg_key))
+                    if arg_obj.is_mandatory():
+                        self.report_error("In module '%s', the resource argument '%s' has no definition "
+                                            "in the resource config file." % (module.get_ID(), arg_key))
+                    else:
+                        self.report_warning("In module '%s', the resource argument '%s' has no definition. "
+                                            "Argument is not required and it will be set to its default value. "
+                                            "If desired, please specify in the graph config for node '%s' which resource '%s' "
+                                            "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
 
                 # Check if the resource type has more then one definitions, so the user has to select one
                 elif len(resources[arg_key]) > 1 and arg_key not in config_input:
-                    self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
-                                      "Please specify in the graph config, for node '%s', which resource '%s'"
-                                      "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
-
+                    if arg_obj.is_mandatory():
+                        self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
+                                        "Please specify in the graph config, for node '%s', which resource '%s'"
+                                        "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
+                    else:
+                        self.report_warning("In module '%s', the resource argument '%s' has multiple definitions. "
+                                            "Argument is not required and it will be set to its default value. "
+                                            "If desired, please specify in the graph config for node '%s' which resource '%s' "
+                                            "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
                 # The resource was found
                 else:
                     found = True
