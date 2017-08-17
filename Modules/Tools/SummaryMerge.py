@@ -27,7 +27,7 @@ class SummaryMerge(Module):
         # Get options from kwargs
         inputs          = self.get_arguments("summary_file").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
-        sample_name     = self.get_arguments("sample_name")
+        sample_name     = self.get_arguments("sample_name").get_value()
         summary_file    = self.get_output("summary_file")
 
         # Generating command to merge QC summary output files from two or more QCParser modules
