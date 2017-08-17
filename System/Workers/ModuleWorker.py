@@ -86,7 +86,7 @@ class ModuleWorker(Thread):
         nr_cpus = arguments["nr_cpus"]
         if isinstance(nr_cpus.get_value(), basestring) and nr_cpus.get_value().lower() == "max":
             # Set special case for maximum nr_cpus
-            nr_cpus.set(self.platform.get_max_nr_cpus)
+            nr_cpus.set(self.platform.get_max_nr_cpus())
         # Make sure nr cpus is an integer
         nr_cpus.set(int(nr_cpus.get_value()))
 
