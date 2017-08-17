@@ -42,6 +42,9 @@ class GATKBaseRecalibrator(Module):
         mem             = self.get_arguments("mem").get_value()
         max_nr_reads    = self.get_arguments("max_nr_reads").get_value()
 
+        # Convert max_nr_reads to integer if necessary
+        max_nr_reads    = eval(max_nr_reads) if isinstance(max_nr_reads, basestring) else max_nr_reads
+
         # Get output file
         bqsr_report     = self.get_output("BQSR_report")
 
