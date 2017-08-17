@@ -32,26 +32,32 @@ class BAMChromosomeSplitter(Module):
             logging.error("BAMChromosomeSplitter unable to determine chromosomes to use for splits!")
             raise
 
+        # Get platform working directory
+        wrk_dir = platform.get_workspace_dir()
+
         # Add split info for named chromosomes
         for chrom in chroms:
-            split_name = chrom
+            split_name  = chrom
+            bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
             split_info = {"chroms"      : chrom,
                           "is_aligned"  : True,
-                          "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+                          "bam"         : bam }
             self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for all chromosomes that aren't named in config
         split_name  = "remains"
+        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
         split_info  = { "chroms"        : remains,
                         "is_aligned"    : True,
-                        "bam"           : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+                        "bam"           : bam}
         self.add_output(platform, split_name, split_info, is_path=False)
 
         # Add split info for unmapped reads
         split_name  = "unmapped"
+        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
         split_info  = { "chroms"      : None,
                         "is_aligned"  : False,
-                        "bam"         : self.generate_unique_filename(split_name=split_name, extension=".bam")}
+                        "bam"         : bam}
         self.add_output(platform, split_name, split_info, is_path=False)
 
     def define_command(self, platform):
@@ -60,9 +66,11 @@ class BAMChromosomeSplitter(Module):
         samtools    = self.get_arguments("samtools").get_value()
         nr_cpus     = self.get_arguments("nr_cpus").get_value()
 
-        # Get names of chromosomes
-        chroms  = [split["chroms"] for split in self.output if split["split_name"] not in ["remains", "unmapped"]]
-        remains = [split["chroms"] for split in self.output if split["split_name"] == "remains"][0]
+        # Get names of chromosomes to split
+        chroms  = [self.output[split_name]["chroms"] for split_name in self.output.keys() if split_name not in ["remains", "unmapped"]]
+
+        # Get names of remaining chromosomes
+        remains = self.output["remains"]["chroms"]
 
         # Get output file basename
         split_name      = self.output.keys()[0]
