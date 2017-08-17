@@ -146,10 +146,11 @@ class PipelineWorker(object):
                 # Store more than one file in a sub-directory named as the main module
                 if isinstance(paths, list):
                     for path in paths:
-                        job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
-                        self.platform.return_output(job_name, path, sub_dir=main_module_name)
-                        transfer_jobs.append(job_name)
-                else:
+                        if path is not None:
+                            job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
+                            self.platform.return_output(job_name, path, sub_dir=main_module_name)
+                            transfer_jobs.append(job_name)
+                elif paths is not None:
                     job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
                     self.platform.return_output(job_name, paths)
                     transfer_jobs.append(job_name)
