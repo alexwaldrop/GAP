@@ -6,7 +6,7 @@ class PicardMarkDuplicates(Module):
         super(PicardMarkDuplicates, self).__init__(module_id)
 
         self.input_keys             = ["bam", "bam_idx", "picard", "java", "nr_cpus", "mem", "is_aligned"]
-        self.splitted_output_keys   = ["bam", "MD_report"]
+        self.output_keys            = ["bam", "MD_report", "bam_sorted"]
 
     def define_input(self):
         self.add_argument("bam",        is_required=True)
@@ -32,6 +32,9 @@ class PicardMarkDuplicates(Module):
             self.add_output(platform, "bam", self.get_arguments("bam").get_value())
             self.add_output(platform, "MD_report", "")
 
+        # Specify that bam output is sorted
+        self.add_output(platform, "bam_sorted", True, is_path=False)
+
     def define_command(self, platform):
         # Get input arguments
         bam         = self.get_arguments("bam").get_value()
@@ -42,7 +45,7 @@ class PicardMarkDuplicates(Module):
 
         # Get output filenames
         output_bam  = self.get_output("bam")
-        md_report   = self.get_output("md_report")
+        md_report   = self.get_output("MD_report")
 
         # If the obtained bam contains unaligned reads, skip the process
         if not is_aligned:
