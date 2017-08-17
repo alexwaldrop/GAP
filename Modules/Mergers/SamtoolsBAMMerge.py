@@ -5,13 +5,12 @@ class SamtoolsBAMMerge(Module):
     def __init__(self, module_id):
         super(SamtoolsBAMMerge, self).__init__(module_id)
 
-        self.input_keys   = ["bam", "bam_idx", "bam_sorted", "samtools", "nr_cpus", "mem"]
+        self.input_keys   = ["bam", "bam_sorted", "samtools", "nr_cpus", "mem"]
         self.output_keys  = ["bam"]
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
-        self.add_argument("bam_idx",        is_required=False)
-        self.add_argument("bam_sorted",     is_required=True)
+        self.add_argument("bam_sorted",     is_required=True, default_value=True)
         self.add_argument("samtools",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
