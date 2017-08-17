@@ -30,7 +30,7 @@ class PicardMarkDuplicates(Module):
         else:
             # If not 'is_aligned' return dummy files
             self.add_output(platform, "bam", self.get_arguments("bam").get_value())
-            self.add_output(platform, "MD_report", "")
+            self.add_output(platform, "MD_report", None, is_path=False)
 
         # Specify that bam output is sorted
         self.add_output(platform, "bam_sorted", True, is_path=False)
