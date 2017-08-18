@@ -15,8 +15,8 @@ class Trimmomatic (Module):
         self.add_argument("trimmomatic",    is_required=True, is_resource=True)
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("adapters",       is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=8)
-        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("nr_cpus",        is_required=True, default_value="MAX")
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 1")
 
         # Optional trimmomatic arguments
         self.add_argument("LEADING",                   is_required=True, default_value=5)
