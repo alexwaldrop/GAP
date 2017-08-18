@@ -22,7 +22,7 @@ class SummarizePicardInsertSizeMetrics(Module):
         summary_file = self.generate_unique_file_name(split_name=split_name, extension=".insertsize.summary.txt")
         self.add_output(platform, "summary_file", summary_file)
 
-    def define_command(self, **kwargs):
+    def define_command(self, platform):
         # Get options from kwargs
         input_file      = self.get_arguments("insert_size_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
