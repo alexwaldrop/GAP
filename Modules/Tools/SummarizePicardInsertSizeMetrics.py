@@ -26,7 +26,7 @@ class SummarizePicardInsertSizeMetrics(Module):
         # Get options from kwargs
         input_file      = self.get_arguments("insert_size_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
-        summary_file    = self.get_output("summary_file").get_value()
+        summary_file    = self.get_output("summary_file")
 
         # Generating command to parse picard CollectInsertSizeMetrics output
         cmd = "%s insertsize -i %s > %s !LOG2!" % (qc_parser, input_file, summary_file)
