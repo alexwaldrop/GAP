@@ -13,6 +13,9 @@ class SampleValidator(Validator):
         if "is_paired" not in sample_data:
             return
 
+        # Create dummy value for R2 if not present
+        sample_data["R2"] = sample_data["R2"] if "R2" in sample_data else None
+
         if isinstance(sample_data["sample_name"], list):
             for sample_name, is_paired, R1_path, R2_path in zip(sample_data["sample_name"],
                                                                 sample_data["is_paired"],
