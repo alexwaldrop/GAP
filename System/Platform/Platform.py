@@ -226,7 +226,7 @@ class Platform(object):
         out, err = processor.wait_process(job_name)
 
         # Destroy processor
-        self.destroy_processor(processor.get_name())
+        processor.destroy()
 
         # Return output
         return out, err
@@ -259,10 +259,6 @@ class Platform(object):
 
     def wait_process(self, proc_name):
         return self.main_processor.wait_process(proc_name)
-
-    def destroy_processor(self, processor_name):
-        self.processors[processor_name].destroy()
-        self.processors.pop(processor_name)
 
     def get_config(self):
         return self.config
