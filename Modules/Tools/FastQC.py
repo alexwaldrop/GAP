@@ -29,6 +29,8 @@ class FastQC(Module):
         if r2 is not None:
             r2_out = "%s_fastqc" % r2.replace(".fastq.gz","").replace(".fastq","")
             self.add_output(platform, "R2_fastqc", r2_out)
+        else:
+            self.add_output(platform, "R2_fastqc", None, is_path=False)
 
     def define_command(self, platform):
         # Generate command for running Fastqc
