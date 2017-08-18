@@ -191,7 +191,7 @@ class GoogleStandardProcessor(Processor):
                 raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Set status to 'OFF' if destroy is True
-        if proc_name is "destroy":
+        if proc_name == "destroy":
             self.set_status(GoogleStandardProcessor.OFF)
 
         # Case: Process completed
