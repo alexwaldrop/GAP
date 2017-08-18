@@ -258,30 +258,23 @@ class GooglePlatform(Platform):
         try:
             cmd         = "gsutil rm %s" % os.path.join(self.final_output_dir,"dummy.txt")
             proc        = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-            out, err    = proc.communicate()
+            proc.communicate()
         except:
-            logging.info("(%s) Could not remove dummy input file on google cloud!")
+            logging.warning("(%s) Could not remove dummy input file on google cloud!")
 
         # Initiate destroy process on all the instances except the main processor
         for instance_name, instance_obj in self.processors.iteritems():
-            if instance_name != self.main_processor.get_name():
-                try:
-                    instance_obj.destroy(wait=False)
-                except RuntimeError:
-                    logging.info("(%s) Could not destroy instance!" % instance_name)
+            try:
+                instance_obj.destroy(wait=False)
+            except RuntimeError:
+                logging.warning("(%s) Could not destroy instance!" % instance_name)
 
-        # Wait for all instances to be destroyed
+        # Now wait for all destroy processes to finish
         for instance_name, instance_obj in self.processors.iteritems():
-            if instance_name != self.main_processor.get_name():
-                try:
-                    instance_obj.wait_process("destroy")
-                except RuntimeError:
-                    logging.info("(%s) Could not destroy instance!" % instance_name)
-
-
-        # Destroy main instance last
-        if self.main_processor is not None:
-            self.main_processor.destroy()
+            try:
+                instance_obj.wait_process("destroy")
+            except RuntimeError:
+                logging.warning("(%s) Could not destroy instance!" % instance_name)
 
         # Destroy preemption notifier if necessary
         if self.preemption_notifier is not None:
