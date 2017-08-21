@@ -44,7 +44,7 @@ class GATKReferenceSplitter(Module):
         # Add data for final split
         split_name = "remains"
         split_data = {
-                "location": None,
+                "location": "unmapped",
                 "excluded_location": chrom_list}
         self.add_output(platform, split_name, split_data, is_path=False)
 
