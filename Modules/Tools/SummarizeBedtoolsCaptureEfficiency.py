@@ -8,6 +8,8 @@ class SummarizeBedtoolsCaptureEfficiency(Module):
         self.input_keys     = ["capture_bed", "qc_parser", "nr_cpus", "mem"]
         self.output_keys    = ["summary_file"]
 
+        self.quick_command  = True
+
     def define_input(self):
         self.add_argument("capture_bed",    is_required=True)
         self.add_argument("qc_parser",      is_required=True, is_resource=True)

@@ -15,10 +15,12 @@ class BwaFastqSplitter(Module):
         # BWA-MEM aligning speed constant
         self.ALIGN_SPEED = 10 ** 8  # bps/vCPU for 10 mins of processing
 
+        self.quick_command = True
+
     def define_input(self):
         self.add_argument("R1",             is_required=True)
         self.add_argument("R2",             is_required=False)
-        self.add_argument("nr_cpus",        is_required=True,   default_value=8)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=4)
         self.add_argument("mem",            is_required=True,   default_value="nr_cpus * 2")
 
     def define_output(self, platform, spilt_name=None):

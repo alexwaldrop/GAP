@@ -8,6 +8,8 @@ class GATKCombineGVCF(Module):
         self.input_keys   = ["gvcf", "gvcf_idx", "gatk", "java", "nr_cpus", "mem"]
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
+        self.quick_command = True
+
     def define_input(self):
         self.add_argument("gvcf",               is_required=True)
         self.add_argument("gvcf_idx",           is_required=True)
