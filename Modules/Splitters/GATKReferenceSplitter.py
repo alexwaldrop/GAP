@@ -44,8 +44,8 @@ class GATKReferenceSplitter(Module):
         # Add data for final split
         split_name = "remains"
         split_data = {
-                "location": "unmapped",
-                "excluded_location": chrom_list}
+                "location": remains,
+                "excluded_location": None}
         self.add_output(platform, split_name, split_data, is_path=False)
 
     def define_command(self, platform):
@@ -87,4 +87,7 @@ class GATKReferenceSplitter(Module):
             chroms.append(sorted_chrom_names.pop(0))
             i += 1
         remains = sorted_chrom_names
+
+        # Add unmapped reads
+        remains.append("unmapped")
         return chroms, remains
