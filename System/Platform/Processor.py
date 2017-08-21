@@ -47,6 +47,9 @@ class Processor(object):
             cmd = cmd.replace("!LOG2!", log_cmd_stderr)
             cmd = cmd.replace("!LOG3!", log_cmd_all)
 
+        # Save original command
+        original_cmd = cmd
+
         # Make any modifications to the command to allow it to be run on a specific platform
         cmd = self.adapt_cmd(cmd)
 
@@ -58,7 +61,7 @@ class Processor(object):
         kwargs = dict()
 
         # Process specific arguments
-        kwargs["cmd"] = cmd
+        kwargs["cmd"] = original_cmd
 
         # Popen specific arguments
         kwargs["shell"] = True
