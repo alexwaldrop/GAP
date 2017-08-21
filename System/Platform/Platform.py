@@ -85,6 +85,10 @@ class Platform(object):
         # Get list of resources
         resources = resource_kit.get_resources()
 
+        # List of resources paths that have been transferred to platform
+        # Used to prevent paths being overwritten
+        seen = []
+
         # For every resource:
         # Transfer to platform if remote
         for resource_type, resource_names in resources.iteritems():
@@ -105,16 +109,21 @@ class Platform(object):
                         src_path += "*"
 
                     # Transfer to resource directory
-                    logging.info("Transferring remote resource '%s' with path %s..." % (resource_name, src_path))
-                    self.transfer(src_path=src_path,
-                                  dest_dir=resource_dir,
-                                  log_transfer=True,
-                                  job_name="transfer_%s" % resource_name)
+                    if src_path not in seen:
+                        logging.info("Transferring remote resource '%s' with path %s..." % (resource_name, src_path))
+                        self.transfer(src_path=src_path,
+                                    dest_dir=resource_dir,
+                                    log_transfer=True,
+                                    job_name="transfer_%s" % resource_name)
+
+                    # Add src path to list of seen paths
+                    seen.append(src_path)
 
                     # Update path to reflect transfer
                     src_path = src_path.replace("*", "")
                     resource_kit.update_path(src_path, resource_dir)
                     logging.info("Updated path: %s" % resource.get_path())
+
 
         # Wait for all transfers to complete
         self.main_processor.wait()
