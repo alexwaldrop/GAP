@@ -16,8 +16,8 @@ class GATKGenotypeGVCFs(Module):
         self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 3.5")
+        self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
+        self.add_argument("mem",                is_required=True, default_value="MAX")
 
     def define_output(self, platform, split_name=None):
         # Declare VCF output filename
