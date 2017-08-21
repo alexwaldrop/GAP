@@ -7,7 +7,6 @@ class SnpEff(Module):
 
         self.input_keys     = ["vcf", "snpeff", "java", "snpeff_ref", "nr_cpus", "mem"]
         self.output_keys    = ["vcf"]
-        self.quick_command  = True
 
     def define_input(self):
         self.add_argument("vcf",                is_required=True)
