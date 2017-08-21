@@ -11,11 +11,11 @@ class SnpEff(Module):
 
     def define_input(self):
         self.add_argument("vcf",                is_required=True)
+        self.add_argument("snpeff_ref",         is_required=True)
         self.add_argument("snpeff",             is_required=True, is_resource=True)
         self.add_argument("java",               is_required=True, is_resource=True)
-        self.add_argument("snpeff_ref",         is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
-        self.add_argument("mem",                is_required=True, default_value=5)
+        self.add_argument("mem",                is_required=True, default_value=6)
 
     def define_output(self, platform, split_name=None):
         # Declare VCF output filename
