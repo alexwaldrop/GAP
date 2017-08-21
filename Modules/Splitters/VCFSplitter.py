@@ -21,18 +21,21 @@ class VCFSplitter(Module):
         # Get names of chromosomes in VCF file
         vcf_in          = self.get_arguments("vcf").get_value()
         basename = vcf_in.split(".vcf")[0]
-        get_names_cmd   = 'cat %s | grep -v "#" | cut -f1 | sort | uniq'
+        get_names_cmd   = 'cat %s | grep -v "#" | cut -f1 | sort | uniq' % vcf_in
         out, err        = platform.run_quick_command("get_vcf_chroms", get_names_cmd)
+        print out
+        print
+        print out.split("\n")
+        print
 
         for line in out.split("\n"):
             # Skip empty lines
-            if len(line) == 0:
-                continue
-
-            # Create split for next chromosome
-            chrom   = line
-            vcf_out = "%s.%s.vcf" % (basename, chrom)
-            self.add_output(platform, split_name, {"vcf":vcf_out}, is_path=False)
+            if len(line) > 0:
+                # Create split for next chromosome
+                chrom   = line
+                vcf_out = "%s.%s.vcf" % (basename, chrom)
+                print vcf_out
+                self.add_output(platform, chrom, {"vcf":vcf_out}, is_path=False)
 
     def define_command(self, platform):
         # Get input arguments
