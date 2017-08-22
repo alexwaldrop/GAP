@@ -33,14 +33,12 @@ class Trimmomatic (Module):
     def define_output(self, platform, split_name=None):
 
         # Declare trimmed R1 output filename
-        r1              = self.get_arguments("R1").get_value()
-        ext             = "fastq.gz" if r1.endswith("gz") else "fastq"
-        r1_trimmed_ext  = ".R1.trimmed.%s" % ext
+        r1_trimmed_ext  = ".R1.trimmed.fastq"
         r1_trimmed_out  = self.generate_unique_file_name(split_name=split_name, extension=r1_trimmed_ext)
         self.add_output(platform, "R1", r1_trimmed_out)
 
         # Declare discarded R1 output filename
-        r1_unpair_ext  = ".R1.unpair.%s" % ext
+        r1_unpair_ext  = ".R1.unpair.fastq"
         r1_unpair_out  = self.generate_unique_file_name(split_name=split_name, extension=r1_unpair_ext)
         self.add_output(platform, "R1_unpair", r1_unpair_out)
 
@@ -48,12 +46,12 @@ class Trimmomatic (Module):
         r2 = self.get_arguments("R2").get_value()
         if r2 is not None:
             # Declare trimmed R2 output filename
-            r2_trimmed_ext = ".R2.trimmed.%s" % ext
+            r2_trimmed_ext = ".R2.trimmed.fastq"
             r2_trimmed_out = self.generate_unique_file_name(split_name=split_name, extension=r2_trimmed_ext)
             self.add_output(platform, "R2", r2_trimmed_out)
 
             # Declare unpaired R2 output filename
-            r2_unpair_ext = ".R2.unpair.%s" % ext
+            r2_unpair_ext = ".R2.unpair.fastq"
             r2_unpair_out = self.generate_unique_file_name(split_name=split_name, extension=r2_unpair_ext)
             self.add_output(platform, "R2_unpair", r2_unpair_out)
 
