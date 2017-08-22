@@ -23,10 +23,6 @@ class VCFSplitter(Module):
         basename = vcf_in.split(".vcf")[0]
         get_names_cmd   = 'cat %s | grep -v "#" | cut -f1 | sort | uniq' % vcf_in
         out, err        = platform.run_quick_command("get_vcf_chroms", get_names_cmd)
-        print out
-        print
-        print out.split("\n")
-        print
 
         for line in out.split("\n"):
             # Skip empty lines
@@ -34,7 +30,6 @@ class VCFSplitter(Module):
                 # Create split for next chromosome
                 chrom   = line
                 vcf_out = "%s.%s.vcf" % (basename, chrom)
-                print vcf_out
                 self.add_output(platform, chrom, {"vcf":vcf_out}, is_path=False)
 
     def define_command(self, platform):
