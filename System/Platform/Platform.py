@@ -1,8 +1,7 @@
 import logging
 import os
 import abc
-import hashlib
-import time
+import uuid
 
 from Config import ConfigParser
 
@@ -345,7 +344,7 @@ class Platform(object):
     ####### PRIVATE UTILITY METHODS
     @staticmethod
     def generate_unique_id(id_len=6):
-        return hashlib.md5(str(time.time())).hexdigest()[0:id_len]
+        return str(uuid.uuid4())[0:id_len]
 
     @staticmethod
     def standardize_dir(dir_path):
