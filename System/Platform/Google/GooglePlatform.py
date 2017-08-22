@@ -76,7 +76,7 @@ class GooglePlatform(Platform):
         main_instance_config["log_dir"] = self.get_workspace_dir("log")
 
         # Get name, nr_cpus, mem and instantiate main instance object
-        name            = self.__format_instance_name("%s-main" % self.name)
+        name            = self.__format_instance_name("proc-%s-main" % self.name[:20])
         nr_cpus         = main_instance_config.pop("nr_cpus")
         mem             = main_instance_config.pop("mem")
         main_instance   = GoogleStandardProcessor(name, nr_cpus, mem, **main_instance_config)

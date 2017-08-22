@@ -201,7 +201,7 @@ class Platform(object):
 
     def get_processor(self, name, nr_cpus, mem):
         # Ensure unique name for processor
-        name        = "%s-%s" % (name, self.generate_unique_id())
+        name        = "proc-%s-%s-%s" % (self.name[:20], name[:25], self.generate_unique_id())
         logging.info("Creating processor '%s' with %s CPUs and %s GB of memory" % (name, nr_cpus, mem))
 
         # Create processor with requested resources (CPU/Mem)
