@@ -29,5 +29,5 @@ class VCFMerger(Module):
         vcf_out     = self.get_output("vcf")
 
         # Generating SnpEff command
-        cmd = "%s -jar %s sort %s > %s !LOG3!" % (java, snpsift, " ".join(vcf_list), vcf_out)
+        cmd = "%s -jar %s sort %s > %s !LOG2!" % (java, snpsift, " ".join(vcf_list), vcf_out)
         return cmd
