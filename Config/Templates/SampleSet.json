@@ -1,5 +1,4 @@
 {
-	"pipeline_id" : 123,
 	"paired_end" : true,
 	"seq_platform" : "Illumina",
 	"samples" :
