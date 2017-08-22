@@ -1,0 +1,6 @@
+[__many__]
+    resource_type           = string
+    path                    = string
+    export_to_path          = boolean(default=False)
+    export_to_ld_lib        = boolean(default=False)
+    containing_dir          = string(default=None)

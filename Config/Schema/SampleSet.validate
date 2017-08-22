@@ -1,0 +1,29 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "definitions": {},
+    "properties": {
+        "samples": {
+            "items": {
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "paths": {
+                        "properties": {},
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "paths",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "samples"
+    ],
+    "type": "object"
+}
