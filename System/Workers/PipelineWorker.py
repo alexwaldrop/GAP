@@ -145,15 +145,23 @@ class PipelineWorker(object):
 
                 # Store more than one file in a sub-directory named as the main module
                 if isinstance(paths, list):
-                    for path in paths:
+
+                    for id, path in enumerate(paths):
                         if path is not None:
                             job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
-                            self.platform.return_output(job_name, path, sub_dir=main_module_name)
+                            new_path = self.platform.return_output(job_name, path, sub_dir=main_module_name)
+
                             transfer_jobs.append(job_name)
+
+                            self.final_output[node_id][path_key][id] = new_path
+
                 elif paths is not None:
                     job_name = "return_output_%s_%s_%d" % (main_module_name, path_key, len(transfer_jobs))
-                    self.platform.return_output(job_name, paths)
+                    new_path = self.platform.return_output(job_name, paths)
+
                     transfer_jobs.append(job_name)
+
+                    self.final_output[node_id][path_key] = new_path
 
         # Wait for transfers to complete
         for job_name in transfer_jobs:
@@ -178,3 +186,6 @@ class PipelineWorker(object):
 
         # Copy the logs directory
         self.__copy_logs()
+
+    def get_final_output(self):
+        return self.final_output

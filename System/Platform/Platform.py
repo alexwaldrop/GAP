@@ -249,22 +249,26 @@ class Platform(object):
 
     def return_output(self, job_name, output_path, sub_dir=None, dest_file=None, log_transfer=True):
         logging.info("Returning output file: %s" % output_path)
-        # Transfer output file to final output directory
-        if sub_dir is None:
-            self.transfer(src_path=output_path,
-                          dest_dir=self.final_output_dir,
-                          dest_file=dest_file,
-                          log_transfer=log_transfer,
-                          job_name=job_name)
-        # Transfer output file to subdirectory within final output directory
-        else:
+
+        # Setup subdirectory within final output directory, if necessary final output directory
+        if sub_dir is not None:
             dest_dir = os.path.join(self.final_output_dir, sub_dir) + "/"
             self.mkdir(dest_dir)
-            self.transfer(src_path=output_path,
-                          dest_dir=dest_dir,
-                          dest_file=dest_file,
-                          log_transfer=log_transfer,
-                          job_name=job_name)
+        else:
+            dest_dir = self.final_output_dir
+
+        # Transfer output file
+        self.transfer(src_path=output_path,
+                      dest_dir=dest_dir,
+                      dest_file=dest_file,
+                      log_transfer=log_transfer,
+                      job_name=job_name)
+
+        # Return the new path
+        if dest_file is None:
+            return self.standardize_dir(dest_dir) + os.path.basename(output_path)
+        else:
+            return self.standardize_dir(dest_dir) + dest_file
 
     def wait_process(self, proc_name):
         return self.main_processor.wait_process(proc_name)
