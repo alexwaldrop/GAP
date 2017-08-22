@@ -146,7 +146,7 @@ class PubSub(object):
         return data, attributes
 
     @staticmethod
-    def send_message(topic, message=None, attributes=None):
+    def send_message(topic, message=None, attributes=None, encode=True):
         # Send a message to an existing Google cloud Pub/Sub topic
 
         # Return if message and attributes are both empty
@@ -157,6 +157,10 @@ class PubSub(object):
         message = "" if message is None else message
         attributes = {} if attributes is None else attributes
 
+        # Encode the message if needed
+        if encode:
+            message = base64.b64encode(message)
+
         # Parse the attributes and pack into a single data structure message
         attrs = ",".join(["%s=%s" % (str(k), str(v)) for k,v in attributes.iteritems()])
 
@@ -166,4 +170,3 @@ class PubSub(object):
 
         err_msg = "Could not send a message to Google Pub/Sub"
         PubSub._run_cmd(cmd, err_msg=err_msg)
-        

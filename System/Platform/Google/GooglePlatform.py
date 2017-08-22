@@ -7,6 +7,7 @@ from System.Platform import Platform
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from PreemptionNotifier import PreemptionNotifier
+from PubSub import PubSub
 
 class GooglePlatform(Platform):
     def __init__(self, name, platform_config_file, final_output_dir):
@@ -20,6 +21,9 @@ class GooglePlatform(Platform):
 
         # Get Google compute zone from config
         self.zone = self.config["global"]["zone"]
+
+        # Obtain the reporting topic
+        self.report_topic   = self.config["report_topic"]
 
         # Use authentication key file to gain access to google cloud project using Oauth2 authentication
         self.authenticate()
@@ -251,6 +255,14 @@ class GooglePlatform(Platform):
         if wait:
             self.main_processor.wait_process(job_name)
 
+    def handle_report(self, report):
+
+        # Generate message by coonverting the dictionary to a string
+        message = json.dumps(report)
+
+        # Send the message to the Pub/Sub report topic
+        PubSub.send_message(self.report_topic, message=message)
+
     def clean_up(self):
         logging.info("Cleaning up Google Cloud Platform.")
 
@@ -357,6 +369,22 @@ class GooglePlatform(Platform):
         self.__validate_disk_image("Worker Instance",
                                  disk_image_name=self.config["worker_instance"]["disk_image"],
                                  boot_disk_size=self.config["worker_instance"]["boot_disk_size"])
+
+        # Check to see if the reporting Pub/Sub topic exists
+        cmd = "gcloud beta pubsub topics list --format=json"
+        out, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
+
+        if len(err):
+            logging.error("Cannot verify if the reporting topic exists. The following error appeared: %s" % err)
+            raise IOError("Cannot verify if the reporting topic exists. Please check the above error message.")
+
+        topics = json.loads(out)
+        for topic in topics:
+            if topic["topicId"] == self.report_topic:
+                break
+        else:
+            logging.error("Reporting topic '%s' was not found!")
+            raise IOError("Reporting topic '%s' not found!")
 
     def __validate_disk_image(self, disk_image_type, disk_image_name, boot_disk_size):
         # Checks to make sure that disk image exists and is smaller than a given boot disk size

@@ -138,6 +138,33 @@ def configure_import_paths():
     for plat in available_plat_modules:
         sys.path.append("./System/Platform/%s" % plat)
 
+def generate_report(pipeline_name, pipeline, pipeline_worker, err_msg):
+
+    # Initialize report
+    report = {}
+
+    # Add the pipeline ID
+    report["pipeline_ID"] = pipeline_name
+
+    # Set status and error message according to the err_msg variable
+    if err_msg is not None:
+        report["error"] = err_msg
+        report["status"] = "Failed"
+    else:
+        report["error"] = ""
+        report["status"] = "Complete"
+
+    # Get list of final output paths if pipeline has run
+    if pipeline_worker is not None:
+        report["files"] = pipeline_worker.get_final_output()
+    else:
+        report["files"] = {}
+
+    # Handle the report on the platform
+    platform = pipeline.get_platform()
+    if platform is not None:
+        platform.handle_report(report)
+
 def main():
 
     # Configure argparser
@@ -156,6 +183,10 @@ def main():
     # Create pipeline object
     pipeline = Pipeline(args)
 
+    # Initialize variables
+    pipeline_worker = None
+    err_msg = None
+
     try:
         # Load the pipeline components
         pipeline.load()
@@ -166,11 +197,15 @@ def main():
         # Run the pipeline
         pipeline_worker.run()
 
-    except:
+    except BaseException as e:
         logging.error("Pipeline failed!")
+        err_msg = str(e)
         raise
 
     finally:
+        # Generate pipeline run report
+        generate_report(args.pipeline_name, pipeline, pipeline_worker, err_msg)
+
         # Clean up the pipeline
         pipeline.clean_up()
 

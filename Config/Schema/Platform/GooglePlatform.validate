@@ -1,6 +1,7 @@
 PROC_MAX_NR_CPUS            = integer(1,32, default=16)
 PROC_MAX_MEM                = integer(1,208, default=32)
 workspace_dir               = string(default="/data/")
+report_topic                = string(default="pipeline_reports")
 
 [global]
 zone                        = string(default="us-east1-b")

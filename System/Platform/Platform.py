@@ -338,6 +338,10 @@ class Platform(object):
         # Make a directory if it doesn't already exists
         pass
 
+    @abc.abstractmethod
+    def handle_report(self, report):
+        pass
+
     ####### PRIVATE UTILITY METHODS
     @staticmethod
     def generate_unique_id(id_len=6):
