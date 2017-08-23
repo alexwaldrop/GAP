@@ -63,7 +63,8 @@ class GATKHaplotypeCaller(Module):
         if L is not None:
             if isinstance(L, list):
                 for included in L:
-                    opts.append("-L \"%s\"" % included)
+                    if included != "unmapped":
+                        opts.append("-L \"%s\"" % included)
             else:
                 opts.append("-L \"%s\"" % L)
         if XL is not None:
