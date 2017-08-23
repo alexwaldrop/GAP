@@ -64,7 +64,7 @@ class LogSink(object):
 
             out = self._run_cmd(cmd, err_msg=err_msg)
 
-            self.serv_acct = json.loads(out)["writer_identity"].split(":")[1]
+            self.serv_acct = json.loads(out)["writerIdentity"].split(":")[1]
         else:
             # Return self.serv_acct if service account has already been determined
             return self.serv_acct
