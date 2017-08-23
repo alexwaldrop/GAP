@@ -84,7 +84,7 @@ class Pipeline(object):
 
         # Cleaning up the platform
         if self.__platform is not None:
-            self.__platform.clean_up()
+            self.__platform.finalize()
 
     def get_graph(self):
         return self.__graph

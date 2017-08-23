@@ -124,7 +124,7 @@ class PipelineWorker(object):
         try:
             self.__run_node_workers()
         finally:
-            self.__finalize()
+            self.__copy_final_output()
 
     def __copy_final_output(self):
 
@@ -166,26 +166,6 @@ class PipelineWorker(object):
         # Wait for transfers to complete
         for job_name in transfer_jobs:
             self.platform.wait_process(job_name)
-
-    def __copy_logs(self):
-
-        # Get the workspace log directory
-        log_dir     = self.platform.get_workspace_dir(sub_dir="log")
-        job_name    = "return_logs"
-
-        # Transfer the log directory as final output
-        self.platform.return_output(job_name, log_dir, log_transfer=False)
-
-        # Wait for transfer to complete
-        self.platform.wait_process(job_name)
-
-    def __finalize(self):
-
-        # Copy the final output paths
-        self.__copy_final_output()
-
-        # Copy the logs directory
-        self.__copy_logs()
 
     def get_final_output(self):
         return self.final_output

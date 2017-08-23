@@ -269,6 +269,18 @@ class Platform(object):
         else:
             return self.standardize_dir(dest_dir) + dest_file
 
+    def return_logs(self):
+
+        # Get the workspace log directory
+        log_dir     = self.get_workspace_dir(sub_dir="log")
+        job_name    = "return_logs"
+
+        # Transfer the log directory as final output
+        self.return_output(job_name, log_dir, log_transfer=False)
+
+        # Wait for transfer to complete
+        self.wait_process(job_name)
+
     def wait_process(self, proc_name):
         return self.main_processor.wait_process(proc_name)
 
@@ -295,6 +307,19 @@ class Platform(object):
         cmd         = "cp -rs %s %s" % (src_path, dest_path)
         job_name    = "linking_file_%s_to_%s" % (os.path.basename(src_path), os.path.basename(dest_path))
         self.main_processor.run(job_name, cmd)
+
+    def finalize(self):
+
+        # Copy the logs to the bucket, if platform was launched
+        try:
+            if self.launched:
+                self.return_logs()
+        except BaseException as e:
+            logging.error("Could not return the logs to the output directory. "
+                          "The following error appeared: %s" % str(e))
+
+        # Clean up the platform
+        self.clean_up()
 
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
     @abc.abstractmethod
