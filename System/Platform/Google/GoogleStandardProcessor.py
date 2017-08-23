@@ -232,7 +232,7 @@ class GoogleStandardProcessor(Processor):
 
         # Install CRCMOD python package
         logging.info("(%s) Configuring CRCMOD for fast data tranfer using gsutil." % self.name)
-        cmd = "sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod"
+        cmd = "python -c 'import crcmod' 2>/dev/null || (sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod)"
         self.run("configCRCMOD", cmd)
         self.wait_process("configCRCMOD")
 
