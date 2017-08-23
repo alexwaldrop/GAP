@@ -55,7 +55,7 @@ class Processor(object):
 
         # Run command using subprocess popen and add Popen object to self.processes
         logging.info("(%s) Process '%s' started!" % (self.name, job_name))
-        logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, cmd))
+        logging.debug("(%s) Process '%s' has the following command:\n    %s" % (self.name, job_name, original_cmd))
 
         # Generating process arguments
         kwargs = dict()
