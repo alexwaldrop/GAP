@@ -108,7 +108,7 @@ class PubSub(object):
             topic_editors = policy.get("roles/editor", [])
 
             # Add service account as an editor of the policy
-            topic_editors.append(policy.service_account(serv_acct))
+            topic_editors.add(policy.service_account(serv_acct))
             policy["roles/editor"] = topic_editors
 
             # Set policy for subscription
