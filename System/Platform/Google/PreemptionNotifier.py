@@ -115,9 +115,21 @@ class PreemptionNotifier(threading.Thread):
         logging.info("Destroying preemption notifier...")
         self.stop()
         if self.log_sink is not None:
-            self.log_sink.destroy()
+            # Try to delete log sink
+            try:
+                self.log_sink.destroy()
+            except BaseException, e:
+                logging.error("Unable to delete preemption log sink: %s" % self.log_sink_name)
+                if e.message != "":
+                    logging.error("The following error was received: %s" % e.message)
         if self.pub_sub is not None:
-            self.pub_sub.clean_up()
+            # Try to delete PubSub subscription and topic
+            try:
+                self.pub_sub.clean_up()
+            except BaseException, e:
+                logging.error("Unable to completely delete Preemption Notifier Pub/Sub! Topic: %s. Subscription: %s." % (self.preempt_topic, self.preempt_sub))
+                if e.message != "":
+                    logging.error("The following error was received: %s" % e.message)
 
     def __get_key_field(self, field_name):
         # Parse JSON service account key file and return email address associated with account
