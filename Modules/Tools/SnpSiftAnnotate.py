@@ -14,8 +14,8 @@ class SnpSiftAnnotate(Module):
         self.add_argument("snpsift",            is_required=True, is_resource=True)
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=1)
-        self.add_argument("mem",                is_required=True, default_value=1)
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value=6)
 
     def define_output(self, platform, split_name=None):
         # Declare VCF output filename
