@@ -1,6 +1,5 @@
 import logging
 import math
-import os
 
 from Modules import Module
 
