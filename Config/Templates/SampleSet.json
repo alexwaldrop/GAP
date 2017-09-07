@@ -10,7 +10,7 @@
 			"R2" : "gs://davelab_temp/pipeline_comp/4944_a/C9FH8ANXX_s5_2_I13_0124_SL159777.fastq.gz"
 				},
 	  "is_tumor" : true,
-	  "lib_name" : "DERP"
+	  "lib_name" : "LIB_NAME"
 		}
 	]
 }
