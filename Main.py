@@ -17,7 +17,6 @@ def configure_argparser(argparser_obj):
 
     def platform_type(arg_string):
         value = arg_string.capitalize()
-
         if value not in available_plat_modules:
             err_msg = "%s is not a valid platform! " \
                       "Please view usage menu for a list of available platforms" % value
@@ -28,6 +27,7 @@ def configure_argparser(argparser_obj):
     # Path to sample set config file
     argparser_obj.add_argument("--input",
                                action="store",
+                               type=argparse.FileType('r'),
                                dest="sample_set_config",
                                required=True,
                                help="Path to config file containing input files "
@@ -36,6 +36,7 @@ def configure_argparser(argparser_obj):
     # Path to sample set config file
     argparser_obj.add_argument("--name",
                                action="store",
+                               type=str,
                                dest="pipeline_name",
                                required=True,
                                help="Descriptive pipeline name. Will be appended to final output dir. Should be unique across runs.")
@@ -43,6 +44,7 @@ def configure_argparser(argparser_obj):
     # Path to pipeline graph config file
     argparser_obj.add_argument("--pipeline_config",
                                action='store',
+                               type=argparse.FileType('r'),
                                dest='graph_config',
                                required=True,
                                help="Path to config file defining "
@@ -51,6 +53,7 @@ def configure_argparser(argparser_obj):
     # Path to resources config file
     argparser_obj.add_argument("--res_kit_config",
                                action='store',
+                               type=argparse.FileType('r'),
                                dest='res_kit_config',
                                required=True,
                                help="Path to config file defining "
@@ -59,6 +62,7 @@ def configure_argparser(argparser_obj):
     # Path to platform config file
     argparser_obj.add_argument("--plat_config",
                                action='store',
+                               type=argparse.FileType('r'),
                                dest='platform_config',
                                required=True,
                                help="Path to config file defining "
@@ -89,6 +93,7 @@ def configure_argparser(argparser_obj):
     # Final output dir
     argparser_obj.add_argument("-o", "--output_dir",
                               action='store',
+                              type=str,
                               dest="final_output_dir",
                               required=True,
                               help="Absolute path to the final output directory.")
