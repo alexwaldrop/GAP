@@ -20,7 +20,7 @@ def configure_argparser(argparser_obj):
         if value not in available_plat_modules:
             err_msg = "%s is not a valid platform! " \
                       "Please view usage menu for a list of available platforms" % value
-            raise argparser_obj.ArgumentTypeError(err_msg)
+            raise argparse.ArgumentTypeError(err_msg)
 
         return available_plat_modules[value]
 
