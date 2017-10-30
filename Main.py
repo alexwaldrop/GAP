@@ -27,7 +27,7 @@ def configure_argparser(argparser_obj):
     # Path to sample set config file
     argparser_obj.add_argument("--input",
                                action="store",
-                               type=argparse.FileType('r'),
+                               #type=argparse.FileType('r'),
                                dest="sample_set_config",
                                required=True,
                                help="Path to config file containing input files "
@@ -44,7 +44,7 @@ def configure_argparser(argparser_obj):
     # Path to pipeline graph config file
     argparser_obj.add_argument("--pipeline_config",
                                action='store',
-                               type=argparse.FileType('r'),
+                               #type=argparse.FileType('r'),
                                dest='graph_config',
                                required=True,
                                help="Path to config file defining "
@@ -53,7 +53,7 @@ def configure_argparser(argparser_obj):
     # Path to resources config file
     argparser_obj.add_argument("--res_kit_config",
                                action='store',
-                               type=argparse.FileType('r'),
+                               #type=argparse.FileType('r'),
                                dest='res_kit_config',
                                required=True,
                                help="Path to config file defining "
@@ -62,7 +62,7 @@ def configure_argparser(argparser_obj):
     # Path to platform config file
     argparser_obj.add_argument("--plat_config",
                                action='store',
-                               type=argparse.FileType('r'),
+                               #type=argparse.FileType('r'),
                                dest='platform_config',
                                required=True,
                                help="Path to config file defining "
