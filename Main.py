@@ -25,10 +25,24 @@ def configure_argparser(argparser_obj):
 
         return available_plat_modules[value]
 
+    def file_type(arg_string):
+        """
+        This function check both the existance of input file and the file size
+        :param arg_string: file name as string
+        :return: file name as string
+        """
+        if not os.path.exists(arg_string):
+            err_msg = "%s does not exist!! " \
+                      "Please provide a correct file!!" % arg_string
+            raise argparse.ArgumentTypeError(err_msg)
+
+        return arg_string
+
     # Path to sample set config file
     argparser_obj.add_argument("--input",
                                action="store",
                                #type=argparse.FileType('r'),
+                               type=file_type,
                                dest="sample_set_config",
                                required=True,
                                help="Path to config file containing input files "
@@ -46,6 +60,7 @@ def configure_argparser(argparser_obj):
     argparser_obj.add_argument("--pipeline_config",
                                action='store',
                                #type=argparse.FileType('r'),
+                               type=file_type,
                                dest='graph_config',
                                required=True,
                                help="Path to config file defining "
@@ -55,6 +70,7 @@ def configure_argparser(argparser_obj):
     argparser_obj.add_argument("--res_kit_config",
                                action='store',
                                #type=argparse.FileType('r'),
+                               type=file_type,
                                dest='res_kit_config',
                                required=True,
                                help="Path to config file defining "
@@ -64,6 +80,7 @@ def configure_argparser(argparser_obj):
     argparser_obj.add_argument("--plat_config",
                                action='store',
                                #type=argparse.FileType('r'),
+                               type=file_type,
                                dest='platform_config',
                                required=True,
                                help="Path to config file defining "
