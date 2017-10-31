@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import abc
 
@@ -8,11 +9,17 @@ class BaseParser(object):
     # Base class for parsing information from a config file and validating it against a specification file
     def __init__(self, config_file, config_spec_file):
 
-        # Path to config file
-        self.config_file = config_file
+        # Obtain the path to config file (part of the current directory)
+        if os.path.isabs(config_file):
+            self.config_file = config_file
+        else:
+            self.config_file = os.path.join(os.getcwd(), config_file)
 
-        # Path to config validation file
-        self.config_spec_file = config_spec_file
+        # Obtain the path to config validation file (part of the source code main directory)
+        if os.path.isabs(config_file):
+            self.config_spec_file = config_spec_file
+        else:
+            self.config_spec_file = os.path.join(sys.path[0], config_spec_file)
 
         # Check to make sure config file and config spec file actually exist
         self.__check_files()
