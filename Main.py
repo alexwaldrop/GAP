@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.7
 
 import sys
+import os
 import argparse
 import logging
 
@@ -131,17 +132,17 @@ def configure_logging(verbosity):
 
 def configure_import_paths():
 
-    # Add the current directory to path
-    sys.path.insert(0, ".")
+    # Get the directory of the executable
+    exec_dir = sys.path[0]
 
     # Add the modules paths to the python path
-    sys.path.insert(0, "./Modules/Tools/")
-    sys.path.insert(0, "./Modules/Splitters/")
-    sys.path.insert(0, "./Modules/Mergers/")
+    sys.path.insert(0, os.path.join(exec_dir, "Modules/Tools/"))
+    sys.path.insert(0, os.path.join(exec_dir, "Modules/Splitters/"))
+    sys.path.insert(0, os.path.join(exec_dir, "Modules/Mergers/"))
 
     # Add the available platforms to the python path
     for plat in available_plat_modules:
-        sys.path.insert(0, "./System/Platform/%s" % plat)
+        sys.path.insert(0, os.path.join(exec_dir, "System/Platform/%s" % plat))
 
 def generate_report(pipeline_name, pipeline, pipeline_worker, err_msg):
 
