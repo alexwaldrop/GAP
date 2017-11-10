@@ -18,7 +18,7 @@ The framewrok uses [Git] as version control system. The entire codebase is hoste
   $ git clone git@gitlab.oit.duke.edu:davelab/GAP.git
   ```
   **_NOTE_**: You are required to set up the SSH KeyGen before the execution of above command line. Please refer to this [guide][SSH KeyGen Guide] to set up the SSH KeyGen.
-  3. Make sure that you are currently on the most up to date **developer** branch. To check that execute following command in your `Terminal`
+  3. Make sure that you are currently on the most up to date **develop** branch. To check that execute following command in your `Terminal`
   ```sh
   $ git branch
   
@@ -59,15 +59,43 @@ The framewrok uses [Git] as version control system. The entire codebase is hoste
     |`define_command`          | get all the tool specific arguments and build the command line for the tool|
 
   8. Add tool specific resources in `ResourceKit.config` file
-  9. Make tool specific sampleset file in `json`
+  9. Make tool specific sampleset file in `json` format
   10. Make tool specific `Graph.config` file
-  11. Test the tool module by executing the following command line. Please make sure you are executing the command line from the framework root directory.
+  11. If needed, please make tool specific `Platform.config` file  
+  12. Test the tool module by executing the following command line. Please make sure you are executing the command line from the framework root directory.
   ```sh
-  $ python ./Main.py
+  $ python Main.py --input <path_to_sample_file> \
+                   --name <pipeline_name> \
+                   --pipeline_config <path_to_graph_config> \
+                   --res_kit_config <path_to_resource_kit_config> \
+                   --plat_config <path_to_platform_config> \
+                   --plat_name <platform_name> \
+                   -o <path_to_output_directory> \
+                   -vvv
   ```
-
+  13. Once you are satisfied with your testing, add the module file to `git` repo
+  ```sh
+  $ git add <path_to_module_file>
+  ```
+  14. Commit the changes. Following command will open your default editor. Please add issue number in your heading to fix the corresponding issue on remote repo. For example, Fixes #164 Impement Annovar Module. You can add more details, if you wish in line below the heading.  
+  ```sh
+  $ git commit
+  ```
+  15. Push feature specific branch to remote repo
+  ```sh
+  $ git push origin <feature_branch>
+  ```
+  16. Create a merge request on [GitLab]
+  17. Once the merge request approve, remove the local feature branch. Please follow a series of steps as shown below:
+  ```sh
+  $ git checkout develop            #change branch to develop
+  $ git pull                        #pull all the changes from remote to local
+  $ git fetch -p                    #fetch branches/tags from rempte repo
+  $ git branch -d <feature_branch>  #remove local feature branch
+  ```
 # To Do
-  1. Add workflow diagram
+  1. Add detail description about step - 7
+  2. Add workflow diagram
 
 [//]: # (These are reference links used in the body of this note and get stripped out when the markdown processor does its job. There is no need to format nicely because it shouldn't be seen.)
 
