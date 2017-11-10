@@ -13,7 +13,7 @@ The framewrok uses [Git] as version control system. The entire codebase is hoste
 
 ## Steps to follow
   1. Create an issue on GitLab (e.g. Implement Annovar Module)
-  2. If you are developing your first tool module, you might not have to clone the framework repository. In that case, please clone the repository by executing the following command line under your favourite directory.
+  2. If you are developing your first tool module, you might have to clone the framework repository. In that case, please clone the repository by executing the following command line under your favourite directory.
   ```sh
   $ git clone git@gitlab.oit.duke.edu:davelab/GAP.git
   ```
@@ -30,11 +30,11 @@ The framewrok uses [Git] as version control system. The entire codebase is hoste
   ```sh
   $ git branch <feature_branch>
   ```
-  5. Change brach to feature branch
+  5. Change your branch to the feature branch
   ```sh
   $ git checkout <feature_branch>
   ```
-  6. Make sure the change of branch
+  6. Confirm the change of branch
   ```sh
   $ git branch
   
@@ -58,8 +58,8 @@ The framewrok uses [Git] as version control system. The entire codebase is hoste
     |`define_output`           | generate the uniq tool specific output file name |
     |`define_command`          | get all the tool specific arguments and build the command line for the tool|
 
-  8. Add tool specific resources in `ResourceKit.config` file
-  9. Make tool specific sampleset file in `json` format
+  8. Add tool specific resources in the `ResourceKit.config` file
+  9. Make tool specific sample set file in `json` (`Config/Templates/SampleSet.json`)
   10. Make tool specific `Graph.config` file
   11. If needed, please make tool specific `Platform.config` file  
   12. Test the tool module by executing the following command line. Please make sure you are executing the command line from the framework root directory.

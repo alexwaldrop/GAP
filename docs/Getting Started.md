@@ -1,7 +1,7 @@
 # Getting Started
 
-This guide will help you with the followings:
-  1. Setting up your system for [GAP] framework
+This guide will help you with the following:
+  1. Setting up your system for the [GAP] framework
   2. Design and implement your first pipeline
   3. Execute your first pipeline
 
