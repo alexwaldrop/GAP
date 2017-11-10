@@ -1,4 +1,4 @@
-# Getting Starterd
+# Getting Started
 
 This guide will help you with the followings:
   1. Setting up your system for [GAP] framework
