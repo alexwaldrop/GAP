@@ -1,0 +1,16 @@
+{
+	"paired_end" : true,
+	"seq_platform" : "Illumina",
+	"samples" :
+	[
+    	{
+      "name"  : "SC_test_10X",
+      "paths" : {
+		  	"fastq_folder" : "gs://davelab_home/rk213/test_sc_fastqs/",
+			"id" : "jurkat-293t_test"
+				},
+	  "is_tumor" : false,
+	  "lib_name" : "LIB_NAME"
+		}
+	]
+}
