@@ -38,6 +38,9 @@ class LogSink(object):
     def create(self):
         # Create a Google Cloud log sink using gcloud
         # Log sink will direct messages from cloud logging to the log destination (e.g. PubSub topic))
+
+        logging.debug("Creating log sink %s." % self.name)
+
         opts = list()
         opts.append("--quiet")
         opts.append("--no-user-output-enabled")
@@ -51,6 +54,9 @@ class LogSink(object):
 
     def destroy(self):
         # Remove log sink from Google Cloud
+
+        logging.debug("Destroying log sink %s." % self.name)
+
         cmd = "gcloud --quiet --no-user-output-enabled beta logging sinks delete %s" % self.name
         err_msg = "Could not destroy a logging sink on Google Stackdriver Logging"
         self._run_cmd(cmd, err_msg=err_msg)

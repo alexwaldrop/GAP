@@ -52,7 +52,7 @@ class PreemptionNotifier(threading.Thread):
 
     def __init_log_sink(self):
         # Create log sink to send preemption events to PubSub preempt topic
-        logging.debug("Creating Google Logging sink to send preemption events to Google Pub/Sub.")
+        logging.debug("Configuring Google Logging sink to send preemption events to Google Pub/Sub.")
         log_sink = LogSink(self.log_sink_name, self.log_sink_dest, log_filter=self.log_sink_filter)
         logging.info("Preemption logging sink '%s' successfully created!" % self.log_sink_name)
 
