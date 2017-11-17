@@ -16,7 +16,7 @@ class BaseParser(object):
             self.config_file = os.path.join(os.getcwd(), config_file)
 
         # Obtain the path to config validation file (part of the source code main directory)
-        if os.path.isabs(config_file):
+        if os.path.isabs(config_spec_file):
             self.config_spec_file = config_spec_file
         else:
             self.config_spec_file = os.path.join(sys.path[0], config_spec_file)
