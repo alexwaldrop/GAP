@@ -106,9 +106,19 @@ class SampleSet (object):
         # Searches in self.data for a path matching the src_path
         # Updates path to refelct transfer to dest_dir
 
+        # Remove last backslash if path is a directory
+        is_dir = src_path.endswith("/")
+        if is_dir:
+            src_path = src_path[:-1]
+
         # Get name of file after transfer
         file_name   = src_path.split("/")[-1]
         new_path    = os.path.join(dest_dir, file_name)
+
+        # Re-append last backslash if directory
+        if is_dir:
+            src_path += "/"
+            new_path += "/"
 
         # Search through paths to find the correct path to update
         path_types      = self.path_keys

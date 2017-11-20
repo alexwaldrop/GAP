@@ -4,11 +4,11 @@
 	"samples" :
 	[
     	{
-      "name"  : "SC_test_10X",
+      "name"  : "jurkat-293t_test",
       "paths" : {
-		  	"fastq_folder" : "gs://davelab_home/rk213/test_sc_fastqs/",
-			"id" : "jurkat-293t_test"
+		  	"fastq_folder" : "gs://davelab_home/rk213/test_sc_fastqs/"
 				},
+	  "id" : "jurkat-293t_test",
 	  "is_tumor" : false,
 	  "lib_name" : "LIB_NAME"
 		}
