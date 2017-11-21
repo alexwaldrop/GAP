@@ -1,5 +1,6 @@
-from Modules import Module
 import os
+
+from Modules import Module
 
 class CellRanger(Module):
     def __init__(self, module_id):
@@ -11,22 +12,17 @@ class CellRanger(Module):
         self.output_keys = ["cellranger_output_dir"]
 
     def define_input(self):
-        self.add_argument("sample_name",             is_required=True)
-        self.add_argument("fastq_folder",   is_required=True)
-        self.add_argument("cellranger",     is_required=True, is_resource=True)
-        self.add_argument("singlecell_hg19_rnaseq_ref",
-                          is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=12)
-        self.add_argument("mem",            is_required=True, default_value=48)
+        self.add_argument("sample_name",                is_required=True)
+        self.add_argument("fastq_folder",               is_required=True)
+        self.add_argument("cellranger",                 is_required=True, is_resource=True)
+        self.add_argument("singlecell_hg19_rnaseq_ref", is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",                    is_required=True, default_value=12)
+        self.add_argument("mem",                        is_required=True, default_value=48)
 
     def define_output(self, platform, split_name=None):
         # Declare cell ranger output dir
         sample_name = self.get_arguments("sample_name").get_value()
         self.add_output(platform, "cellranger_output_dir", sample_name, is_path=True)
-
-        # Declare web output
-        #cell_ranger_dir = self.get_output("cellranger_output_dir")
-        #self.add_output(platform, "web_report", os.path.join(cell_ranger_dir, "web"))
 
     def define_command(self, platform):
         # Generate command for running Cell Ranger
