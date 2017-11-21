@@ -106,9 +106,15 @@ class SampleSet (object):
         # Searches in self.data for a path matching the src_path
         # Updates path to refelct transfer to dest_dir
 
-        # Get name of file after transfer
-        file_name   = src_path.split("/")[-1]
-        new_path    = os.path.join(dest_dir, file_name)
+        # Update source path path to the new path, depending if directory or not
+        if src_path.endswith("/"):
+            dir_name    = src_path.rstrip("/").split("/")[-1]
+            new_path    = os.path.join(dest_dir, dir_name)
+            new_path    += "/"
+
+        else:
+            file_name   = src_path.split("/")[-1]
+            new_path    = os.path.join(dest_dir, file_name)
 
         # Search through paths to find the correct path to update
         path_types      = self.path_keys
