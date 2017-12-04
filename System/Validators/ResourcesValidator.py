@@ -20,8 +20,13 @@ class ResourcesValidator(Validator):
                 if not res_obj.is_remote():
                     continue
 
+                # Add wildcard if path is prefix
+                res_path = res_obj.get_path()
+                if res_obj.is_prefix():
+                    res_path += "*"
+
                 # Check if remote path exists
-                if not self.platform.path_exists(res_obj.get_path()):
+                if not self.platform.path_exists(res_path):
                     self.report_error("In resources, the path to the resource '%s' of type '%s' does not exist."
                                       "Check if the containing directory "
                                       "or the path name is correct." % (res_name, res_type))
