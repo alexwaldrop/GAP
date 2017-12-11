@@ -6,16 +6,18 @@ class CellRanger(Module):
     def __init__(self, module_id):
         super(CellRanger, self).__init__(module_id)
 
-        self.input_keys = ["sample_name", "fastq_folder", "cellranger",
-                           "singlecell_hg19_rnaseq_ref", "nr_cpus", "mem"]
+        self.input_keys = ["sample_name", "R1_fastqs", "R2_fastqs",
+                           "cellranger", "singlecell_rnaseq_ref",
+                           "nr_cpus", "mem"]
 
         self.output_keys = ["cellranger_output_dir"]
 
     def define_input(self):
         self.add_argument("sample_name",                is_required=True)
-        self.add_argument("fastq_folder",               is_required=True)
+        self.add_argument("R1_fastqs",                  is_required=True)
+        self.add_argument("R2_fastqs",                  is_required=True)
         self.add_argument("cellranger",                 is_required=True, is_resource=True)
-        self.add_argument("singlecell_hg19_rnaseq_ref", is_required=True, is_resource=True)
+        self.add_argument("singlecell_rnaseq_ref",      is_required=True, is_resource=True)
         self.add_argument("nr_cpus",                    is_required=True, default_value=12)
         self.add_argument("mem",                        is_required=True, default_value=48)
 
@@ -28,20 +30,40 @@ class CellRanger(Module):
         # Generate command for running Cell Ranger
         cellranger      = self.get_arguments("cellranger").get_value()
         sample_name     = self.get_arguments("sample_name").get_value()
-        fastq_dir       = self.get_arguments("fastq_folder").get_value()
-        transcriptome   = self.get_arguments("singlecell_hg19_rnaseq_ref").get_value()
+        R1_fastqs       = self.get_arguments("R1_fastqs").get_value()
+        R2_fastqs       = self.get_arguments("R2_fastqs").get_value()
+        transcriptome   = self.get_arguments("singlecell_rnaseq_ref").get_value()
         nr_cpus         = self.get_arguments("nr_cpus").get_value()
         mem             = self.get_arguments("mem").get_value()
 
         cellranger_dir  = os.path.dirname(cellranger)
         source_path     = os.path.join(cellranger_dir, "sourceme.bash")
         wrk_dir         = platform.get_workspace_dir()
+        fastq_dir       = os.path.join(wrk_dir, "fastqs")
 
         # Make sure that the fastq directory is formatted like a directory
         if not fastq_dir.endswith("/"):
             fastq_dir += "/"
 
-        cmd = "cd {0}; source {1}; cellranger count --id={2} --fastqs={3} --transcriptome={4} --localcores={5} --localmem={6}".format(
-            wrk_dir, source_path, sample_name, fastq_dir, transcriptome, nr_cpus, mem)
+        mv_R1_cmd = ""
+        mv_R2_cmd = ""
+        for i in range(len(R1_fastqs)):
+            new_R1 = os.path.join(fastq_dir, "sample_S0_L000_R1_00{}.fastq.gz".format(i))
+            new_R2 = os.path.join(fastq_dir, "sample_S0_L000_R2_00{}.fastq.gz".format(i))
+            mv_R1_cmd += "mv {0} {1};".format(R1_fastqs[i], new_R1)
+            mv_R2_cmd += "mv {0} {1};".format(R2_fastqs[i], new_R2)
+
+
+        # We accommodate three idiosynchroses of Cell Ranger:
+        # 1. CR accepts a folder of fastqs, not a list of files,
+        #    so we move the fastqs to fastq_dir before calling Cell Ranger
+        # 2. CR only accepts certain formats of fastq file names,
+        #    so we rename the fastq files when moving
+        # 3. If interrupted, the lock file needs to be removed before restarting,
+        #    so we remove the lock file just in case it exists
+        cmd = "cd {0}; source {1}; rm -f {0}{5}/_lock; mkdir {2}; {3} {4} " \
+              "cellranger count --id={5} --fastqs={2} --transcriptome={6} --localcores={7} --localmem={8}".format(
+            wrk_dir, source_path, fastq_dir, mv_R1_cmd, mv_R2_cmd, sample_name,
+            transcriptome, nr_cpus, mem)
 
         return cmd
