@@ -5,7 +5,7 @@ class RSEM(Module):
     def __init__(self, module_id):
         super(RSEM, self).__init__(module_id)
 
-        self.input_keys = ["bam", "rsem", "rsem_ref", "output_file_name_prefix", "nr_cpus", "mem"]
+        self.input_keys = ["transcriptome_mapped_bam", "rsem", "rsem_ref", "output_file_name_prefix", "nr_cpus", "mem"]
 
         self.output_keys = ["isoforms_results", "genes_results"]
 
@@ -15,7 +15,7 @@ class RSEM(Module):
         self.quick_command = True
 
     def define_input(self):
-        self.add_argument("bam",                        is_required=True)
+        self.add_argument("transcriptome_mapped_bam",   is_required=True)
         self.add_argument("rsem",                       is_required=True, is_resource=True)
         self.add_argument("rsem_ref",                   is_required=True, is_resource=True)
         self.add_argument("output_file_name_prefix",    is_required=True, default_value="expression")
@@ -39,7 +39,7 @@ class RSEM(Module):
     def define_command(self, platform):
 
         # Get arguments
-        bam         = self.get_arguments("bam").get_value()
+        bam         = self.get_arguments("transcriptome_mapped_bam").get_value()
         rsem        = self.get_arguments("rsem").get_value()
         rsem_ref    = self.get_arguments("rsem_ref").get_value()
         nr_cpus     = self.get_arguments("nr_cpus").get_value()
