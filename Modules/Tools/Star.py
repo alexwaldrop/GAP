@@ -8,7 +8,7 @@ class Star(Module):
         self.input_keys = ["R1", "R2", "star", "ref", "output_file_name_prefix", "quant_mode",
                            "out_unmapped_within_sam", "output_file_type", "twopass_mode", "nr_cpus", "mem"]
 
-        self.output_keys = ["genome_mapped_bam", "transcriptome_mapped_bam", "gene_read_counts",
+        self.output_keys = ["bam", "transcriptome_mapped_bam", "raw_read_counts",
                             "splice_junction_out", "final_log"]
 
         self.output_prefix = None
@@ -37,9 +37,9 @@ class Star(Module):
 
         self.output_prefix = output_file_name
 
-        self.add_output(platform, "genome_mapped_bam", "%s.Aligned.sortedByCoord.out.bam" % output_file_name)
+        self.add_output(platform, "bam", "%s.Aligned.sortedByCoord.out.bam" % output_file_name)
         self.add_output(platform, "transcriptome_mapped_bam", "%s.Aligned.toTranscriptome.out.bam" % output_file_name)
-        self.add_output(platform, "gene_read_counts", "%s.ReadsPerGene.out.tab" % output_file_name)
+        self.add_output(platform, "raw_read_counts", "%s.ReadsPerGene.out.tab" % output_file_name)
         self.add_output(platform, "splice_junction_out", "%s.SJ.out.tab" % output_file_name)
         self.add_output(platform, "final_log", "%s.Log.final.out" % output_file_name)
 
