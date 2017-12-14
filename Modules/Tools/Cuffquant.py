@@ -16,7 +16,7 @@ class Cuffquant(Module):
         self.add_argument("ref",            is_required=True, is_resource=True)
         self.add_argument("gtf",            is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
-        self.add_argument("mem",            is_required=True, default_value= "nr_cpus" * 2)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self, platform, split_name=None):
 

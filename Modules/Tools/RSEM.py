@@ -20,7 +20,7 @@ class RSEM(Module):
         self.add_argument("rsem_ref",                   is_required=True, is_resource=True)
         self.add_argument("output_file_name_prefix",    is_required=True, default_value="expression")
         self.add_argument("nr_cpus",                    is_required=True, default_value=8)
-        self.add_argument("mem",                        is_required=True, default_value="nr_cpus" * 2)
+        self.add_argument("mem",                        is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self, platform, split_name=None):
 
