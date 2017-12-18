@@ -256,6 +256,11 @@ class Platform(object):
         else:
             dest_dir = self.final_output_dir
 
+        # Prepend the run name to the output path if dest_file not specified
+        if dest_file is None:
+            filename = output_path.strip("/").split("/")[-1]
+            dest_file = "{0}_{1}".format(self.name, filename)
+
         # Transfer output file
         self.transfer(src_path=output_path,
                       dest_dir=dest_dir,
