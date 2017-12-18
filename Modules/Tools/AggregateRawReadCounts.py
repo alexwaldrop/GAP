@@ -17,7 +17,7 @@ class AggregateRawReadCounts(Module):
         self.add_argument("raw_read_counts",    is_required=True)
         self.add_argument("aggregate",          is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
-        self.add_argument("mem",                is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self, platform, split_name=None):
 
