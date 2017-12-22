@@ -18,6 +18,7 @@ class RSEM(Module):
         self.add_argument("transcriptome_mapped_bam",   is_required=True)
         self.add_argument("rsem",                       is_required=True, is_resource=True)
         self.add_argument("rsem_ref",                   is_required=True, is_resource=True)
+        self.add_argument("paired_end",                 is_required=True, default_value=True)
         self.add_argument("output_file_name_prefix",    is_required=True, default_value="expression")
         self.add_argument("nr_cpus",                    is_required=True, default_value=8)
         self.add_argument("mem",                        is_required=True, default_value="nr_cpus * 2")
@@ -42,6 +43,7 @@ class RSEM(Module):
         bam         = self.get_arguments("transcriptome_mapped_bam").get_value()
         rsem        = self.get_arguments("rsem").get_value()
         rsem_ref    = self.get_arguments("rsem_ref").get_value()
+        paired_end  = self.get_arguments("paired_end").get_value()
         nr_cpus     = self.get_arguments("nr_cpus").get_value()
 
         # Get current working dir
@@ -50,7 +52,14 @@ class RSEM(Module):
         # Generate output file name prefix for STAR
         output_file_name_prefix = os.path.join(working_dir, self.output_prefix)
 
-        #generate command line for RSEM
-        cmd = "{0} --time --bam --no-bam-output -p {1} --paired-end {2} {3} {4} !LOG3!".format(rsem, nr_cpus, bam, rsem_ref, output_file_name_prefix)
+        #generate command line for RSEM according to input read type
+        if paired_end:
+            cmd = "{0} --time --bam --no-bam-output -p {1} --paired-end {2} {3} {4} !LOG3!".format(rsem, nr_cpus, bam,
+                                                                                                   rsem_ref,
+                                                                                                   output_file_name_prefix)
+        else:
+            cmd = "{0} --time --bam --no-bam-output -p {1} {2} {3} {4} !LOG3!".format(rsem, nr_cpus, bam,
+                                                                                                   rsem_ref,
+                                                                                                   output_file_name_prefix)
 
         return cmd
