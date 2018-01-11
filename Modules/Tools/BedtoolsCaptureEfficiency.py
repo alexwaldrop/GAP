@@ -11,14 +11,16 @@ class BedtoolsCaptureEfficiency(Module):
         self.output_keys    = ["capture_bed"]
 
     def define_input(self):
-        self.add_argument("bam",            is_required=True)
-        self.add_argument("bam_idx",        is_required=True)
-        self.add_argument("target_bed",     is_required=True, is_resource=True)
-        self.add_argument("samtools",       is_required=True, is_resource=True)
-        self.add_argument("bedtools",       is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=1)
-        self.add_argument("mem",            is_required=True, default_value=12)
-        self.add_argument("subsample_perc", is_required=True, default_value=0.25)
+        self.add_argument("bam",                is_required=True)
+        self.add_argument("bam_idx",            is_required=True)
+        self.add_argument("target_bed",         is_required=True, is_resource=True)
+        self.add_argument("samtools",           is_required=True, is_resource=True)
+        self.add_argument("bedtools",           is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=1)
+        self.add_argument("mem",                is_required=True, default_value=12)
+        self.add_argument("subsample_perc",     is_required=True, default_value=0.25)
+        self.add_argument("min_overlap_frac",   is_required=True, default_value=None)
+        self.add_argument("split",              is_required=True, default_value=False)
 
     def define_output(self, platform, split_name=None):
         # Declare capture bed output filename
@@ -39,6 +41,8 @@ class BedtoolsCaptureEfficiency(Module):
         samtools            = self.get_arguments("samtools").get_value()
         bedtools            = self.get_arguments("bedtools").get_value()
         target_bed          = self.get_arguments("target_bed").get_value()
+        min_overlap_frac    = self.get_arguments("min_overlap_frac").get_value()
+        split               = self.get_arguments("split").get_value()
 
         # Get output file names
         genome_file         = self.get_output("genome_file")
@@ -51,15 +55,23 @@ class BedtoolsCaptureEfficiency(Module):
         # Case: Run bedtools intersect on subsampled bam
         if (subsample_perc < 1.0) and (subsample_perc > 0.0):
             # generate command for subsampling bam file
-            subsample_cmd = "%s view -s %f -b %s" % (samtools, subsample_perc, bam)
-            intersect_cmd = "%s intersect -a stdin -b %s -c -sorted -bed -g %s > %s !LOG2!" \
-                            % (bedtools, target_bed, genome_file, capture_bed)
+            subsample_cmd = "%s view -s %f -b %s !LOG2!" % (samtools, subsample_perc, bam)
+            intersect_cmd = "%s intersect -a stdin -b %s -c -sorted -bed -g %s" % (bedtools, target_bed, genome_file)
             intersect_cmd = subsample_cmd + " | " + intersect_cmd
 
         # Case: Run bedtools intersect on full bam
         else:
-            intersect_cmd = "%s intersect -a %s -b %s -c -sorted -bed -g %s > %s !LOG2!" \
-                            % (bedtools, bam, target_bed, genome_file, capture_bed)
+            intersect_cmd = "%s intersect -a %s -b %s -c -sorted -bed -g %s" \
+                            % (bedtools, bam, target_bed, genome_file)
 
-        intersect_cmd = "%s ; %s" % (make_genome_file_cmd, intersect_cmd)
-        return intersect_cmd
+        # Add bedtools argumenmts
+        if min_overlap_frac is not None:
+            intersect_cmd += " -f %s" % min_overlap_frac
+
+        if split:
+            intersect_cmd += " -split"
+
+        # Capture output and log stderr
+        intersect_cmd += " > %s !LOG2!" % capture_bed
+
+        return "%s ; %s" % (make_genome_file_cmd, intersect_cmd)
