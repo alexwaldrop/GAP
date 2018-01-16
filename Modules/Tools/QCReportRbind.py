@@ -19,7 +19,7 @@ class QCReportRbind(Module):
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename
-        summary_file = self.generate_unique_file_name(split_name=split_name, extension="rbind.qc_report.txt")
+        summary_file = self.generate_unique_file_name(split_name=split_name, extension="rbind.qc_report.json")
         self.add_output(platform, "qc_report", summary_file)
 
     def define_command(self, platform):
