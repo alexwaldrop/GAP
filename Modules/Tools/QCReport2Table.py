@@ -28,8 +28,8 @@ class QCReport2Table(Module):
         # Get options from kwargs
         input_file      = self.get_arguments("qc_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
-        col_order       = self.get_arguments("col_order")
-        alt_colnames    = self.get_arguments("alt_colnames")
+        col_order       = self.get_arguments("col_order").get_value()
+        alt_colnames    = self.get_arguments("alt_colnames").get_value()
         qc_table        = self.get_output("qc_table")
 
         # Create base command for PrintTable
