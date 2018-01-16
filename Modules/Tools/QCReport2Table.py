@@ -33,14 +33,14 @@ class QCReport2Table(Module):
         qc_table        = self.get_output("qc_table")
 
         # Create base command for PrintTable
-        cmd = "%s PrintTable -i %s " % (qc_parser, input_file)
+        cmd = "%s PrintTable -i %s" % (qc_parser, input_file)
 
         # Add special arguments if necessary
         if col_order is not None:
-            cmd += "--col-order %s" % " ".join(col_order)
+            cmd += " --col-order %s" % " ".join(col_order)
 
         if alt_colnames is not None:
-            cmd += "--alt-colnames %s" % " ".join(alt_colnames)
+            cmd += " --alt-colnames %s" % " ".join(alt_colnames)
 
         # Direct output to output file
         cmd += " > %s !LOG2!" % qc_table
