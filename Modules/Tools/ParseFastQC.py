@@ -47,7 +47,7 @@ class ParseFastQC(Module):
             r2_parse_cmd, r2_output = self.__get_one_fastqc_cmd(r2_fastqc_dir, qc_parser, sample_name)
 
             # Rbind R1 and R2 QCReports into a single report
-            rbind_cmd = "%s Rbind -i %s %s > %s !LOG2!" % (qc_parser, r1_output, r2_output, qc_report)
+            rbind_cmd = "%s Cbind -i %s %s > %s !LOG2!" % (qc_parser, r1_output, r2_output, qc_report)
 
             # cmd to summarize R1 and R2 and paste together into a single output file
             cmd = "%s ; %s ; %s" % (r1_parse_cmd, r2_parse_cmd, rbind_cmd)
