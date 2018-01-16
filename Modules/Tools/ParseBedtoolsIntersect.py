@@ -17,7 +17,7 @@ class ParseBedtoolsIntersect(Module):
         self.add_argument("mem",            is_required=True, default_value=12)
 
     def define_output(self, platform, split_name=None):
-        summary_file = self.generate_unique_file_name(split_name=split_name, extension=".parse.bedintersect.txt")
+        summary_file = self.generate_unique_file_name(split_name=split_name, extension=".bedintersect.qc_report.txt")
         self.add_output(platform, "qc_report", summary_file)
 
     def define_command(self, platform):
