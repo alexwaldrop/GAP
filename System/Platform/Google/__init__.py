@@ -4,3 +4,4 @@ from PreemptionNotifier import PreemptionNotifier
 from LogSink import LogSink
 from PubSub import PubSub
 from GooglePlatform import GooglePlatform
+from GoogleCloudHelper import GoogleCloudHelper
