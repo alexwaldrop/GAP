@@ -7,6 +7,7 @@ import requests
 import math
 import json
 
+from GoogleCloudHelper import GoogleCloudHelper
 from System.Platform import Process
 from System.Platform import Processor
 
@@ -32,6 +33,7 @@ class GoogleStandardProcessor(Processor):
         # Get optional arguments
         self.is_boot_disk_ssd   = kwargs.pop("is_boot_disk_ssd",    False)
         self.nr_local_ssd       = kwargs.pop("nr_local_ssd",        0)
+        self.randomize_zone     = kwargs.pop("randomize_zone",      True)
 
         # Get maximum resource settings
         self.MAX_NR_CPUS        = kwargs.get("PROC_MAX_NR_CPUS",    16)
@@ -65,6 +67,11 @@ class GoogleStandardProcessor(Processor):
 
         # Get Google instance type
         instance_type = self.get_instance_type()
+
+        # If necessary, randomly select zone within the current region
+        if self.randomize_zone:
+            region = GoogleCloudHelper.get_region(self.zone)
+            self.zone = GoogleCloudHelper.select_random_zone(region)
 
         logging.info("(%s) Process 'create' started!" % self.name)
         logging.debug("(%s) Instance type is %s." % (self.name, instance_type))
@@ -469,6 +476,8 @@ class GoogleStandardProcessor(Processor):
             self.nr_cpus = custom_inst["nr_cpus"]
             self.mem = custom_inst["mem"]
             return custom_inst["type_name"]
+
+
 
 
 
