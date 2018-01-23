@@ -8,6 +8,7 @@ from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from PreemptionNotifier import PreemptionNotifier
 from PubSub import PubSub
+from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
     def __init__(self, name, platform_config_file, final_output_dir):
@@ -21,6 +22,9 @@ class GooglePlatform(Platform):
 
         # Get Google compute zone from config
         self.zone = self.config["global"]["zone"]
+
+        # Determine whether to distribute processors across zones randomly
+        self.randomize_zone = self.config["global"]["randomize_zone"]
 
         # Obtain the reporting topic
         self.report_topic   = self.config["report_topic"]
@@ -334,6 +338,11 @@ class GooglePlatform(Platform):
 
         # Add name of service account
         params["service_acct"]      = self.service_acct
+
+        # Randomize the zone within the region if specified
+        if self.randomize_zone:
+            region          = GoogleCloudHelper.get_region(self.zone)
+            params["zone"]  = GoogleCloudHelper.select_random_zone(region)
 
         return params
 
