@@ -7,7 +7,6 @@ import requests
 import math
 import json
 
-from GoogleCloudHelper import GoogleCloudHelper
 from System.Platform import Process
 from System.Platform import Processor
 
