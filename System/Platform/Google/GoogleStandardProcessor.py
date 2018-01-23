@@ -7,6 +7,7 @@ import requests
 import math
 import json
 
+from GoogleCloudHelper import GoogleCloudHelper
 from System.Platform import Process
 from System.Platform import Processor
 
@@ -469,6 +470,8 @@ class GoogleStandardProcessor(Processor):
             self.nr_cpus = custom_inst["nr_cpus"]
             self.mem = custom_inst["mem"]
             return custom_inst["type_name"]
+
+
 
 
 
