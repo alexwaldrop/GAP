@@ -80,7 +80,7 @@ class SamtoolsDepth(Module):
                             % (bedtools, target_bed, genome_file)
 
         # convert output bed to samtools depth output
-        bed_2_depth_cmd = "cut -f 4,5,7"
-
+        bed_2_depth_cmd = "rev | cut -f 1,3,4 | rev"
+        
         # chain subcommands with pipes for final command
         return "%s | %s | %s" % (depth_2_bed_cmd, intersect_bed_cmd, bed_2_depth_cmd)
