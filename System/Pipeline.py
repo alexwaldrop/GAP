@@ -28,7 +28,6 @@ class Pipeline(object):
 
         # Obtain pipeline name and append to final output dir
         self.__name                 = args.pipeline_name
-        self.__final_output_dir     = os.path.join(self.__final_output_dir, self.__name)
 
         # Initialize pipeline components
         self.__graph      = None
