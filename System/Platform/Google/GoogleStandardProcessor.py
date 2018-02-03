@@ -116,7 +116,7 @@ class GoogleStandardProcessor(Processor):
             args.append(str(self.nr_cpus))
 
             args.append("--custom-memory")
-            args.append(str(self.mem))
+            args.append("%sGB" % str(int(self.mem)))
         else:
             args.append("--machine-type")
             args.append(instance_type)
