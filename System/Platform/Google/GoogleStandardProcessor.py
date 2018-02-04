@@ -485,18 +485,18 @@ class GoogleStandardProcessor(Processor):
 
         # Identify the price of the instance's disk
         if self.is_boot_disk_ssd:
-            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-SSD"][self.region]/730.0
+            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-SSD"][self.region] * self.boot_disk_size / 730.0
         else:
-            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-CAPACITY"][self.region]/730.0
+            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-CAPACITY"][self.region] * self.boot_disk_size / 730.0
         self.price += pd_price
 
         # Identify the price of the local SSDs if present
         ssd_price = 0
         if self.nr_local_ssd:
             if self.is_preemptible:
-                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD-PREEMPTIBLE"][self.region]*375
+                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD-PREEMPTIBLE"][self.region] * 375
             else:
-                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD"][self.region]*375
+                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD"][self.region] * 375
         self.price += ssd_price
 
         return instance_type
