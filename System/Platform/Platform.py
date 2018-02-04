@@ -201,7 +201,7 @@ class Platform(object):
     def get_processor(self, name, nr_cpus, mem):
         # Ensure unique name for processor
         name        = "proc-%s-%s-%s" % (self.name[:20], name[:25], self.generate_unique_id())
-        logging.info("Creating processor '%s' with %s CPUs and %s GB of memory" % (name, nr_cpus, mem))
+        logging.info("Creating processor '%s'..." % name)
 
         # Create processor with requested resources (CPU/Mem)
         processor   = self.create_processor(name, nr_cpus, mem)
@@ -220,7 +220,8 @@ class Platform(object):
         # Add workspace lib directory to LD_LIB_PATH env variable
         processor.set_env_variable("LD_LIB_PATH", self.get_workspace_dir("lib"))
 
-        logging.info("Processor '%s' ready for processing!" % name)
+        logging.info("Processor '%s' (%d vCPUs, %dGB RAM) ready for processing!"
+                     % (name, processor.nr_cpus, processor.mem))
         return self.processors[processor.name]
 
     def run_command(self, job_name, cmd, nr_cpus, mem):
