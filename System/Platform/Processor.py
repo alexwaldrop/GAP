@@ -3,15 +3,21 @@ import logging
 import abc
 from collections import OrderedDict
 import subprocess as sp
+import time
 
 from System.Platform import Process
 
 class Processor(object):
     __metaclass__ = abc.ABCMeta
+
     def __init__(self, name, nr_cpus, mem, **kwargs):
         self.name       = name
         self.nr_cpus    = nr_cpus
         self.mem        = mem
+
+        # Initialize the start and stop time
+        self.start_time = None
+        self.stop_time  = None
 
         # Get name of directory where logs will be written
         self.log_dir    = kwargs.pop("log_dir", None)
@@ -81,6 +87,21 @@ class Processor(object):
 
     def get_name(self):
         return self.name
+
+    def set_start_time(self):
+        if self.start_time is None:
+            self.start_time = time.time()
+
+    def set_stop_time(self):
+        self.stop_time = time.time()
+
+    def get_runtime(self):
+        if self.start_time is None:
+            return 0
+        elif self.stop_time is None:
+            return time.time() - self.start_time
+        else:
+            return self.stop_time - self.start_time
 
     @abc.abstractmethod
     def wait_process(self, proc_name):

@@ -44,6 +44,10 @@ class GoogleStandardProcessor(Processor):
         # Indicates that instance is not resettable
         self.is_preemptible = False
 
+        # Initialize the price of the run and the total cost of the run
+        self.price = 0
+        self.cost = 0
+
         # Setting the instance status
         self.status_lock = threading.Lock()
         self.status = GoogleStandardProcessor.OFF
@@ -194,9 +198,16 @@ class GoogleStandardProcessor(Processor):
                 logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                 raise RuntimeError("Instance %s has failed!" % self.name)
 
+        # Set the start time
+        if proc_name == "create":
+            self.set_start_time()
+
         # Set status to 'OFF' if destroy is True
         if proc_name == "destroy":
             self.set_status(GoogleStandardProcessor.OFF)
+
+            # Set the stop time
+            self.set_stop_time()
 
         # Case: Process completed
         logging.info("(%s) Process '%s' complete!" % (self.name, proc_name))
@@ -464,10 +475,36 @@ class GoogleStandardProcessor(Processor):
             self.nr_cpus = predef_inst["nr_cpus"]
             self.mem = predef_inst["mem"]
             instance_type = predef_inst["type_name"]
+            self.price += predef_inst["price"]
 
         else:
             self.nr_cpus = custom_inst["nr_cpus"]
             self.mem = custom_inst["mem"]
             instance_type = custom_inst["type_name"]
+            self.price += custom_inst["price"]
+
+        # Identify the price of the instance's disk
+        if self.is_boot_disk_ssd:
+            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-SSD"][self.region]/730.0
+        else:
+            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-CAPACITY"][self.region]/730.0
+        self.price += pd_price
+
+        # Identify the price of the local SSDs if present
+        ssd_price = 0
+        if self.nr_local_ssd:
+            if self.is_preemptible:
+                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD-PREEMPTIBLE"][self.region]*375
+            else:
+                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD"][self.region]*375
+        self.price += ssd_price
 
         return instance_type
+
+    def get_runtime_and_cost(self):
+
+        runtime = self.get_runtime()
+
+        self.cost = self.price * runtime / 3600
+
+        return runtime, self.cost

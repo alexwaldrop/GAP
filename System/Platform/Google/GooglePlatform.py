@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import subprocess as sp
+import tempfile
 
 from System.Platform import Platform
 from GoogleStandardProcessor import GoogleStandardProcessor
@@ -37,6 +38,9 @@ class GooglePlatform(Platform):
 
         # Boolean for whether worker instance create by platform will be preemptible
         self.is_preemptible = self.config["worker_instance"]["is_preemptible"]
+
+        # Initialize the final report
+        self.report = None
 
         # Start preemption notifier daemon if child instances are preemptible
         self.preemption_notifier = None
@@ -260,12 +264,55 @@ class GooglePlatform(Platform):
             self.main_processor.wait_process(job_name)
 
     def handle_report(self, report):
+        # Save the report
+        self.report = report
 
-        # Generate message by coonverting the dictionary to a string
-        message = json.dumps(report)
+    def update_report(self):
 
-        # Send the message to the Pub/Sub report topic
-        PubSub.send_message(self.report_topic, message=message)
+        # Return if no report has been generated
+        if self.report is None:
+            return
+
+        # Add information about the instances
+        self.report["instances"] = []
+        for instance_name, instance_obj in self.processors.iteritems():
+            runtime, cost = instance_obj.get_runtime_and_cost()
+            self.report["instances"].append({
+                "name" : instance_name,
+                "runtime(sec)" : runtime,
+                "cost" : cost
+            })
+
+        # Generate the total cost
+        self.report["total_cost"] = 0
+        for instance_info in self.report["instances"]:
+            self.report["total_cost"] += instance_info["cost"]
+
+        # Generate the total runtime
+        self.report["total_runtime(sec)"] = 0
+        if self.main_processor:
+            self.report["total_runtime(sec)"] = self.main_processor.get_runtime()
+
+    def return_report(self):
+
+        # Exit as nothing to output
+        if self.report is None:
+            return
+
+        # Send report to the Pub/Sub report topic
+        PubSub.send_message(self.report_topic, message=json.dumps(self.report))
+
+        # Generate report file for transfer
+        with tempfile.NamedTemporaryFile(delete=False) as report_file:
+            json.dump(self.report, report_file, indent=4)
+            report_filepath = report_file.name
+
+        # Transfer report file to bucket
+        if report_filepath is not None:
+            options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
+            dest_path = os.path.join(self.final_output_dir, "%s_final_report.json" % self.name)
+            cmd = "gsutil %s cp -r %s %s 1>/dev/null 2>&1 " % (options_fast, report_filepath, dest_path)
+            GoogleCloudHelper.run_cmd(cmd, err_msg="Could not transfer final report to the final output directory!")
 
     def clean_up(self):
         logging.info("Cleaning up Google Cloud Platform.")
@@ -291,6 +338,12 @@ class GooglePlatform(Platform):
                 instance_obj.wait_process("destroy")
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
+
+        # Add runtime and cost information to the report
+        self.update_report()
+
+        # Return the report to Pub/Sub and the bucket
+        self.return_report()
 
         # Destroy preemption notifier if necessary
         if self.preemption_notifier is not None:
