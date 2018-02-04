@@ -9,7 +9,7 @@ class GoogleCloudHelperError(Exception):
 class GoogleCloudHelper:
 
     @staticmethod
-    def _run_cmd(cmd, err_msg=None):
+    def run_cmd(cmd, err_msg=None):
 
         # Running and waiting for the command
         proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -31,7 +31,7 @@ class GoogleCloudHelper:
         # Run command to get list of zones
         cmd         = "gcloud compute zones list --format=json"
         err_msg     = "Unable to list zones within the current project!"
-        out         = GoogleCloudHelper._run_cmd(cmd, err_msg)
+        out         = GoogleCloudHelper.run_cmd(cmd, err_msg)
 
         # Parse json
         zones       = []
