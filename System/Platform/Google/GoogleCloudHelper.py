@@ -2,11 +2,15 @@ import logging
 import subprocess as sp
 import json
 import random
+import requests
 
 class GoogleCloudHelperError(Exception):
     pass
 
 class GoogleCloudHelper:
+
+    prices = None
+    machine_types = None
 
     @staticmethod
     def run_cmd(cmd, err_msg=None):
@@ -71,3 +75,36 @@ class GoogleCloudHelper:
         # Return randomly selected zone from list of active zones within region
         new_zone = avail_zones[random.randint(0, len(avail_zones) - 1)]
         return new_zone
+
+    @staticmethod
+    def get_prices():
+
+        if GoogleCloudHelper.prices:
+            return GoogleCloudHelper.prices
+
+        try:
+            price_json_url = "https://cloudpricingcalculator.appspot.com/static/data/pricelist.json"
+
+            # Disabling low levels of logging from module requests
+            logging.getLogger("requests").setLevel(logging.WARNING)
+
+            GoogleCloudHelper.prices = requests.get(price_json_url).json()["gcp_price_list"]
+
+            return GoogleCloudHelper.prices
+        except BaseException as e:
+            if e.message != "":
+                logging.error("Could not obtain instance prices. The following error appeared: %s." % e.message)
+            raise
+
+    @staticmethod
+    def get_machine_types(zone):
+
+        if GoogleCloudHelper.machine_types:
+            return GoogleCloudHelper.machine_types
+
+        cmd = "gcloud compute machine-types list --filter='zone:(%s)' --format=json" % zone
+        machine_types = GoogleCloudHelper.run_cmd(cmd, err_msg="Cannot obtain machine types on GCP")
+
+        GoogleCloudHelper.machine_types = json.loads(machine_types)
+
+        return GoogleCloudHelper.machine_types

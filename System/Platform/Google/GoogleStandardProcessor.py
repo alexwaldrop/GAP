@@ -3,12 +3,13 @@ import subprocess as sp
 import threading
 import random
 import time
-import requests
+import sys
 import math
 import json
 
 from System.Platform import Process
 from System.Platform import Processor
+from System.Platform.Google import GoogleCloudHelper
 
 class GoogleStandardProcessor(Processor):
 
@@ -36,6 +37,9 @@ class GoogleStandardProcessor(Processor):
         # Get maximum resource settings
         self.MAX_NR_CPUS        = kwargs.get("PROC_MAX_NR_CPUS",    16)
         self.MAX_MEM            = kwargs.get("PROC_MAX_MEM",        208)
+
+        # Initialize the region of the instance
+        self.region             = GoogleCloudHelper.get_region(self.zone)
 
         # Indicates that instance is not resettable
         self.is_preemptible = False
@@ -381,17 +385,7 @@ class GoogleStandardProcessor(Processor):
             raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Obtaining prices from Google Cloud Platform
-        try:
-            price_json_url = "https://cloudpricingcalculator.appspot.com/static/data/pricelist.json"
-
-            # Disabling low levels of logging from module requests
-            logging.getLogger("requests").setLevel(logging.WARNING)
-
-            prices = requests.get(price_json_url).json()["gcp_price_list"]
-        except BaseException as e:
-            if e.message != "":
-                logging.error("Could not obtain instance prices. The following error appeared: %s." % e.message)
-            raise
+        prices = GoogleCloudHelper.get_prices()
 
         # Defining instance types to mem/cpu ratios
         ratio = dict()
@@ -411,66 +405,69 @@ class GoogleStandardProcessor(Processor):
             else:
                 instance_type = "highmem"
 
+        # Obtain available machine type in the current zone
+        machine_types = GoogleCloudHelper.get_machine_types(self.zone)
+
         # Initializing predefined instance data
         predef_inst = {}
 
-        # Converting the number of cpus to the closest upper power of 2
-        predef_inst["nr_cpus"] = 2 ** int(math.ceil(math.log(self.nr_cpus, 2)))
+        # Obtain the machine type that has the closes number of CPUs
+        predef_inst["nr_cpus"] = sys.maxsize
+        for machine_type in machine_types:
 
-        # Computing the memory obtain on the instance
-        predef_inst["mem"] = predef_inst["nr_cpus"] * ratio[instance_type]
+            # Skip instances that are not of the same type
+            if instance_type not in machine_type["name"]:
+                continue
 
-        # Setting the instance type name
-        predef_inst["type_name"] = "n1-%s-%d" % (instance_type, predef_inst["nr_cpus"])
+            # Select the instance if its number of vCPUs is closer to the required nr_cpus
+            if machine_type["guestCpus"] >= self.nr_cpus and machine_type["guestCpus"] < predef_inst["nr_cpus"]:
+                predef_inst["nr_cpus"] = machine_type["guestCpus"]
+                predef_inst["mem"] = machine_type["memoryMb"] / 1024
+                predef_inst["type_name"] = machine_type["name"]
 
         # Obtaining the price of the predefined instance
         if self.is_preemptible:
-            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()]["us"]
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()][self.region]
         else:
-            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()]["us"]
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()][self.region]
 
         # Initializing custom instance data
         custom_inst = {}
 
         # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
-        if self.nr_cpus != 1:
-            custom_inst["nr_cpus"] = self.nr_cpus + self.nr_cpus % 2
-        else:
-            custom_inst["nr_cpus"] = 1
-
-        # Computing the memory as integer value in GB
-        custom_inst["mem"] = int(math.ceil(self.mem))
+        custom_inst["nr_cpus"] = 1 if self.nr_cpus == 1 else self.nr_cpus + self.nr_cpus%2
 
         # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
-        custom_inst["mem"] = max(ratio["highcpu"] * custom_inst["nr_cpus"], custom_inst["mem"])
         if self.nr_cpus != 1:
-            custom_inst["mem"] = min(ratio["highmem"] * custom_inst["nr_cpus"], custom_inst["mem"])
+            mem = max(ratio["highcpu"] * custom_inst["nr_cpus"], self.mem)
+            mem = min(ratio["highmem"] * custom_inst["nr_cpus"], mem)
         else:
-            custom_inst["mem"] = max(1, custom_inst["mem"])
-            custom_inst["mem"] = min(6.5, custom_inst["mem"])
+            mem = max(1, self.mem)
+            mem = min(6, mem)
+
+        # Computing the ceil of the current memory
+        custom_inst["mem"] = int(math.ceil(mem))
 
         # Generating custom instance name
         custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
 
         # Computing the price of a custom instance
         if self.is_preemptible:
-            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"]["us"]
-            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"]["us"]
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"][self.region]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"][self.region]
         else:
-            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"]["us"]
-            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"]["us"]
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"][self.region]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"][self.region]
         custom_inst["price"] = custom_price_cpu * custom_inst["nr_cpus"] + custom_price_mem * custom_inst["mem"]
 
         if predef_inst["price"] <= custom_inst["price"]:
             self.nr_cpus = predef_inst["nr_cpus"]
             self.mem = predef_inst["mem"]
-            return predef_inst["type_name"]
+            instance_type = predef_inst["type_name"]
+
         else:
             self.nr_cpus = custom_inst["nr_cpus"]
             self.mem = custom_inst["mem"]
-            return custom_inst["type_name"]
+            instance_type = custom_inst["type_name"]
 
-
-
-
-
+        return instance_type
