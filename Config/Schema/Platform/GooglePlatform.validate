@@ -7,7 +7,7 @@ report_topic                = string(default="pipeline_reports")
 zone                        = string(default="us-east1-b")
 service_account_key_file    = string
 apt_packages                = force_list
-randomize_zone              = boolean(default=True)
+randomize_zone              = boolean(default=False)
 
 [main_instance]
 nr_cpus                     = integer(1, 16, default=8)
