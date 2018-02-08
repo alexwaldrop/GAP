@@ -30,7 +30,7 @@ class SamtoolsBAMMerge(Module):
 
         # Generating the merging command
         if sorted_input:
-            cmd = "%s merge -c -@%d %s %s" % (samtools,
+            cmd = "%s merge -f -c -@%d %s %s" % (samtools,
                                               nr_cpus,
                                               output_bam,
                                               " ".join(bam_list))
