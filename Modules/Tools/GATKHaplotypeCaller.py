@@ -19,7 +19,7 @@ class GATKHaplotypeCaller(Module):
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 3.5")
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6")
         self.add_argument("location")
         self.add_argument("excluded_location")
 
@@ -47,7 +47,7 @@ class GATKHaplotypeCaller(Module):
         gvcf    = self.get_output("gvcf")
 
         # Set JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 9 / 10, platform.get_workspace_dir("tmp"))
 
         # Generating the haplotype caller options
         opts = list()
