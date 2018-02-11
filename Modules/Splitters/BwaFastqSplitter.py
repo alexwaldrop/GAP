@@ -75,7 +75,7 @@ class BwaFastqSplitter(Module):
         # Create final split using remaining CPUs
         # Determine number of CPUs available for last split
         nr_cpus_needed      = int(math.ceil(nr_reads * read_len * 2 * 1.0 / self.ALIGN_SPEED))
-        nr_cpus_remaining   = nr_cpus_needed % max_nr_cpus
+        nr_cpus_remaining   = nr_cpus_needed % max_nr_cpus if nr_cpus_needed % max_nr_cpus else max_nr_cpus
         nr_cpus_remaining   += nr_cpus_remaining % 2
 
         # Make final split
