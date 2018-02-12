@@ -39,8 +39,8 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Blocking other activities
-        self.set_status(GooglePreemptibleProcessor.BUSY)
         self.is_resetting = True
+        self.set_status(GooglePreemptibleProcessor.BUSY)
 
         # Destroying the instance
         self.destroy()
@@ -72,7 +72,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
     def set_status(self, new_status, wait_for_reset=True):
 
         if (new_status == GooglePreemptibleProcessor.DEAD or self.get_status() == GooglePreemptibleProcessor.DEAD)\
-            and wait_for_reset:
+            and wait_for_reset and not self.is_resetting:
             self.reset()
 
         # Updates instance status with threading.lock() to prevent race conditions
