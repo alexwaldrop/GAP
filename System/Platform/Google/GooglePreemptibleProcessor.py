@@ -35,7 +35,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         self.reset_count += 1
         if self.reset_count >= self.max_resets:
             logging.error("(%s) Instance failed! Instance preempted but has reached threshold for number of resets (%s)." %
-                          self.name, self.max_resets)
+                          (self.name, self.max_resets))
             raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Blocking other activities
@@ -111,7 +111,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             while cycle_count < 900:
                 if self.get_status() == GooglePreemptibleProcessor.DEAD:
                     # Reset the instance upon preemption detection
-                    logging.info("(%s) Instance preempted! Instance will be reset.")
+                    logging.info("(%s) Instance preempted! Instance will be reset." % self.name)
                     self.reset()
                     return False
                 time.sleep(2)
