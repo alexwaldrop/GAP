@@ -69,6 +69,19 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         # Set as done resetting
         self.is_resetting = False
 
+    def set_status(self, new_status, wait_for_reset=True):
+
+        if (new_status == GooglePreemptibleProcessor.DEAD or self.get_status() == GooglePreemptibleProcessor.DEAD)\
+            and wait_for_reset:
+            self.reset()
+
+        # Updates instance status with threading.lock() to prevent race conditions
+        if new_status > GoogleStandardProcessor.MAX_STATUS or new_status < 0:
+            logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+        with self.status_lock:
+            self.status = new_status
+
     def is_fatal_error(self, proc_name, err_msg):
         # Check to see if program should exit due to error received
         if proc_name == "destroy":

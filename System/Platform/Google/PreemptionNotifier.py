@@ -100,7 +100,7 @@ class PreemptionNotifier(threading.Thread):
             inst_name = log["jsonPayload"]["resource"]["name"]
             if inst_name in self.processors:
                 # Set instance status to DEAD if preempted instance is mangaged by the notifier
-                self.processors[inst_name].set_status(GooglePreemptibleProcessor.DEAD)
+                self.processors[inst_name].set_status(GooglePreemptibleProcessor.DEAD, wait_for_reset=False)
                 logging.warning("(%s) Instance preempted!" % inst_name)
         except ValueError:
             logging.error("Preempted message should be a Google log in JSON format. The following message was received instead: %s." % msg)
