@@ -9,7 +9,7 @@ class AggregateRSEMResults(Module):
                            "aggregate_rsem_results_script", "nr_cpus", "mem"]
 
         self.output_keys = ["isoform_expression_matrix", "isoform_expression_gene_metadata",
-                            "gene_expression_matrix", "gene_expression_gene_metadata"]
+                            "expression_file", "gene_expression_gene_metadata"]
 
         # Command should be run on main processor
         self.quick_command = True
@@ -39,7 +39,7 @@ class AggregateRSEMResults(Module):
 
         self.add_output(platform, "isoform_expression_matrix", isoform_expression_file_name)
         self.add_output(platform, "isoform_expression_gene_metadata", isoform_expression_gene_metadata_file_name)
-        self.add_output(platform, "gene_expression_matrix", gene_expression_file_name)
+        self.add_output(platform, "expression_file", gene_expression_file_name)
         self.add_output(platform, "gene_expression_gene_metadata", gene_expression_gene_metadata_file_name)
 
     def define_command(self, platform):
@@ -65,7 +65,7 @@ class AggregateRSEMResults(Module):
 
         #get the output file and make appropriate path for it
         isoform_expression_file_name                 = self.get_output("isoform_expression_matrix")
-        gene_expression_file_name                    = self.get_output("gene_expression_matrix")
+        gene_expression_file_name                    = self.get_output("expression_file")
         isoform_expression_gene_metadata_file_name   = self.get_output("isoform_expression_gene_metadata")
         gene_expression_gene_metadata_file_name      = self.get_output("gene_expression_gene_metadata")
 

@@ -7,7 +7,7 @@ class Cuffnorm(Module):
 
         self.input_keys = ["sample_name", "cuffquant_cxb", "cuffnorm", "gtf", "nr_cpus", "mem"]
 
-        self.output_keys = ["genes_fpkm_table", "genes_count_table", "genes_attr_table"]
+        self.output_keys = ["expression_file", "genes_count_table", "genes_attr_table"]
 
         # Command should be run on main processor
         self.quick_command = True
@@ -22,7 +22,7 @@ class Cuffnorm(Module):
 
     def define_output(self, platform, split_name=None):
 
-        self.add_output(platform, "genes_fpkm_table", "genes.fpkm_table")
+        self.add_output(platform, "expression_file", "genes.fpkm_table")
         self.add_output(platform, "genes_count_table", "genes.count_table")
         self.add_output(platform, "genes_attr_table", "genes.attr_table")
 
@@ -40,9 +40,6 @@ class Cuffnorm(Module):
 
         # Generate output file name prefix for STAR
         sample_sheet = os.path.join(working_dir, "{0}".format("cuffnorm_sample_sheet.txt"))
-
-        #get the output file and make appropriate path for it
-        # output_file = self.get_output("aggregated_raw_read_counts")
 
         #iterate through all the samples to create a sample info file for Rscript
         for index in range(len(samples)):

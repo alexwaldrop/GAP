@@ -7,7 +7,7 @@ class AggregateRawReadCounts(Module):
 
         self.input_keys = ["sample_name", "raw_read_counts", "nr_cpus", "mem"]
 
-        self.output_keys = ["aggregated_raw_read_counts"]
+        self.output_keys = ["expression_file"]
 
         # Command should be run on main processor
         self.quick_command = True
@@ -25,7 +25,7 @@ class AggregateRawReadCounts(Module):
         output_file_name = self.generate_unique_file_name(split_name=split_name,
                                                                  extension=".txt")
 
-        self.add_output(platform, "aggregated_raw_read_counts", output_file_name)
+        self.add_output(platform, "expression_file", output_file_name)
 
     def define_command(self, platform):
 
@@ -43,7 +43,7 @@ class AggregateRawReadCounts(Module):
         input_file = os.path.join(working_dir, "{0}".format("sample_info.txt"))
 
         #get the output file and make appropriate path for it
-        output_file = self.get_output("aggregated_raw_read_counts")
+        output_file = self.get_output("expression_file")
 
         #iterate through all the samples to create a sample info file for Rscript
         for index in range(len(samples)):
