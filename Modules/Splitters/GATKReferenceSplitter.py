@@ -41,12 +41,14 @@ class GATKReferenceSplitter(Module):
                     "excluded_location": None}
             self.add_output(platform, split_name, split_data, is_path=False)
 
-        # Add data for final split
-        split_name = "remains"
-        split_data = {
+        # Add data for final split (if one exists)
+        # If num_splits is > num_chrom remains will be a list one element: ['unmapped'])
+        if len(remains) > 1:
+            split_name = "remains"
+            split_data = {
                 "location": remains,
                 "excluded_location": None}
-        self.add_output(platform, split_name, split_data, is_path=False)
+            self.add_output(platform, split_name, split_data, is_path=False)
 
     def define_command(self, platform):
         # No command needs to be run
