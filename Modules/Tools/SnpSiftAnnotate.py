@@ -37,5 +37,5 @@ class SnpSiftAnnotate(Module):
         jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
 
         # Generating SnpEff command
-        cmd = "%s %s -jar %s annotate %s %s > %s !LOG3!" % (java, jvm_options, snpsift, dbsnp, vcf_in, vcf_out)
+        cmd = "%s %s -jar %s annotate %s %s > %s !LOG2!" % (java, jvm_options, snpsift, dbsnp, vcf_in, vcf_out)
         return cmd
