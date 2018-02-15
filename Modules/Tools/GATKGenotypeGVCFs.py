@@ -6,7 +6,7 @@ class GATKGenotypeGVCFs(Module):
         super(GATKGenotypeGVCFs, self).__init__(module_id)
 
         self.input_keys = ["gvcf", "gvcf_idx", "gatk", "java", "ref",
-                           "nr_cpus", "mem"]
+                           "nr_cpus", "mem", "location", "excluded_location"]
 
         self.output_keys = ["vcf", "vcf_idx"]
 
@@ -16,8 +16,10 @@ class GATKGenotypeGVCFs(Module):
         self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
-        self.add_argument("mem",                is_required=True, default_value="MAX")
+        self.add_argument("nr_cpus",            is_required=True, default_value=2)
+        self.add_argument("mem",                is_required=True, default_value=13)
+        self.add_argument("location")
+        self.add_argument("excluded_location")
 
     def define_output(self, platform, split_name=None):
         # Declare VCF output filename
@@ -33,7 +35,8 @@ class GATKGenotypeGVCFs(Module):
         gatk    = self.get_arguments("gatk").get_value()
         java    = self.get_arguments("java").get_value()
         ref     = self.get_arguments("ref").get_value()
-        nr_cpus = self.get_arguments("nr_cpus").get_value()
+        L       = self.get_arguments("location").get_value()
+        XL      = self.get_arguments("excluded_location").get_value()
         mem     = self.get_arguments("mem").get_value()
 
         # Get output file
@@ -51,8 +54,22 @@ class GATKGenotypeGVCFs(Module):
         else:
             opts.append("--variant %s" % gvcf_in)
         opts.append("-o %s" % vcf)
-        opts.append("-nt %d" % nr_cpus)
         opts.append("-R %s" % ref)
+
+        # Limit the locations to be processes
+        if L is not None:
+            if isinstance(L, list):
+                for included in L:
+                    if included != "unmapped":
+                        opts.append("-L \"%s\"" % included)
+            else:
+                opts.append("-L \"%s\"" % L)
+        if XL is not None:
+            if isinstance(XL, list):
+                for excluded in XL:
+                    opts.append("-XL \"%s\"" % excluded)
+            else:
+                opts.append("-XL \"%s\"" % XL)
 
         # Generating command for base recalibration
         cmd = "%s %s -jar %s -T GenotypeGVCFs %s !LOG3!" % (java,
