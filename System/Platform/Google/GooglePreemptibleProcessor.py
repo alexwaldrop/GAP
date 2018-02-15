@@ -102,11 +102,6 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             # Check to see if error was preemption or user error
             cycle_count = 1
 
-            # determine if user error or preempted
-            if "ssh" not in err_msg:
-                # exit program if ssh error (from preemption) not found in error message
-                return True
-
             # Waiting 30 minutes for the instance to be reported as preempted
             while cycle_count < 900:
                 if self.get_status() == GooglePreemptibleProcessor.DEAD:
@@ -114,8 +109,15 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
                     logging.info("(%s) Instance preempted! Instance will be reset." % self.name)
                     self.reset()
                     return False
+
+                # If after 5 minutes no preemption signal has been obtained, then fail the instance if it is not an ssh error
+                if cycle_count >= 150 and "ssh" not in err_msg:
+                    return True
+
+                # Wait 2 seconds per cycle
                 time.sleep(2)
                 cycle_count += 1
+
         # Exit on any other kind of error
         return True
 
