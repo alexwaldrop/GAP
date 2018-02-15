@@ -21,7 +21,7 @@ class BwaAligner(Module):
         self.add_argument("lib_name",       is_required=True)
         self.add_argument("seq_platform",   is_required=True, default_value="Illumina")
         self.add_argument("nr_cpus",        is_required=True, default_value="max")
-        self.add_argument("mem",            is_required=True, default_value=16)
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 1.5")
 
     def define_output(self, platform, split_name=None):
         # Declare bam output file
