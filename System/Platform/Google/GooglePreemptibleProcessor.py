@@ -103,7 +103,7 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             cycle_count = 1
 
             # determine if user error or preempted
-            if "ERROR: (gcloud.compute.ssh)" not in err_msg:
+            if "ssh" not in err_msg:
                 # exit program if ssh error (from preemption) not found in error message
                 return True
 
