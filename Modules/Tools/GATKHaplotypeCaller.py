@@ -19,7 +19,7 @@ class GATKHaplotypeCaller(Module):
         self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6")
+        self.add_argument("mem",                is_required=True, default_value=48)
         self.add_argument("location")
         self.add_argument("excluded_location")
 
@@ -40,7 +40,6 @@ class GATKHaplotypeCaller(Module):
         ref     = self.get_arguments("ref").get_value()
         L       = self.get_arguments("location").get_value()
         XL      = self.get_arguments("excluded_location").get_value()
-        nr_cpus = self.get_arguments("nr_cpus").get_value()
         mem     = self.get_arguments("mem").get_value()
 
         # Get output file
@@ -53,7 +52,6 @@ class GATKHaplotypeCaller(Module):
         opts = list()
         opts.append("-I %s" % bam)
         opts.append("-o %s" % gvcf)
-        opts.append("-nct %d" % nr_cpus)
         opts.append("-R %s" % ref)
         opts.append("-ERC GVCF")
         if BQSR is not None:
