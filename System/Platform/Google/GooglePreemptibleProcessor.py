@@ -58,6 +58,9 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         # Recreating the instance
         self.create()
 
+        # Reset status to busy
+        self.set_status(GooglePreemptibleProcessor.BUSY)
+
         # Rerunning all the commands
         if len(commands_to_run):
             while len(commands_to_run) != 0:
@@ -68,6 +71,9 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
 
         # Set as done resetting
         self.is_resetting = False
+
+        # Set as available
+        self.set_status(GooglePreemptibleProcessor.AVAILABLE)
 
     def set_status(self, new_status, wait_for_reset=True):
 

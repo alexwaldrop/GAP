@@ -231,6 +231,8 @@ class GoogleStandardProcessor(Processor):
         # Install nfs-common to allow mounting
         self.install_packages("nfs-common")
 
+        self.set_status(GoogleStandardProcessor.BUSY)
+
         # Generate command for mounting main instance
         logging.info("(%s) Mounting to %s." % (self.name, parent_instance_name))
         cmd = "sudo mkdir -p %s && sudo mount -t nfs %s:%s %s !LOG0!" % (child_mount_point,
@@ -241,15 +243,21 @@ class GoogleStandardProcessor(Processor):
         self.run("mountNFS", cmd)
         self.wait_process("mountNFS")
 
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
+
     def configure_CRCMOD(self):
         # Install necessary packages
         self.install_packages(["gcc", "python-dev", "python-setuptools"])
+
+        self.set_status(GoogleStandardProcessor.BUSY)
 
         # Install CRCMOD python package
         logging.info("(%s) Configuring CRCMOD for fast data tranfer using gsutil." % self.name)
         cmd = "python -c 'import crcmod' 2>/dev/null || (sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod)"
         self.run("configCRCMOD", cmd)
         self.wait_process("configCRCMOD")
+
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
 
     def install_packages(self, packages):
         # If no packages are provided to install
@@ -262,6 +270,8 @@ class GoogleStandardProcessor(Processor):
         # Log installation
         logging.info("(%s) Installing the following packages: %s" % (self.name, " ".join(packages)))
 
+        self.set_status(GoogleStandardProcessor.BUSY)
+
         # Get command to install packages
         cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" !LOG0! " % " ".join(packages)
         # Create random id for job
@@ -269,7 +279,12 @@ class GoogleStandardProcessor(Processor):
         self.run(job_name, cmd)
         self.wait_process(job_name)
 
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
+
     def configure_SSH(self, max_connections=500):
+
+        self.set_status(GoogleStandardProcessor.BUSY)
+
         # Increase the number of concurrent SSH connections
         logging.info("(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_connections))
         cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config'" % max_connections
@@ -281,6 +296,8 @@ class GoogleStandardProcessor(Processor):
         cmd = "sudo service sshd restart"
         self.run("restartSSH", cmd)
         self.wait_process("restartSSH")
+
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
 
     def adapt_cmd(self, cmd):
         # Adapt command for running on instance through gcloud ssh
@@ -338,6 +355,8 @@ class GoogleStandardProcessor(Processor):
         # Install required packages
         self.install_packages(["sysv-rc-conf", "nfs-kernel-server"])
 
+        self.set_status(GoogleStandardProcessor.BUSY)
+
         # Setup the runlevels
         logging.info("(%s) Configuring the runlevels for NFS server." % self.name)
         cmd = "sudo sysv-rc-conf nfs on && sudo sysv-rc-conf rpcbind on"
@@ -356,10 +375,14 @@ class GoogleStandardProcessor(Processor):
         self.run("restartNFS", cmd)
         self.wait_process("restartNFS")
 
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
+
     def configure_RAID(self, raid_dir):
 
         # Install the required packages
         self.install_packages("mdadm")
+
+        self.set_status(GoogleStandardProcessor.BUSY)
 
         # Setup the RAID system
         logging.info("(%s) Configuring RAID-0 system by merging the Local SSDs." % self.name)
@@ -384,6 +407,8 @@ class GoogleStandardProcessor(Processor):
         cmd = "sudo chmod -R 777 %s" % raid_dir
         self.run("chmodRAID", cmd)
         self.wait_process("chmodRAID")
+
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
 
     def get_instance_type(self):
 
