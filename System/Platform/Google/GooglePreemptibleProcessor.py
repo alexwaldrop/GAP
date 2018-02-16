@@ -167,6 +167,8 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             time.sleep(2)
             cycle_count += 1
 
+        # Reset instance if not allocated in 20 minutes
         if not ready:
-            logging.error("(%s) Instance failed! 'Create' Process took more than 20 minutes!" % self.name)
-            raise RuntimeError("Instance %s has failed!" % self.name)
+            logging.info("(%s) Instance failed! 'Create' Process took more than 20 minutes! "
+                         "The instance will be reset!" % self.name)
+            self.reset()
