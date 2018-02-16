@@ -96,12 +96,10 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
 
     def is_fatal_error(self, proc_name, err_msg):
         # Check to see if program should exit due to error received
-        if proc_name == "destroy":
-            # Check if 'destroy' process actually deleted the instance, in which case program can continue running
-            cmd = 'gcloud compute instances list | grep "%s"' % self.name
-            out, _ = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
-            if len(out) == 0:
-                return False
+
+        # Check if 'destroy' process actually deleted the instance, in which case program can continue running
+        if proc_name == "destroy" and not self.exists():
+            return False
 
         elif "- Internal Error" in err_msg:
             # Check to see if error was result of internal google error

@@ -149,7 +149,7 @@ class GoogleStandardProcessor(Processor):
         # Begin running command to destroy instance on Google Cloud
 
         # Return if instance has already been destroyed
-        if self.get_status() == GoogleStandardProcessor.OFF:
+        if self.get_status() == GoogleStandardProcessor.OFF and not self.exists():
             return
 
         # Set status to indicate that instance cannot run commands and is destroying
@@ -307,12 +307,11 @@ class GoogleStandardProcessor(Processor):
 
     def is_fatal_error(self, proc_name, err_msg):
         # Check to see if program should exit due to error received
-        if proc_name == "destroy":
-            # Check if 'destroy' process actually deleted the instance, in which case program can continue running
-            cmd = 'gcloud compute instances list | grep "%s"' % self.name
-            out, _ = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
-            if len(out) == 0:
-                return False
+
+        # Check if 'destroy' process actually deleted the instance, in which case program can continue running
+        if proc_name == "destroy" and not self.exists():
+            return False
+
         return True
 
     def wait_until_ready(self):
@@ -535,3 +534,10 @@ class GoogleStandardProcessor(Processor):
         self.cost = self.price * runtime / 3600
 
         return runtime, self.cost
+
+    def exists(self):
+
+        # Check if the current instance still exists on the platform
+        cmd = 'gcloud compute instances list | grep "%s"' % self.name
+        out, _ = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
+        return len(out) != 0
