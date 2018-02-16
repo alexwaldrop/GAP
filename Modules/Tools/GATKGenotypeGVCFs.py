@@ -72,7 +72,7 @@ class GATKGenotypeGVCFs(Module):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating command for base recalibration
-        cmd = "%s %s -jar %s -T GenotypeGVCFs %s !LOG3!" % (java,
+        cmd = "touch *.idx; %s %s -jar %s -T GenotypeGVCFs %s !LOG3!" % (java,
                                                             jvm_options,
                                                             gatk,
                                                             " ".join(opts))
