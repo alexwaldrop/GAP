@@ -194,9 +194,19 @@ class GoogleStandardProcessor(Processor):
         if proc_obj.has_failed():
             # Check to see whether error is fatal
             if self.is_fatal_error(proc_name, err):
-                logging.error("(%s) Process '%s' failed!" % (self.name, proc_name))
-                logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
-                raise RuntimeError("Instance %s has failed!" % self.name)
+                # Check to see if command can be re-tried
+                if proc_obj.get_num_retries() > 0 and self.get_status() != GoogleStandardProcessor.OFF:
+                    # Retry same command and decriment num_retries
+                    logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (self.name, proc_name, proc_obj.get_num_retries()))
+                    self.run(job_name=proc_name,
+                             cmd=proc_obj.get_command(),
+                             num_retries=proc_obj.get_num_retries()-1)
+                    return self.wait_process(proc_name)
+                else:
+                    # Throw error if no retries left
+                    logging.error("(%s) Process '%s' failed!" % (self.name, proc_name))
+                    logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Set the start time
         if proc_name == "create":

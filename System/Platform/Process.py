@@ -3,7 +3,8 @@ import subprocess as sp
 class Process(sp.Popen):
 
     def __init__(self, args, **kwargs):
-        self.command    = kwargs.pop("cmd",     True)
+        self.command        = kwargs.pop("cmd",     True)
+        self.num_retries    = kwargs.pop("num_retries", 0)
         super(Process, self).__init__(args,     **kwargs)
         self.complete = False
 
@@ -19,3 +20,6 @@ class Process(sp.Popen):
 
     def get_command(self):
         return self.command
+
+    def get_num_retries(self):
+        return self.num_retries

@@ -200,7 +200,7 @@ class GooglePlatform(Platform):
         else:
             # Check if file exists locally on main instance
             cmd     = "ls %s" % path
-            self.main_processor.run(job_name, cmd)
+            self.main_processor.run(job_name, cmd, num_retries=1)
             try:
                 out, err = self.main_processor.wait_process(job_name)
                 return len(err) == 0
@@ -229,7 +229,7 @@ class GooglePlatform(Platform):
 
         # Run command to copy file
         cmd             = "gsutil %s cp -r %s %s %s" % (options_fast, src_path, dest_path, log_flag)
-        self.main_processor.run(job_name, cmd)
+        self.main_processor.run(job_name, cmd, num_retries=2)
         if wait:
             self.main_processor.wait_process(job_name)
 
