@@ -147,6 +147,10 @@ class Platform(object):
         paths       = sample_set.get_paths()
         dest_dir    = self.get_workspace_dir("wrk")
         count = 1
+
+        # Flag that specifies if the process should wait to copy
+        wait_to_copy = False
+
         for path_type, path_data in paths.iteritems():
             if isinstance(path_data, list):
                 for path in path_data:
@@ -160,6 +164,11 @@ class Platform(object):
                     # Update path to reflect transfer
                     sample_set.update_path(path, dest_dir)
                     count += 1
+
+                    # Set to wait to copy
+                    if count % 200 == 0:
+                        wait_to_copy = True
+
             else:
                 path = path_data
                 logging.info("Transferring sample file: %s" % path)
@@ -172,6 +181,15 @@ class Platform(object):
                 # Update path to reflect transfer
                 sample_set.update_path(path, dest_dir)
                 count += 1
+
+                # Set to wait to copy
+                if count % 200 == 0:
+                    wait_to_copy = True
+
+            # Wait for every ~200 files to be copied, before copying the next 200
+            if wait_to_copy:
+                self.main_processor.wait()
+                wait_to_copy = False
 
         # Wait for all transfers to complete
         self.main_processor.wait()
