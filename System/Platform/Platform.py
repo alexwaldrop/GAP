@@ -166,7 +166,7 @@ class Platform(object):
                     count += 1
 
                     # Set to wait to copy
-                    if count % 200 == 0:
+                    if count % 50 == 0:
                         wait_to_copy = True
 
             else:
@@ -183,10 +183,10 @@ class Platform(object):
                 count += 1
 
                 # Set to wait to copy
-                if count % 200 == 0:
+                if count % 50 == 0:
                     wait_to_copy = True
 
-            # Wait for every ~200 files to be copied, before copying the next 200
+            # Wait for every ~50 files to be copied, before copying the next 50
             if wait_to_copy:
                 self.main_processor.wait()
                 wait_to_copy = False
