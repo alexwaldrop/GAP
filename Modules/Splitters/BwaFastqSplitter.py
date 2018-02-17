@@ -27,7 +27,7 @@ class BwaFastqSplitter(Module):
         R1          = self.get_arguments("R1").get_value()
         R2          = self.get_arguments("R2").get_value()
         nr_cpus     = self.get_arguments("nr_cpus").get_value()
-        max_nr_cpus = platform.get_max_nr_cpus()
+        max_nr_cpus = max(platform.get_max_nr_cpus(), 4)
 
         # Identifying the total number of reads
         try:
@@ -77,6 +77,7 @@ class BwaFastqSplitter(Module):
         nr_cpus_needed      = int(math.ceil(nr_reads * read_len * 2 * 1.0 / self.ALIGN_SPEED))
         nr_cpus_remaining   = nr_cpus_needed % max_nr_cpus if nr_cpus_needed % max_nr_cpus else max_nr_cpus
         nr_cpus_remaining   += nr_cpus_remaining % 2
+        nr_cpus_remaining   = max(nr_cpus_remaining, 4)
 
         # Make final split
         split_name  = "%02d" % int(nr_splits - 1)
