@@ -148,9 +148,6 @@ class Platform(object):
         dest_dir    = self.get_workspace_dir("wrk")
         count = 1
 
-        # Flag that specifies if the process should wait to copy
-        wait_to_copy = False
-
         for path_type, path_data in paths.iteritems():
             if isinstance(path_data, list):
                 for path in path_data:
@@ -165,9 +162,9 @@ class Platform(object):
                     sample_set.update_path(path, dest_dir)
                     count += 1
 
-                    # Set to wait to copy
+                    # Wait for every 50 transfer jobs to be complete
                     if count % 50 == 0:
-                        wait_to_copy = True
+                        self.main_processor.wait()
 
             else:
                 path = path_data
@@ -182,14 +179,9 @@ class Platform(object):
                 sample_set.update_path(path, dest_dir)
                 count += 1
 
-                # Set to wait to copy
+                # Wait for every 50 tranfer jobs to be complete
                 if count % 50 == 0:
-                    wait_to_copy = True
-
-            # Wait for every ~50 files to be copied, before copying the next 50
-            if wait_to_copy:
-                self.main_processor.wait()
-                wait_to_copy = False
+                    self.main_processor.wait()
 
         # Wait for all transfers to complete
         self.main_processor.wait()
