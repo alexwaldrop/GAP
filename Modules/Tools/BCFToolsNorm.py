@@ -15,7 +15,7 @@ class BCFToolsNorm(Module):
         self.add_argument("ref",                is_required=True,   is_resource=True)   # Path to Fasta formatted genome reference
         self.add_argument("split_multiallelic", is_required=True,   default_value=True) # Whether to split multiallelic sites into mutliple sites
         self.add_argument("nr_cpus",            is_required=True,   default_value=4)
-        self.add_argument("mem",                is_required=True,   default_value="nr_cpus*2")
+        self.add_argument("mem",                is_required=True,   default_value="nr_cpus*4")
 
     def define_output(self, platform, split_name=None):
         # Declare recoded VCF output filename
