@@ -16,8 +16,8 @@ class QCReport2Table(Module):
         self.add_argument("qc_parser",      is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=1)
         self.add_argument("mem",            is_required=True, default_value=1)
-        self.add_argument("col_order",      is_required=True, default_value=None)
-        self.add_argument("alt_colnames",   is_required=True, default_value=None)
+        self.add_argument("col_order")
+        self.add_argument("alt_colnames")
 
     def define_output(self, platform, split_name=None):
         # Declare output summary filename
