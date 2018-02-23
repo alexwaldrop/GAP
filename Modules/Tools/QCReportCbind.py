@@ -29,6 +29,6 @@ class QCReportCbind(Module):
         qc_report       = self.get_output("qc_report")
 
         if isinstance(input_files, list):
-            return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, " ".join(input_files), qc_report)
+            return "%s Cbind -i %s > %s !LOG2!" % (qc_parser, " ".join(input_files), qc_report)
         else:
-            return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, input_files, qc_report)
+            return "%s Cbind -i %s > %s !LOG2!" % (qc_parser, input_files, qc_report)
