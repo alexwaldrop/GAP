@@ -35,7 +35,7 @@ class GATKCatVariants(Module):
         gvcf_out    = self.get_output("gvcf")
 
         # Generating JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 9 / 10, platform.get_workspace_dir("tmp"))
 
         # Generating the CatVariants options
         opts = list()
