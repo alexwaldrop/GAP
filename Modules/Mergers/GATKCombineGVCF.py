@@ -21,10 +21,10 @@ class GATKCombineGVCF(Module):
 
     def define_output(self, platform, split_name=None):
         # Declare merged GVCF output filename
-        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        gvcf = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf")
         self.add_output(platform, "gvcf", gvcf)
         # Declare GVCF index output filename
-        gvcf_idx = self.generate_unique_file_name(extension=".g.vcf.idx")
+        gvcf_idx = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf.idx")
         self.add_output(platform, "gvcf_idx", gvcf_idx)
 
     def define_command(self, platform):
