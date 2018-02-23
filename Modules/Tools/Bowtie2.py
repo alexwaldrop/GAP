@@ -15,7 +15,7 @@ class Bowtie2(Module):
         self.add_argument("bowtie2",        is_required=True, is_resource=True)
         self.add_argument("ref",            is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
-        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 4")
 
     def define_output(self, platform, split_name=None):
 
@@ -47,11 +47,11 @@ class Bowtie2(Module):
 
         # Design command line based on read type (i.e. paired-end or single-end)
         if self.get_arguments("R2").get_value() is not None:
-            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -1 {3} -2 {4} --no-mixed --no-discordant --un-conc-gz {5} -t !LOG2!"\
+            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -1 {3} -2 {4} --reorder --no-mixed --no-discordant --un-conc-gz {5} -t !LOG2!"\
                             .format(bowtie2, nr_cpus, ref, R1, R2, unmapped_fastq_base)
 
         else:
-            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -U {3} --no-mixed --no-discordant --al-gz {4} -t !LOG2!"\
+            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -U {3} --reorder --no-mixed --no-discordant --al-gz {4} -t !LOG2!"\
                             .format(bowtie2, nr_cpus, ref, R1, r1_unmapped_fastq)
 
         # Generating command for converting SAM to BAM
