@@ -27,4 +27,8 @@ class QCReportRbind(Module):
         input_files     = self.get_arguments("qc_report").get_value()
         qc_parser       = self.get_arguments("qc_parser").get_value()
         qc_report       = self.get_output("qc_report")
-        return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, " ".join(input_files), qc_report)
+
+        if isinstance(input_files, list):
+            return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, " ".join(input_files), qc_report)
+        else:
+            return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, input_files, qc_report)
