@@ -390,6 +390,11 @@ class GoogleStandardProcessor(Processor):
 
     def configure_RAID(self, raid_dir):
 
+        # Check if there are any localSSDs
+        if self.nr_local_ssd == 0:
+            logging.info("(%s) RAID-0 will not be configured as there are no LocalSSDs.")
+            return
+
         # Install the required packages
         self.install_packages("mdadm")
 
