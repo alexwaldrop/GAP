@@ -180,7 +180,7 @@ class GooglePlatform(Platform):
             logging.info("Configuring workspace disk on main server...")
 
             # Generate disk name
-            disk_name = "%s_disk" % self.name
+            disk_name = "disk_%s" % self.name
 
             # Create workspace disk
             self.workspace_disk = GoogleDisk(disk_name, self.main_processor.zone,
