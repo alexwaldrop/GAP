@@ -462,6 +462,31 @@ class GoogleStandardProcessor(Processor):
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
+    def configure_DISK(self, work_dir):
+
+        self.set_status(GoogleStandardProcessor.BUSY)
+
+        # Format the workspace disk
+        logging.info("(%s) Formating workspace disk." % self.name)
+        cmd = "sudo mkfs -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk)"
+        self.run("formatDISK", cmd)
+        self.wait_process("formatDISK")
+
+        # Mount the RAID partition
+        logging.info("(%s) Mounting workspace disk." % self.name)
+        cmd = "sudo mkdir -p %s && sudo mount -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) %s" \
+              % (work_dir, work_dir)
+        self.run("mountDISK", cmd)
+        self.wait_process("mountDISK")
+
+        # Change permission on the the RAID partition
+        logging.info("(%s) Changing permissions for the workspace disk." % self.name)
+        cmd = "sudo chmod -R 777 %s" % work_dir
+        self.run("chmodDISK", cmd)
+        self.wait_process("chmodDISK")
+
+        self.set_status(GoogleStandardProcessor.AVAILABLE)
+
     def get_instance_type(self):
 
         # Making sure the values are not higher than possibly available
