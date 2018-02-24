@@ -5,3 +5,4 @@ from LogSink import LogSink
 from PubSub import PubSub
 from GooglePlatform import GooglePlatform
 from GoogleCloudHelper import GoogleCloudHelper
+from GoogleDisk import GoogleDisk
