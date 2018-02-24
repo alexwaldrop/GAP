@@ -41,6 +41,9 @@ class GoogleStandardProcessor(Processor):
         # Initialize the region of the instance
         self.region             = GoogleCloudHelper.get_region(self.zone)
 
+        # Initialize the list of attached disks
+        self.disks              = []
+
         # Indicates that instance is not resettable
         self.is_preemptible = False
 
@@ -64,6 +67,35 @@ class GoogleStandardProcessor(Processor):
         # Returns instance status with threading.lock() to prevent race conditions
         with self.status_lock:
             return self.status
+
+    def attach_disk(self, name):
+
+        logging.info("(%s) Attaching disk '%s'." % (self.name, name))
+
+        # Generate attaching command
+        cmd = "gcloud compute instances attach-disk %s --disk=%s --zone %s --device-name=gap_disk_%s" \
+              % (self.name, name, self.zone, name)
+
+        # Run command
+        self.processes["attach_disk"] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        self.wait_process("attach_disk")
+
+        # Register the attached disk
+        self.disks.append(name)
+
+    def detach_disk(self, name):
+
+        logging.info("(%s) Detaching disk '%s'." % (self.name, name))
+
+        # Generate detaching command
+        cmd = "gcloud compute instances detach-disk %s --disk %s --zone %s" % (self.name, name, self.zone)
+
+        # Run the command
+        self.processes["detach_disk"] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        self.wait_process("detach_disk")
+
+        # Remove disk from the list
+        self.disks.remove(name)
 
     def create(self):
         # Begin running command to create the instance on Google Cloud
@@ -156,6 +188,10 @@ class GoogleStandardProcessor(Processor):
         self.set_status(GoogleStandardProcessor.BUSY)
 
         logging.info("(%s) Process 'destroy' started!" % self.name)
+
+        # Detaching disks one-by-one
+        while self.disks:
+            self.detach_disk(self.disks[0])
 
         # Create base command to destroy instance
         args = list()
