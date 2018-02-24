@@ -95,8 +95,8 @@ class GoogleStandardProcessor(Processor):
 
         # Set boot disk size
         args.append("--boot-disk-size")
-        if self.boot_disk_size >= 1024:
-            args.append("%dTB" % int(self.boot_disk_size/1024))
+        if self.boot_disk_size >= 10240:
+            args.append("%dTB" % int(math.ceil(self.boot_disk_size/1024.0)))
         else:
             args.append("%dGB" % int(self.boot_disk_size))
 
