@@ -77,8 +77,8 @@ class GoogleStandardProcessor(Processor):
               % (self.name, name, self.zone, name)
 
         # Run command
-        self.processes["attach_disk"] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        self.wait_process("attach_disk")
+        self.processes["attach_disk_%s" % name] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        self.wait_process("attach_disk_%s" % name)
 
         # Register the attached disk
         self.disks.append(name)
@@ -91,8 +91,8 @@ class GoogleStandardProcessor(Processor):
         cmd = "gcloud compute instances detach-disk %s --disk %s --zone %s" % (self.name, name, self.zone)
 
         # Run the command
-        self.processes["detach_disk"] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        self.wait_process("detach_disk")
+        self.processes["detach_disk_%s" % name] = Process(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        self.wait_process("detach_disk_%s" % name)
 
         # Remove disk from the list
         self.disks.remove(name)
@@ -424,10 +424,10 @@ class GoogleStandardProcessor(Processor):
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def configure_RAID(self, raid_dir):
+    def configure_RAID(self, raid_dir, local_ssd=True):
 
         # Check if there are any localSSDs
-        if self.nr_local_ssd == 0:
+        if local_ssd and self.nr_local_ssd == 0:
             logging.info("(%s) RAID-0 will not be configured as there are no LocalSSDs.")
             return
 
@@ -438,7 +438,11 @@ class GoogleStandardProcessor(Processor):
 
         # Setup the RAID system
         logging.info("(%s) Configuring RAID-0 system by merging the Local SSDs." % self.name)
-        cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd)" % self.nr_local_ssd
+        if local_ssd:
+            cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd)" \
+                  % self.nr_local_ssd
+        else:
+            cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=10 $(ls /dev/disk/by-id/* | grep google-gap_disk)"
         self.run("configRAID", cmd)
         self.wait_process("configRAID")
 
