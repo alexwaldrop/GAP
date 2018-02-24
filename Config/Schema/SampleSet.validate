@@ -6,7 +6,7 @@
             "items": {
                 "properties": {
                     "name": {
-                        "type": "string"
+                        "type": ["string", "array"]
                     },
                     "paths": {
                         "properties": {},
