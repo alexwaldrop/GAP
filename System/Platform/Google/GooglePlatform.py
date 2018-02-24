@@ -5,6 +5,7 @@ import subprocess as sp
 import tempfile
 
 from System.Platform import Platform
+from GoogleDisk import GoogleDisk
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from PreemptionNotifier import PreemptionNotifier
@@ -41,6 +42,9 @@ class GooglePlatform(Platform):
 
         # Initialize the final report
         self.report = None
+
+        # Initialize the workspace disk
+        self.workspace_disk = None
 
         # Start preemption notifier daemon if child instances are preemptible
         self.preemption_notifier = None
@@ -165,9 +169,29 @@ class GooglePlatform(Platform):
         # Create main workspace directory
         self.mkdir(self.get_workspace_dir(), job_name="mk_wrkspace_wrk")
 
-        # Configure RAID storage system system
-        logging.info("Configuring RAID on main server...")
-        self.main_processor.configure_RAID(raid_dir=self.get_workspace_dir())
+        # Treat the special storage types
+        if self.config["main_instance"]["nr_local_ssd"]:
+            logging.info("Configuring RAID on main server...")
+
+            # Configure RAID storage system system on local SSDs
+            self.main_processor.configure_RAID(raid_dir=self.get_workspace_dir())
+
+        elif self.config["main_instance"]["workspace_disk_size"]:
+            logging.info("Configuring workspace disk on main server...")
+
+            # Generate disk name
+            disk_name = "%s_disk" % self.name
+
+            # Create workspace disk
+            self.workspace_disk = GoogleDisk(disk_name, self.main_processor.zone,
+                                             size=self.config["main_instance"]["workspace_disk_size"])
+            self.workspace_disk.create()
+
+            # Attach disk to main server
+            self.main_processor.attach_disk(self.workspace_disk.get_name())
+
+            # Configure workspace disk
+            self.main_processor.configure_DISK(work_dir=self.get_workspace_dir())
 
         # Create workspace subdirectories
         for dir_type in self.workspace:
@@ -338,6 +362,10 @@ class GooglePlatform(Platform):
                 instance_obj.wait_process("destroy")
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
+
+        # Destroy workspace disk if it exists
+        if self.workspace_disk:
+            self.workspace_disk.destroy()
 
         # Add runtime and cost information to the report
         self.update_report()

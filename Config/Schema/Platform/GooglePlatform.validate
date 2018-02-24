@@ -16,7 +16,7 @@ disk_image                  = string(default="davelab-image")
 boot_disk_size              = integer(1,500, default=60)
 is_boot_disk_ssd            = boolean(default=False)
 nr_local_ssd                = integer(0, 8, default=5)
-
+workspace_disk_size         = integer(0, 10000, default=0)
 
 [worker_instance]
 is_preemptible              = boolean(default=True)
