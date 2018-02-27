@@ -19,8 +19,8 @@ class CellRanger(Module):
         self.add_argument("R2",                     is_required=True)
         self.add_argument("cellranger",             is_required=True, is_resource=True)
         self.add_argument("singlecell_rnaseq_ref",  is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",                is_required=True, default_value=24)
-        self.add_argument("mem",                    is_required=True, default_value=192)
+        self.add_argument("nr_cpus",                is_required=True, default_value="MAX")
+        self.add_argument("mem",                    is_required=True, default_value="nr_cpus * 6.5")
 
     def define_output(self, platform, split_name=None):
         # Declare cell ranger output dir
