@@ -142,28 +142,27 @@ class GooglePlatform(Platform):
         # Create main instance and wait for creation to complete
         instance.create()
 
-        # Mount workspace dir to main instance workspace dir using NFS
-        instance.mount(parent_instance_name=self.main_processor.get_name(),
-                       parent_mount_point=self.get_workspace_dir(),
-                       child_mount_point=self.get_workspace_dir(),
-                       log=True)
-
-        # Configure SSH on main instance
-        instance.configure_SSH(log=True)
-
-        # Configure crcmod for fast transfer
-        instance.configure_CRCMOD(log=True)
-
         # Make workspace directory on new instance
         cmd = "sudo mkdir -p %s" % self.get_workspace_dir()
         instance.run("mk_wrk_dir", cmd)
         instance.wait_process("mk_wrk_dir")
 
+        # Mount workspace dir to main instance workspace dir using NFS
+        instance.mount(parent_instance_name=self.main_processor.get_name(),
+                       parent_mount_point=self.get_workspace_dir(),
+                       child_mount_point=self.get_workspace_dir())
+
+        # Configure SSH on new instance
+        instance.configure_SSH(log=True)
+
+        # Configure crcmod for fast transfer
+        instance.configure_CRCMOD(log=True)
+
         # Install packages to instance
         packages_to_install = instance_config.get("apt_packages")
         instance.install_packages(packages_to_install, log=True)
 
-        # Return main instance
+        # Return new instance
         return instance
 
     def init_workspace(self):
