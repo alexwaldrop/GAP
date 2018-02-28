@@ -274,7 +274,7 @@ class GoogleStandardProcessor(Processor):
         self.run(job_name, cmd)
         self.wait_process(job_name)
 
-    def mount(self, parent_instance_name, parent_mount_point, child_mount_point):
+    def mount(self, parent_instance_name, parent_mount_point, child_mount_point, log=False):
         # Mount another instance at a mount_point
 
         # Install nfs-common to allow mounting
@@ -284,31 +284,41 @@ class GoogleStandardProcessor(Processor):
 
         # Generate command for mounting main instance
         logging.info("(%s) Mounting to %s." % (self.name, parent_instance_name))
-        cmd = "sudo mkdir -p %s !LOG3! && sudo mount -t nfs %s:%s %s !LOG3!" % (child_mount_point,
-                                                                         parent_instance_name,
-                                                                         parent_mount_point,
-                                                                         child_mount_point)
+        if log:
+            cmd = "sudo mkdir -p %s !LOG3! && sudo mount -t nfs %s:%s %s !LOG3!" % (child_mount_point,
+                                                                                    parent_instance_name,
+                                                                                    parent_mount_point,
+                                                                                    child_mount_point)
+        else:
+            cmd = "sudo mkdir -p %s && sudo mount -t nfs %s:%s %s " % (child_mount_point,
+                                                                       parent_instance_name,
+                                                                       parent_mount_point,
+                                                                       child_mount_point)
+
         # Run command and return when complete
         self.run("mountNFS_%s" % self.rand_instance_id, cmd)
         self.wait_process("mountNFS_%s" % self.rand_instance_id)
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def configure_CRCMOD(self):
+    def configure_CRCMOD(self, log=False):
         # Install necessary packages
-        self.install_packages(["gcc", "python-dev", "python-setuptools"])
+        self.install_packages(["gcc", "python-dev", "python-setuptools"], log=log)
 
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Install CRCMOD python package
         logging.info("(%s) Configuring CRCMOD for fast data tranfer using gsutil." % self.name)
-        cmd = "python -c 'import crcmod' || (sudo easy_install -U pip !LOG3! && sudo pip uninstall -y crcmod !LOG3! && sudo pip install -U crcmod !LOG3!)"
+        if log:
+            cmd = "python -c 'import crcmod' || (sudo easy_install -U pip !LOG3! && sudo pip uninstall -y crcmod !LOG3! && sudo pip install -U crcmod !LOG3!)"
+        else:
+            cmd = "python -c 'import crcmod' || (sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod)"
         self.run("configCRCMOD_%s" % self.rand_instance_id, cmd)
         self.wait_process("configCRCMOD_%s" % self.rand_instance_id)
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def install_packages(self, packages):
+    def install_packages(self, packages, log=False):
         # If no packages are provided to install
         if not packages:
             return
@@ -322,7 +332,10 @@ class GoogleStandardProcessor(Processor):
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Get command to install packages
-        cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" !LOG3! " % " ".join(packages)
+        if log:
+            cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" !LOG3! " % " ".join(packages)
+        else:
+            cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" " % " ".join(packages)
         # Create random id for job
         job_name    = "install_packages_%d_%s" % (random.randint(1,100000), self.rand_instance_id)
         self.run(job_name, cmd)
@@ -330,19 +343,25 @@ class GoogleStandardProcessor(Processor):
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def configure_SSH(self, max_connections=500):
+    def configure_SSH(self, max_connections=500, log=False):
 
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Increase the number of concurrent SSH connections
         logging.info("(%s) Increasing the number of maximum concurrent SSH connections to %s." % (self.name, max_connections))
-        cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' !LOG2! " % max_connections
+        if log:
+            cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' !LOG2! " % max_connections
+        else:
+            cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' " % max_connections
         self.run("configureSSH_%s" % self.rand_instance_id, cmd)
         self.wait_process("configureSSH_%s" % self.rand_instance_id)
 
         # Restart SSH daemon to load the settings
         logging.info("(%s) Restarting SSH daemon to load the new settings." % self.name)
-        cmd = "sudo service sshd restart !LOG3!"
+        if log:
+            cmd = "sudo service sshd restart !LOG3!"
+        else:
+            cmd = "sudo service sshd restart"
         self.run("restartSSH_%s" % self.rand_instance_id, cmd)
         self.wait_process("restartSSH_%s" % self.rand_instance_id)
 
@@ -400,34 +419,43 @@ class GoogleStandardProcessor(Processor):
             self.destroy()
             self.create()
 
-    def configure_NFS(self, exported_dir):
+    def configure_NFS(self, exported_dir, log=False):
 
         # Install required packages
-        self.install_packages(["sysv-rc-conf", "nfs-kernel-server"])
+        self.install_packages(["sysv-rc-conf", "nfs-kernel-server"], log=log)
 
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Setup the runlevels
         logging.info("(%s) Configuring the runlevels for NFS server." % self.name)
-        cmd = "sudo sysv-rc-conf nfs on !LOG3! && sudo sysv-rc-conf rpcbind on !LOG3!"
+        if log:
+            cmd = "sudo sysv-rc-conf nfs on !LOG3! && sudo sysv-rc-conf rpcbind on !LOG3!"
+        else:
+            cmd = "sudo sysv-rc-conf nfs on && sudo sysv-rc-conf rpcbind on"
         self.run("setupNFS_%s" % self.rand_instance_id, cmd)
         self.wait_process("setupNFS_%s" % self.rand_instance_id)
 
         # Export the NFS server
         logging.info("(%s) Exporting the NFS server directory." % self.name)
-        cmd = "sudo sh -c \"echo '\n%s\t10.240.0.0/16(rw,sync,no_subtree_check,root_squash,nohide,sec=sys)\n' >> /etc/exports\" !LOG2! " % exported_dir
+        if log:
+            cmd = "sudo sh -c \"echo '\n%s\t10.240.0.0/16(rw,sync,no_subtree_check,root_squash,nohide,sec=sys)\n' >> /etc/exports\" !LOG2! " % exported_dir
+        else:
+            cmd = "sudo sh -c \"echo '\n%s\t10.240.0.0/16(rw,sync,no_subtree_check,root_squash,nohide,sec=sys)\n' >> /etc/exports\" " % exported_dir
         self.run("exportNFS_%s" % self.rand_instance_id, cmd)
         self.wait_process("exportNFS_%s" % self.rand_instance_id)
 
         # Restart NFS server
         logging.info("(%s) Restarting NFS server to load the new settings." % self.name)
-        cmd = "sudo service nfs-kernel-server restart !LOG3!"
+        if log:
+            cmd = "sudo service nfs-kernel-server restart !LOG3!"
+        else:
+            cmd = "sudo service nfs-kernel-server restart"
         self.run("restartNFS_%s" % self.rand_instance_id, cmd)
         self.wait_process("restartNFS_%s" % self.rand_instance_id)
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def configure_RAID(self, raid_dir, local_ssd=True):
+    def configure_RAID(self, raid_dir, local_ssd=True, log=False):
 
         # Check if there are any localSSDs
         if local_ssd and self.nr_local_ssd == 0:
@@ -435,60 +463,86 @@ class GoogleStandardProcessor(Processor):
             return
 
         # Install the required packages
-        self.install_packages("mdadm")
+        self.install_packages("mdadm", log=log)
 
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Setup the RAID system
         logging.info("(%s) Configuring RAID-0 system by merging the Local SSDs." % self.name)
         if local_ssd:
-            cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd) !LOG3!" \
-                  % self.nr_local_ssd
+            if log:
+                cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd) !LOG3!" \
+                      % self.nr_local_ssd
+            else:
+                cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=%d $(ls /dev/disk/by-id/* | grep google-local-ssd)" \
+                      % self.nr_local_ssd
         else:
-            cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=10 $(ls /dev/disk/by-id/* | grep google-gap_disk) !LOG3!"
+            if log:
+                cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=10 $(ls /dev/disk/by-id/* | grep google-gap_disk) !LOG3!"
+            else:
+                cmd = "sudo mdadm --create /dev/md0 --level=0 --raid-devices=10 $(ls /dev/disk/by-id/* | grep google-gap_disk)"
         self.run("configRAID_%s" % self.rand_instance_id, cmd)
         self.wait_process("configRAID_%s" % self.rand_instance_id)
 
         # Format the RAID partition
         logging.info("(%s) Formating RAID partition." % self.name)
-        cmd = "sudo mkfs -t ext4 /dev/md0 !LOG3!"
+        if log:
+            cmd = "sudo mkfs -t ext4 /dev/md0 !LOG3!"
+        else:
+            cmd = "sudo mkfs -t ext4 /dev/md0"
         self.run("formatRAID_%s" % self.rand_instance_id, cmd)
         self.wait_process("formatRAID_%s" % self.rand_instance_id)
 
         # Mount the RAID partition
         logging.info("(%s) Mounting the RAID partition." % self.name)
-        cmd = "sudo mkdir -p %s && sudo mount -t ext4 /dev/md0 %s !LOG3!" % (raid_dir, raid_dir)
+        if log:
+            cmd = "sudo mkdir -p %s && sudo mount -t ext4 /dev/md0 %s !LOG3!" % (raid_dir, raid_dir)
+        else:
+            cmd = "sudo mkdir -p %s && sudo mount -t ext4 /dev/md0 %s" % (raid_dir, raid_dir)
         self.run("mountRAID_%s" % self.rand_instance_id, cmd)
         self.wait_process("mountRAID_%s" % self.rand_instance_id)
 
         # Change permission on the the RAID partition
         logging.info("(%s) Changing permissions for the RAID partition." % self.name)
-        cmd = "sudo chmod -R 777 %s !LOG3!" % raid_dir
+        if log:
+            cmd = "sudo chmod -R 777 %s !LOG3!" % raid_dir
+        else:
+            cmd = "sudo chmod -R 777 %s" % raid_dir
         self.run("chmodRAID_%s" % self.rand_instance_id, cmd)
         self.wait_process("chmodRAID_%s" % self.rand_instance_id)
 
         self.set_status(GoogleStandardProcessor.AVAILABLE)
 
-    def configure_DISK(self, work_dir):
+    def configure_DISK(self, work_dir, log=False):
 
         self.set_status(GoogleStandardProcessor.BUSY)
 
         # Format the workspace disk
         logging.info("(%s) Formating workspace disk." % self.name)
-        cmd = "sudo mkfs -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) !LOG3!"
+        if log:
+            cmd = "sudo mkfs -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) !LOG3!"
+        else:
+            cmd = "sudo mkfs -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk)"
         self.run("formatDISK_%s" % self.rand_instance_id, cmd)
         self.wait_process("formatDISK_%s" % self.rand_instance_id)
 
         # Mount the RAID partition
         logging.info("(%s) Mounting workspace disk." % self.name)
-        cmd = "sudo mkdir -p %s && sudo mount -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) %s !LOG3!" \
-              % (work_dir, work_dir)
+        if log:
+            cmd = "sudo mkdir -p %s && sudo mount -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) %s !LOG3!" \
+                  % (work_dir, work_dir)
+        else:
+            cmd = "sudo mkdir -p %s && sudo mount -t ext4 $(ls /dev/disk/by-id/* | grep google-gap_disk) %s" \
+                  % (work_dir, work_dir)
         self.run("mountDISK_%s" % self.rand_instance_id, cmd)
         self.wait_process("mountDISK_%s" % self.rand_instance_id)
 
         # Change permission on the the RAID partition
         logging.info("(%s) Changing permissions for the workspace disk." % self.name)
-        cmd = "sudo chmod -R 777 %s !LOG3!" % work_dir
+        if log:
+            cmd = "sudo chmod -R 777 %s !LOG3!" % work_dir
+        else:
+            cmd = "sudo chmod -R 777 %s" % work_dir
         self.run("chmodDISK_%s" % self.rand_instance_id, cmd)
         self.wait_process("chmodDISK_%s" % self.rand_instance_id)
 
