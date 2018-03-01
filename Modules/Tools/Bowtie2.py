@@ -54,7 +54,7 @@ class Bowtie2(Module):
                             .format(bowtie2, nr_cpus, ref, R1, R2, unmapped_fastq_base)
 
         else:
-            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -U {3} --reorder --no-mixed --no-discordant --al-gz {4} -t !LOG2!"\
+            bowtie2_cmd = "{0} --local -q -p {1} -x {2} -U {3} --reorder --no-mixed --no-discordant --un-gz {4} -t !LOG2!"\
                             .format(bowtie2, nr_cpus, ref, R1, r1_unmapped_fastq)
 
         # Generating command for converting SAM to BAM
