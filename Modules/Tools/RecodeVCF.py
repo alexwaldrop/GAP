@@ -32,9 +32,6 @@ class RecodeVCF(Module):
         # Get final recoded VCF output file path
         recoded_vcf_out = self.get_output("recoded_vcf")
 
-        # Install pyvcf
-        platform.run_quick_command("install_pyvcf", cmd="sudo pip install pyvcf")
-
         # Generate base command
         cmd = "python %s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
 
