@@ -27,5 +27,5 @@ class CatRecodedVCF(Module):
         recode_vcf_out  = self.get_output("recoded_vcf")
 
         # Generating command for concatenating multiple files together using unix Cat command
-        cmd = "python %s -i %s --output %s !LOG2!" % (cat_recode_vcf, " ".join(recode_vcf_in), recode_vcf_out)
+        cmd = "python %s -i %s -vvv --output %s !LOG2!" % (cat_recode_vcf, " ".join(recode_vcf_in), recode_vcf_out)
         return cmd
