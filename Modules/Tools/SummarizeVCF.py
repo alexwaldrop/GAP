@@ -41,9 +41,6 @@ class SummarizeVCF(Module):
         # Get final recoded VCF output file path
         vcf_summary = self.get_output("vcf_summary")
 
-        # Install pyvcf
-        platform.run_quick_command("install_pyvcf", cmd="sudo pip install pyvcf")
-
         # Generate base command
         cmd = "python %s Multisample --vcf %s -vvv" % (summarize_vcf_exec, vcf_in)
 
