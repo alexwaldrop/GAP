@@ -1,8 +1,8 @@
 from Modules import Module
 
-class CatRecodedVCF(Module):
+class CatVCFSummary(Module):
     def __init__(self, module_id):
-        super(CatRecodedVCF, self).__init__(module_id)
+        super(CatVCFSummary, self).__init__(module_id)
 
         self.input_keys     = ["vcf_summary", "nr_cpus", "mem"]
         self.output_keys    = ["vcf_summary"]
