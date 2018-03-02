@@ -12,6 +12,7 @@ class SummarizeVCF(Module):
     def define_input(self):
         self.add_argument("vcf",                is_required=True)                       # Input VCF file
         self.add_argument("summarize_vcf",      is_required=True,   is_resource=True)   # Path to SummarizeVCF.py executable
+        self.add_argument("summary_type",       is_required=True,   default_value="Multisample")
         self.add_argument("max_records",        is_required=False,  default_value=None) # Number of variants to process (None = all variants)
         self.add_argument("max_depth",          is_required=False,  default_value=None) # Upper limit of depth histogram
         self.add_argument("max_indel_len",      is_required=False,  default_value=None) # Upper limit of indel length histogram
@@ -29,6 +30,7 @@ class SummarizeVCF(Module):
         # Get input arguments
         vcf_in              = self.get_arguments("vcf").get_value()
         summarize_vcf_exec  = self.get_arguments("summarize_vcf").get_value()
+        summary_type        = self.get_arguments("summary_type").get_value()
 
         # Optional arguments
         max_records     = self.get_arguments("max_records").get_value()
@@ -42,7 +44,7 @@ class SummarizeVCF(Module):
         vcf_summary = self.get_output("vcf_summary")
 
         # Generate base command
-        cmd = "python %s Multisample --vcf %s -vvv" % (summarize_vcf_exec, vcf_in)
+        cmd = "python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if max_records is not None:
