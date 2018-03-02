@@ -12,8 +12,8 @@ class VCFMerger(Module):
         self.add_argument("vcf",                is_required=True)
         self.add_argument("snpsift",            is_required=True, is_resource=True)
         self.add_argument("java",               is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value=40)
+        self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
+        self.add_argument("mem",                is_required=True, default_value="MAX")
 
     def define_output(self, platform, split_name=None):
         # Declare name of merged VCF output file
