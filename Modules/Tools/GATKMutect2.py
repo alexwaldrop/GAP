@@ -22,7 +22,7 @@ class GATKMutect2(Module):
         self.add_argument("ref",                is_required=True,   is_resource=True)
         self.add_argument("germline_vcf",       is_required=False,  is_resource=True)
         self.add_argument("nr_cpus",            is_required=True,   default_value=8)
-        self.add_argument("mem",                is_required=True,   default_value=48)
+        self.add_argument("mem",                is_required=True,   default_value=30)
         self.add_argument("location")
         self.add_argument("excluded_location")
 
