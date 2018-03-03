@@ -7,7 +7,6 @@ class RecodeVCF(Module):
 
         self.input_keys     = ["vcf", "recode_vcf", "nr_cpus", "mem"]
         self.output_keys    = ["recoded_vcf"]
-        self.quick_command  = True
 
     def define_input(self):
         self.add_argument("vcf",                is_required=True)                       # Input VCF file
@@ -33,7 +32,7 @@ class RecodeVCF(Module):
         recoded_vcf_out = self.get_output("recoded_vcf")
 
         # Generate base command
-        cmd = "python %s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
+        cmd = "sudo pip install -U pyvcf ; python %s --vcf %s --output %s --min-call-depth %s -vvv" % (recode_vcf_exec, vcf_in, recoded_vcf_out, min_call_depth)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if isinstance(info_columns, list):

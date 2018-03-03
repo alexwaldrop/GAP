@@ -7,7 +7,6 @@ class SummarizeVCF(Module):
 
         self.input_keys     = ["vcf", "summarize_vcf", "nr_cpus", "mem"]
         self.output_keys    = ["vcf_summary"]
-        self.quick_command  = True
 
     def define_input(self):
         self.add_argument("vcf",                is_required=True)                       # Input VCF file
@@ -44,7 +43,7 @@ class SummarizeVCF(Module):
         vcf_summary = self.get_output("vcf_summary")
 
         # Generate base command
-        cmd = "python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
+        cmd = "sudo pip install -U pyvcf ; python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if max_records is not None:

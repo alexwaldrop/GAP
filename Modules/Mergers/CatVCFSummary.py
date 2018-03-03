@@ -23,9 +23,9 @@ class CatVCFSummary(Module):
 
     def define_command(self, platform):
         cat_vcf_summary  = self.get_arguments("cat_vcf_summary").get_value()
-        vcf_summary_in   = self.get_arguments("recoded_vcf")
-        vcf_summary_out  = self.get_output("recoded_vcf")
+        vcf_summary_in   = self.get_arguments("vcf_summary").get_value()
+        vcf_summary_out  = self.get_output("vcf_summary")
 
         # Generating command for concatenating multiple files together using unix Cat command
-        cmd = "python %s -i %s -vvv > %s !LOG2!" % (cat_vcf_summary, " ".join(vcf_summary_in), vcf_summary_out)
+        cmd = "sudo pip install -U pyvcf ; python %s -i %s -vvv > %s !LOG2!" % (cat_vcf_summary, " ".join(vcf_summary_in), vcf_summary_out)
         return cmd
