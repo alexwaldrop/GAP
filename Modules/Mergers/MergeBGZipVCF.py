@@ -28,5 +28,5 @@ class MergeBGZipVCF(Module):
         vcf_out     = self.get_output("vcf")
         # Get final normalized VCF output file path
 
-        cmd = "%s merge %s > %s !LOG2!" % (bcftools, " ".join(vcf_gz), vcf_out)
+        cmd = "%s merge -F x %s > %s !LOG2!" % (bcftools, " ".join(vcf_gz), vcf_out)
         return cmd
