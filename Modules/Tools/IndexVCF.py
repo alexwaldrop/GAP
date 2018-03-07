@@ -7,6 +7,7 @@ class IndexVCF(Module):
 
         self.input_keys   = ["vcf", "gatk", "java", "ref", "nr_cpus", "mem"]
         self.output_keys  = ["vcf", "vcf_idx"]
+        self.quick_command = True
 
     def define_input(self):
         self.add_argument("vcf",               is_required=True)
