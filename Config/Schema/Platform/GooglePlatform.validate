@@ -1,5 +1,5 @@
-PROC_MAX_NR_CPUS            = integer(1,32, default=32)
-PROC_MAX_MEM                = integer(1,208, default=208)
+PROC_MAX_NR_CPUS            = integer(1,64, default=48)
+PROC_MAX_MEM                = integer(1,416, default=312)
 workspace_dir               = string(default="/data/")
 report_topic                = string(default="pipeline_reports")
 
