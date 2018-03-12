@@ -43,7 +43,7 @@ class SummarizeVCF(Module):
         vcf_summary = self.get_output("vcf_summary")
 
         # Generate base command
-        cmd = "sudo pip install -U pyvcf ; python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
+        cmd = "sudo -H pip install -U pyvcf ; python %s %s --vcf %s -vvv" % (summarize_vcf_exec, summary_type, vcf_in)
 
         # Optionally point to file specifying which vcf INFO fields to include in recoded output file
         if max_records is not None:
