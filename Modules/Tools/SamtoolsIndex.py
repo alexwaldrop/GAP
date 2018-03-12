@@ -17,9 +17,18 @@ class SamtoolsIndex(Module):
         self.add_argument("mem",        is_required=True, default_value=1)
 
     def define_output(self, platform, split_name=None):
-        # Declare bam index output filename
-        bam_idx = "%s.bai" % self.get_arguments("bam").get_value()
-        self.add_output(platform, "bam_idx", bam_idx)
+
+        # Get arguments value
+        bams = self.get_arguments("bam").get_value()
+
+        # Check if the input is a list
+        if isinstance(bams, list):
+            bams_idx = [bam + ".bai" for bam in bams]
+        else:
+            bams_idx = bams + ".bai"
+
+        # Add new bams as output
+        self.add_output(platform, "bam_idx", bams_idx, is_path=False)
 
     def define_command(self, platform):
         # Define command for running samtools index from a platform
@@ -28,5 +37,11 @@ class SamtoolsIndex(Module):
         bam_idx     = self.get_output("bam_idx")
 
         # Generating indexing command
-        cmd = "%s index %s %s" % (samtools, bam, bam_idx)
+        cmd = ""
+        if isinstance(bam, list):
+            for b_in, b_out in zip(bam, bam_idx):
+                cmd += "%s index %s %s !LOG3! & " % (samtools, b_in, b_out)
+            cmd += "wait"
+        else:
+            cmd = "%s index %s %s !LOG3!" % (samtools, bam, bam_idx)
         return cmd
