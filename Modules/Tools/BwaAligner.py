@@ -74,7 +74,10 @@ class BwaAligner(Module):
     def __get_rg_header(platform, R1, sample_name, lib_name, seq_platform):
 
         # Obtain the read header
-        cmd = "head -n 1 %s" % R1
+        if R1.endswith(".gz"):
+            cmd = "zcat %s | head -n 1" % R1
+        else:
+            cmd = "head -n 1 %s" % R1
         out, err = platform.run_quick_command("fastq_header", cmd)
 
         # Generating the read group information
