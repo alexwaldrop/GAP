@@ -84,9 +84,9 @@ class BwaAligner(Module):
         fastq_header_data = out.lstrip("@").strip("\n").split(":")
         rg_id = ":".join(fastq_header_data[0:4])  # Read Group ID
         rg_pu = fastq_header_data[-1]  # Read Group Platform Unit
-        rg_sm = sample_name  # Read Group Sample
-        rg_lb = lib_name  # Read Group Library ID
-        rg_pl = seq_platform  # Read Group Platform used
+        rg_sm = sample_name if not isinstance(sample_name, list) else sample_name[0]    # Read Group Sample
+        rg_lb = lib_name if not isinstance(lib_name, list) else lib_name[0]             # Read Group Library ID
+        rg_pl = seq_platform if not isinstance(seq_platform, list) else seq_platform[0] # Read Group Platform used
 
         read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
                                         "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
