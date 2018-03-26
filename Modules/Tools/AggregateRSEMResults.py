@@ -82,6 +82,7 @@ class AggregateRSEMResults(Module):
             platform.run_quick_command("make_sample_info_file", cmd)
 
         #generate command line for Rscript
+        #possible values for count_type is TPM/FPKM/EXPECTED_COUNT
         cmd = "sudo Rscript --vanilla {0} -f {1} -e {2} -m {3} -t {4} !LOG3!; " \
               "sudo Rscript --vanilla {0} -f {5} -e {6} -m {7} -t {4} !LOG3!" \
                 .format(aggregate_script, isoforms_input_file, isoform_expression_file_name,
