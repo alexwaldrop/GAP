@@ -16,7 +16,7 @@ class Diamond(Module):
         self.add_argument("taxonnodes",     is_required=True, is_resource=True)
         self.add_argument("diamond_db",     is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value="MAX")
-        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("mem",            is_required=True, default_value="nr_cpus * 3")
 
     def define_output(self, platform, split_name=None):
 
@@ -40,7 +40,7 @@ class Diamond(Module):
         diamond_output  = self.get_output("diamond_output")
 
         # Compute block size. One block size is roughly 6GB
-        b = mem/6 - 2
+        b = mem/6 - 5
 
         # Generate command for piping the sequencing reads
         if R1.endswith(".gz"):
