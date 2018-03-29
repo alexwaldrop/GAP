@@ -5,8 +5,6 @@ class Gistic2(Module):
     def __init__(self, module_id):
         super(Gistic2, self).__init__(module_id)
 
-        # self.input_keys = ["sample_name", "gistic2", "analysis_type", "seg", "base_dir", "refgene_mat", "genegistic", "broad",
-        #                    "brlen", "conf", "armpeel", "savegene", "gcm", "ta", "td", "twosides", "verbose", "nr_cpus", "mem"]
         self.input_keys = ["sample_name", "gistic2", "analysis_type", "seg", "refgene_mat", "genegistic","broad",
                            "brlen", "conf", "armpeel", "savegene", "gcm", "ta", "td", "twosides", "verbose", "nr_cpus", "mem"]
 
@@ -20,7 +18,6 @@ class Gistic2(Module):
         self.add_argument("gistic2",            is_required=True, is_resource=True)
         self.add_argument("analysis_type",      is_required=True)
         self.add_argument("seg",                is_required=True)
-        # self.add_argument("base_dir",           is_required=True, default_value="gistic_results")
         self.add_argument("refgene_mat",        is_required=True, is_resource=True)
         self.add_argument("genegistic",         is_required=True, default_value=1)
         self.add_argument("broad",              is_required=True, default_value=1)
