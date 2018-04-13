@@ -10,15 +10,15 @@ class Cuffnorm(Module):
         self.output_keys = ["expression_file", "genes_count_table", "genes_attr_table"]
 
         # Command should be run on main processor
-        self.quick_command = True
+        self.quick_command = False
 
     def define_input(self):
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("cuffquant_cxb",      is_required=True)
         self.add_argument("cuffnorm",           is_required=True, is_resource=True)
         self.add_argument("gtf",                is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",            is_required=True, default_value=8)
-        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
+        self.add_argument("nr_cpus",            is_required=True, default_value=32)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6")
 
     def define_output(self, platform, split_name=None):
 
