@@ -4,6 +4,7 @@ import time
 import json
 
 from GoogleStandardProcessor import GoogleStandardProcessor
+from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePreemptibleProcessor(GoogleStandardProcessor):
 
@@ -114,17 +115,14 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             # Check to see if error was preemption or user error
             cycle_count = 1
 
-            # Waiting 30 minutes for the instance to be reported as preempted
-            while cycle_count < 900:
-                if self.get_status() == GooglePreemptibleProcessor.DEAD:
+            # Waiting 3 minutes for the instance to be reported as preempted
+            while cycle_count < 90:
+                if GoogleCloudHelper.get_instance_status(self.name, self.zone) in ["TERMINATED", "STOPPING"]:
                     # Reset the instance upon preemption detection
                     logging.info("(%s) Instance preempted! Instance will be reset." % self.name)
+                    self.set_status(GooglePreemptibleProcessor.DEAD, wait_for_reset=False)
                     self.reset()
                     return False
-
-                # If after 5 minutes no preemption signal has been obtained, then fail the instance if it is not an ssh error
-                if cycle_count >= 150 and "ssh" not in err_msg:
-                    return True
 
                 # Wait 2 seconds per cycle
                 time.sleep(2)
@@ -141,13 +139,14 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         ready = False
         cycle_count = 1
 
-        # Waiting 20 minutes for the instance to finish running
+        # Waiting 20 minutes for the instance to finish running startup script
         while cycle_count < 600 and not ready:
 
             # Check to see if instance has been preempted during creation
-            if self.get_status() == GooglePreemptibleProcessor.DEAD:
+            if GoogleCloudHelper.get_instance_status(self.name, self.zone) in ["TERMINATED", "STOPPING"]:
                 # Reset if dead
                 logging.info("(%s) Instance preempted! Instance will be reset." % self.name)
+                self.set_status(GooglePreemptibleProcessor.DEAD, wait_for_reset=False)
                 self.reset()
 
                 # Reset cycle count to begin process all over again

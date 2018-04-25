@@ -9,8 +9,6 @@ from System.Platform import Platform
 from GoogleDisk import GoogleDisk
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
-from PreemptionNotifier import PreemptionNotifier
-from PubSub import PubSub
 from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
@@ -46,19 +44,6 @@ class GooglePlatform(Platform):
 
         # Initialize the workspace disk
         self.workspace_disks = []
-
-        # Start preemption notifier daemon if child instances are preemptible
-        self.preemption_notifier = None
-        if self.is_preemptible:
-            # Create preemption notifier
-            self.preemption_notifier = PreemptionNotifier(name, self.processors, self.key_file)
-            # Attempt to start the preemption notifier
-            try:
-                self.preemption_notifier.start()
-            except:
-                logging.error("Unable to start preemption notifier!")
-                self.preemption_notifier.clean_up()
-                raise
 
     def define_config_spec_file(self):
         # Return path to config spec file used to validate platform config
@@ -331,7 +316,7 @@ class GooglePlatform(Platform):
             return
 
         # Send report to the Pub/Sub report topic
-        PubSub.send_message(self.report_topic, message=json.dumps(self.report))
+        GoogleCloudHelper.send_pubsub_message(self.report_topic, message=json.dumps(self.report))
 
         # Generate report file for transfer
         with tempfile.NamedTemporaryFile(delete=False) as report_file:
@@ -379,10 +364,6 @@ class GooglePlatform(Platform):
 
         # Return the report to Pub/Sub and the bucket
         self.return_report()
-
-        # Destroy preemption notifier if necessary
-        if self.preemption_notifier is not None:
-            self.preemption_notifier.clean_up()
 
         logging.info("Clean up complete!")
 
