@@ -3,6 +3,7 @@ import subprocess as sp
 import json
 import random
 import requests
+import base64
 
 class GoogleCloudHelperError(Exception):
     pass
@@ -21,7 +22,7 @@ class GoogleCloudHelper:
 
         # Check if any error has appeared
         if len(err) != 0 and "error" in err.lower():
-            logging.error("GoogleCloudHelper could not run the following command:\n" % cmd)
+            logging.error("GoogleCloudHelper could not run the following command:\n%s" % cmd)
             if err_msg is not None:
                 logging.error("%s. The following error appeared:\n    %s" % (err_msg, err))
             raise RuntimeError("GoogleCloudHelper command error!")
@@ -108,3 +109,45 @@ class GoogleCloudHelper:
         GoogleCloudHelper.machine_types = json.loads(machine_types)
 
         return GoogleCloudHelper.machine_types
+
+    @staticmethod
+    def get_instance_status(name, zone):
+        # Check status of instance
+        cmd = 'gcloud compute instances describe %s --format json --zone %s' % (name, zone)
+        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to get status for instance '%s'!" % name)
+
+        # Read the status returned by Google
+        msg_json = json.loads(out)
+        if "status" not in msg_json:
+            logging.error("Invalid description recieved for instance '%s'! 'status' not listed as a key!" % name)
+            logging.error("Received following description:\n%s" % out)
+            raise RuntimeError("Instance '%s' failed!" % name)
+
+        # Return instance status
+        return msg_json["status"]
+
+    @staticmethod
+    def send_pubsub_message(topic, message=None, attributes=None, encode=True):
+        # Send a message to an existing Google cloud Pub/Sub topic
+
+        # Return if message and attributes are both empty
+        if message is None and attributes is None:
+            return
+
+        # Parse the input message and attributes
+        message = "" if message is None else message
+        attributes = {} if attributes is None else attributes
+
+        # Encode the message if needed
+        if encode:
+            message = base64.b64encode(message)
+
+        # Parse the attributes and pack into a single data structure message
+        attrs = ",".join(["%s=%s" % (str(k), str(v)) for k, v in attributes.iteritems()])
+
+        # Run command to publish message to the topic
+        cmd = "gcloud --quiet --no-user-output-enabled beta pubsub topics publish %s \"%s\" --attribute=%s" \
+              % (topic, message, attrs)
+
+        err_msg = "Could not send a message to Google Pub/Sub"
+        GoogleCloudHelper.run_cmd(cmd, err_msg=err_msg)
