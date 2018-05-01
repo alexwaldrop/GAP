@@ -1,5 +1,6 @@
 import logging
 import importlib
+import copy
 
 class Node(object):
 
@@ -9,8 +10,6 @@ class Node(object):
 
         # Get the module names
         self.__main_module_name       = kwargs.pop("module")
-        self.__splitter_module_name   = kwargs.pop("split_module")
-        self.__merger_module_name     = kwargs.pop("merge_module")
 
         # Identify if the framework runs in split mode
         self.__split_mode             = kwargs.pop("split")
@@ -23,8 +22,6 @@ class Node(object):
 
         # Initialize modules
         self.main_module    = self.__load_module(self.__main_module_name)
-        self.split_module   = self.__load_module(self.__splitter_module_name) if self.__split_mode else None
-        self.merge_module   = self.__load_module(self.__merger_module_name) if self.__split_mode else None
 
     def __load_module(self, module_name):
 
@@ -54,13 +51,13 @@ class Node(object):
         return self.__config_input
 
     def get_output_keys(self):
-
         # Return output keys. get_keys() returns input_keys and output_keys.
-        if self.__split_mode:
-            return self.merge_module.get_keys()[1]
-
-        else:
-            return self.main_module.get_keys()[1]
+        return self.main_module.get_keys()[1]
 
     def get_final_output_keys(self):
         return self.__final_output_keys
+
+    def split(self, split_id):
+        split_node = copy.deepcopy(self)
+        split_node.__node_id = split_id
+        return split_node

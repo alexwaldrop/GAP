@@ -4,6 +4,7 @@ import json
 import random
 import requests
 import base64
+import os
 
 class GoogleCloudHelperError(Exception):
     pass
@@ -151,3 +152,30 @@ class GoogleCloudHelper:
 
         err_msg = "Could not send a message to Google Pub/Sub"
         GoogleCloudHelper.run_cmd(cmd, err_msg=err_msg)
+
+    @staticmethod
+    def authenticate(key_file):
+        # Attempt to authenticate GoogleCloud account from key_file
+        logging.info("Authenticating to the Google Cloud.")
+        if not os.path.exists(key_file):
+            logging.error("Authentication key was not found: %s" % key_file)
+            raise IOError("Authentication key file not found!")
+
+        cmd = "gcloud auth activate-service-account --key-file %s" % key_file
+        GoogleCloudHelper.run_cmd(cmd, "Authentication to Google Cloud failed!")
+
+        logging.info("Authentication to Google Cloud was successful.")
+
+    @staticmethod
+    def get_disk_image_info(disk_image_name):
+        # Returns information about a disk image for a project. Returns none if no image exists with the name.
+        cmd = "gcloud compute images list --format=json"
+        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+
+        # Load results into json
+        disk_images = json.loads(out.rstrip())
+        for disk_image in disk_images:
+            if disk_image["name"] == disk_image_name:
+                return disk_image
+        return None
