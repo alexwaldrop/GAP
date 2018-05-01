@@ -92,6 +92,15 @@ class TaskGraph(object):
         parents = self.get_parents(task_id)
         return len(parents) == len([x for x in parents if x.is_complete])
 
+    def split_graph(self, splitter_task):
+        # Split subgraph downstream of 'head_task'
+        for split in splitter_task.get_splits():
+            split_id = split.get_split_ID()
+            child_tasks = self.get_children(splitter_task.get_ID())
+            for child_task in child_tasks:
+                child_split = self.__split_subgraph(child_task, split_id)
+                self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
+
     def __generate_graph(self):
 
         tasks  = {}
@@ -165,13 +174,6 @@ class TaskGraph(object):
         # Return split task
         return split_task
 
-    def split_graph(self, splitter_task):
-        # Split subgraph downstream of 'head_task'
-        for split in splitter_task.get_splits():
-            split_id = split.get_split_ID()
-            child_tasks = self.get_children(splitter_task.get_ID())
-            for child_task in child_tasks:
-                child_split = self.__split_subgraph(child_task, split_id)
-                self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
+
 
 
