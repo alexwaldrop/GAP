@@ -8,9 +8,6 @@ class Task(object):
 
         self.__task_id              = task_id
 
-        # Split id
-        self.__split_id             = None
-
         # Get the module names
         self.__module_name          = kwargs.pop("module")
 
@@ -26,6 +23,23 @@ class Task(object):
         # Whether task has been completed
         self.complete   = False
 
+        # Resources required to run task
+        self.cpus       = None
+        self.mem        = None
+        self.disk_space = None
+
+        # Boolean for whether task was created by splitting an existing task
+        self.__is_split = False
+
+        # Upstream splitter task that created split task
+        self.__splitter = None
+
+        # Split id
+        self.__split_id = None
+
+        # Set of samples visible to split
+        self.__visible_samples = "All"
+
     #@property
     #def module_type(self):
     #    # Determine whether process is splitter, merger, or standard tool
@@ -39,9 +53,13 @@ class Task(object):
     def set_complete(self, is_complete):
         self.complete = is_complete
 
-    def split(self, split_id):
+    def split(self, new_id, splitter, split_id, visible_samples):
         split_node = copy.deepcopy(self)
-        split_node.__task_id = split_id
+        split_node.__task_id = new_id
+        split_node.__split_id = split_id
+        split_node.__splitter = splitter
+        split_node.__is_split = True
+        split_node.__visible_samples = visible_samples
         return split_node
 
     def get_ID(self):
@@ -50,8 +68,11 @@ class Task(object):
     def get_module(self):
         return self.module
 
-    def get_split_id(self):
-        return self.__split_id
+    def get_input_args(self):
+        return self.module.get_arguments()
+
+    def get_output(self):
+        return self.module.get_output()
 
     def get_input_keys(self):
         # Return input keys. get_keys() returns input_keys and output_keys.
@@ -70,14 +91,38 @@ class Task(object):
     def get_command(self, platform):
         return self.module.get_command(platform, split_id=self.__split_id)
 
-    def get_output(self):
-        return self.module.get_output()
+    def get_cpus(self):
+        return self.cpus
 
-    def get_output_files(self):
-        return self.module.get_output_files()
+    def get_mem(self):
+        return self.mem
+
+    def get_disk_space(self):
+        return self.disk_space
+
+    def set_cpus(self, cpus):
+        self.cpus = cpus
+
+    def set_mem(self, mem):
+        self.mem = mem
+
+    def set_disk_space(self, disk_space):
+        self.disk_space = disk_space
 
     def is_complete(self):
         return(self.complete)
+
+    def is_split(self):
+        return self.__is_split
+
+    def get_visible_samples(self):
+        return self.__visible_samples
+
+    def get_splitter(self):
+        return self.__splitter
+
+    def get_split_id(self):
+        return self.__split_id
 
     def __load_module(self, module_name):
 
