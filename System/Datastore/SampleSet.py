@@ -2,14 +2,44 @@ import os
 import logging
 
 from Config import ConfigParser
-from Sample import Sample
+from GAPFile import GAPFile
+
+class Sample(object):
+
+    def __init__(self, sample_data):
+        self.name  = sample_data.pop("name")
+        self.paths = sample_data.pop("paths")
+        self.data  = sample_data
+        self.__make_gap_files()
+
+    def __make_gap_files(self):
+        # Convert path strings to GAPFile objects
+        for path_type, paths in self.paths.iteritems():
+            # More than one path of same type
+            if isinstance(paths, "list"):
+                for i in range(len(paths)):
+                    file_id = "%s_%s_%s" % (self.name, path_type, i)
+                    self.paths[path_type][i] = GAPFile(file_id, path_type, paths[i])
+            # One path of a given type
+            else:
+                file_id = "%s_%s_1" % (self.name, path_type)
+                self.paths[path_type] = GAPFile(file_id, path_type, paths)
+
+    def get_name(self):
+        return self.name
+
+    def get_paths(self):
+        return self.paths
+
+    def get_data(self):
+        return self.data
 
 class SampleSet (object):
     # Container class that parses, holds, and provides access to Sample-level data declared in an external config file
     def __init__(self, sample_data_json):
 
         # Parse and validate SampleSet config file
-        sample_data_spec     = "Config/Schema/SampleSet.validate"
+        sample_data_spec     = "/System/Datastore/SampleSet.validate"
         config_parser        = ConfigParser(sample_data_json, sample_data_spec)
         self.config          = config_parser.get_config()
 
@@ -19,11 +49,48 @@ class SampleSet (object):
         # Check that sample-level metadata types are identical for every sample
         self.__check_samples()
 
-        # Organize Sample input paths by path type
-        self.path_keys     = self.samples[0].get_paths().keys()
+        # Get types of data available
+        self.__file_types           = self.samples[0].get_paths().keys()
+        self.__sample_data_types    = self.samples[0].get_data().keys()
+        self.__global_data_types    = [x for x in self.config.keys() if x != "sample"]
+
+        # Sample order
+        self.sample_names = [sample.name for sample in self.samples]
 
         # Organize global and sample-level metadata by data type
-        self.data     = self.__organize_data_by_type()
+        self.data   = self.__organize_data_by_type()
+
+    def has_data_type(self, data_type):
+        # Return true if data type exists in sample data
+        return data_type in self.data
+
+    def get_paths(self, path_type=None, samples=None):
+        # Return sample data files
+        # Optionally can subset by file type and samples. Default is to return all paths from all samples.
+        path_type = self.__file_types if path_type is None else path_type
+        samples = self.sample_names if samples is None else samples
+
+        # Subset by type
+        paths = self.__subset_by_type(self.data, path_type)
+
+        # Subset by sample
+        paths = self.__subset_by_sample(paths, samples)
+
+        return paths
+
+    def get_data(self, data_type=None, samples=None):
+        # Return sample data
+        # Optionally can subset by data type and samples. Default is all data types from all samples.
+        data_type = self.data.keys() if data_type is None else data_type
+        samples = self.sample_names if samples is None else samples
+
+        # Subset by type
+        data = self.__subset_by_type(self.data, data_type)
+
+        # Subset by sample
+        data = self.__subset_by_sample(data, samples)
+
+        return data
 
     def __create_samples(self):
         # Parse sample data list in config and convert to Sample objects
@@ -47,6 +114,23 @@ class SampleSet (object):
                     logging.error("Samples provided in SampleInputConfig have different sample-level metadata types! "
                                   "\nSamples must contain identical metadata types!")
                     raise IOError("One or more samples contains metadata not shared by all other samples!")
+
+    def __subset_by_type(self, data, data_types):
+        # Subset data to include only certain data types
+        return {key : data[key] for key in data_types}
+
+    def __subset_by_sample(self, data, samples):
+        # Subset data to include only certain samples
+        sample_indices = [self.sample_names.index(sample) for sample in samples]
+        new_data = {}
+        for data_type in data:
+            if len(samples) > 1:
+                new_data[data_type] = []
+                for sample_index in sample_indices:
+                    new_data[data_type].append(data[data_type][sample_index])
+            else:
+                new_data[data_type] = data[data_type][sample_indices[0]]
+        return new_data
 
     def __organize_data_by_type(self):
         # Combine global and sample-level data into single dictionary organized by data type
@@ -87,53 +171,3 @@ class SampleSet (object):
             data[key] = value
         return data
 
-    def has_data_type(self, data_type):
-        return data_type in self.data
-
-    def get_paths(self, path_type=None):
-        if path_type is None:
-            return {key:self.data[key] for key in self.path_keys}
-        else:
-            return self.data[path_type]
-
-    def get_data(self, data_type=None):
-        if data_type is None:
-            return self.data
-        else:
-            return self.data[data_type]
-
-    def update_path(self, src_path, dest_dir):
-        # Searches in self.data for a path matching the src_path
-        # Updates path to refelct transfer to dest_dir
-
-        # Update source path path to the new path, depending if directory or not
-        if src_path.endswith("/"):
-            dir_name    = src_path.rstrip("/").split("/")[-1]
-            new_path    = os.path.join(dest_dir, dir_name)
-            new_path    += "/"
-
-        else:
-            file_name   = src_path.split("/")[-1]
-            new_path    = os.path.join(dest_dir, file_name)
-
-        # Search through paths to find the correct path to update
-        path_types      = self.path_keys
-        src_path_found  = False
-        for data_type, data in self.data.iteritems():
-            # Check to see if next type is a path
-            if data_type in path_types:
-                # Iterate through all path if mutliple paths of this type
-                if isinstance(data, list):
-                    for i in range(len(data)):
-                        if data[i] == src_path:
-                            self.data[data_type][i]     = new_path
-                            src_path_found              = True
-                # Check to see if path is src_path if only one path of this type
-                elif data == src_path:
-                    self.data[data_type]    = new_path
-                    src_path_found          = True
-
-        # Throw error if no path found of type 'path_type' with path 'src_path'
-        if not src_path_found:
-            logging.error("Unable to update sample path '%s'as no sample paths matched!" % src_path)
-            raise IOError("Unable to update sample path!")
