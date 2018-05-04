@@ -4,27 +4,18 @@ import logging
 from Config import ConfigParser
 from System.ResourceKit import Resource
 
-class ResourceKitParser (object):
-
-    CONFIG_SPEC = "System/Datastore/ResourceKit.validate"
-
+class ResourceKit (object):
     # Container class that parses and holds resource objects declared in an external config file
     def __init__(self, resource_config_file):
 
         # Parse and validate ResourceKit config file
-
-        config_parser        = ConfigParser(resource_config_file, ResourceKitParser.CONFIG_SPEC)
+        resource_config_spec = "Config/Schema/ResourceKit.validate"
+        config_parser        = ConfigParser(resource_config_file, resource_config_spec)
         self.config          = config_parser.get_config()
 
         # Resource name
         self.resources = self.__create_resources()
         self.resources = self.__organize_by_type()
-
-    def parse_resource_kit(resource_kit_file):
-        # Parse resource kit into gap object set
-        config_parser = ConfigParser(resource_kit_file, ResourceKitParser.CONFIG_SPEC)
-        self.config = config_parser.get_config()
-
 
     def __create_resources(self):
         # Parse resources listed in configs and convert to config objects
