@@ -66,9 +66,9 @@ class Graph(object):
             logging.error("Cannot list children for non-existant task: %s" % task_id)
             raise RuntimeError("Graph Error: Attempt to get children from nonexistant task!")
         dependents = []
-        for node, edges in self.adj_list.iteritems():
+        for task, edges in self.adj_list.iteritems():
             if task_id in edges:
-                dependents.append(node)
+                dependents.append(task)
         return dependents
 
     def get_parents(self, task_id):
@@ -86,20 +86,19 @@ class Graph(object):
     def parents_complete(self, task_id):
         # Determine if all task parents have completed
         parents = self.get_parents(task_id)
-        return len(parents) == len([x for x in parents if x.is_complete])
+        return len(parents) == len([x for x in parents if self.get_tasks(x).is_complete()])
 
     def split_graph(self, splitter_task):
         # Recursively split tasks downstream of 'head_task' until a closing merge is reached
         child_tasks = self.get_children(splitter_task.get_ID())
         for split in splitter_task.get_splits():
-            # Create new graph partition with split_id
+            # Create new graph partition for each new split
             split_id = split.get_split_ID()
-            # Get samples declared visible graph partition
-            visible_samples = split.get_visible_samples()
-            # If no sample partition is declared, split nodes inherit sample partition from splitter task
-            visible_samples = splitter_task.get_visible_samples() if visible_samples is None else visible_samples
+            # Get visible samples for new graph partition
+            # If no visible samples declared, split nodes inherit sample partition from splitter task
+            visible_samples = split.get_visible_samples() if split.get_visible_samples() is not None else splitter_task.get_visible_samples()
             for child_task in child_tasks:
-                child_split = self.__split_subgraph(child_task, split_id, visible_samples)
+                child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples)
                 self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
 
     def __generate_graph(self):
@@ -134,17 +133,7 @@ class Graph(object):
             else:
                 raise RuntimeError("Runtime graph alteration resulted in invalid graph!")
 
-    def __split_task(self, task, split_id, visible_samples):
-        # Create a copy of an existing task (split)
-        # Give new id, store id of splitting task, and split id
-        new_task_id = "%s/%s" % (task.get_ID(), split_id)
-        split_task = task.split(new_task_id, split_id, visible_samples)
-        # Add split task to graph
-        self.add_task(split_task)
-        # Return split task
-        return split_task
-
-    def __split_subgraph(self, task, split_id, visible_samples, level=1):
+    def __split_subgraph(self, task, splitter_task, split_id, visible_samples, level=1):
         # Recursively split subgraph that depends on 'task'
         if task.get_type() == "Merger":
             # Decrement current nesting scope after merge
@@ -158,14 +147,16 @@ class Graph(object):
             # Current split has been merged (don't split downstream tasks)
             return task
 
-        # Make new split by copying old task and giving it a new id
-        split_task = self.__split_task(task, split_id, visible_samples)
+        # Split current task into new task and add split to graph
+        new_task_id = "%s/%s" % (task.get_ID(), split_id)
+        split_task = task.split(new_task_id, splitter_task, split_id, visible_samples)
+        self.add_task(split_task)
 
         # Create dependencies between current task and splits created for each child task
         child_tasks = self.get_children(task.get_ID())
         for child_task in child_tasks:
             # Split each child subraph
-            child_split = self.__split_subgraph(child_task, split_id, visible_samples, level)
+            child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples, level)
             # Connect task to split child subgraph
             self.add_dependency(child_split.get_ID(), split_task.get_ID())
 
