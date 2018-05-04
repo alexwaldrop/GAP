@@ -9,33 +9,42 @@ class Datastore(object):
         self.sample_data = sample_data
 
     def get_task_arg(self, task_id, arg_type):
-        # use the graph logic and input arg rules to determine
-        # and return the object that best satisfies the arg_type for a task
+        # Return the object that best satisfies the arg_type for a task
 
-        # Get all input args visible to task
+        # Get all objects visible to task that match the arg_type
         possible_args = self.__gather_args(task_id, arg_type)
 
-        # Select args according to rules
-        final_arg = self.__choose_arg(possible_args)
+        # Select the object using precedence rules
+        final_arg = self.__select_arg(possible_args)
 
         return final_arg
 
-    def __gather_args(self, task_id, arg_type):
-        # Gather possible inputs matching the type of a certain type visible to a task
+    def __select_arg(self, avail_args):
+        # Priority of checking for argument
+        input_order = ["parent_input", "resource_input", "sample_input", "config_input"]
 
+        # Search the key in each input type
+        for input_type in input_order:
+            if len(avail_args[input_type]) > 0:
+                return avail_args[input_type]
+
+        return None
+
+    def __gather_args(self, task_id, arg_type):
+        # Gather possible inputs to a task matching arg_type
         possible = {}
 
         # Get args from parent tasks
         possible["parent_input"] = self.__gather_parent_args(task_id, arg_type)
 
         # Get args from resource kit
-        possible["resource_input"] = self.__gather_res_kit_args(arg_type)
+        possible["resource_input"] = self.__gather_res_kit_args(task_id, arg_type)
 
         # Get args from sample data
         possible["sample_input"] = self.__gather_sample_args(task_id, arg_type)
 
         # Get args from config input
-        config_input = self.graph.get_tasks(task_id).get_user_module_args()
+        config_input = self.graph.get_tasks(task_id).get_graph_config_args()
         possible["config_input"] = [] if arg_type not in config_input else config_input[arg_type]
 
         return possible
@@ -60,15 +69,18 @@ class Datastore(object):
         args = []
         # Limit sample data to task's sample scope
         visible_samples = self.graph.get_tasks(task_id).get_visible_samples()
-        args = self.sample_data.get_data(arg_type, samples=visible_samples)
+        if self.sample_data.has_data_type(arg_type):
+            if visible_samples != "All":
+                args = self.sample_data.get_data(arg_type, samples=visible_samples)
+            else:
+                args = self.sample_data.get_data(arg_type)
         return args
 
     def __gather_res_kit_args(self, task_id, arg_type):
 
         args = []
-
         # Search to see if the argument key appears in the config input
-        config_input = self.graph.get_tasks(task_id).get_user_module_input()
+        config_input = self.graph.get_tasks(task_id).get_graph_config_args()
         if arg_type in config_input:
 
             # Obtain the resource name
@@ -85,25 +97,7 @@ class Datastore(object):
 
         return args
 
-    def __choose_arg(self, avail_args):
 
-        # Priority of checking for argument
-        input_order = ["parent_input", "resource_input", "sample_input", "config_input"]
-
-        # Search the key in each input type
-        for input_type in input_order:
-            if len(avail_args[input_type]) > 0:
-                return avail_args[input_type]
-
-        return None
-
-    def get_files(self):
-        # Return list of all files currently in the datastore
-        pass
-
-    def serialize(self, pickle_file):
-        # Create a picklelize version of object and save to file
-        pass
 
 
 
