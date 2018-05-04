@@ -34,10 +34,10 @@ class Task(object):
         # Upstream splitter task that created split task
         self.__splitter = None
 
-        # Split id
+        # Output partition visible to task
         self.__split_id = None
 
-        # Set of samples visible to split
+        # Sample partition visible to task
         self.__visible_samples = "All"
 
     #@property
@@ -54,13 +54,29 @@ class Task(object):
         self.complete = is_complete
 
     def split(self, new_id, splitter, split_id, visible_samples):
-        split_node = copy.deepcopy(self)
-        split_node.__task_id = new_id
-        split_node.__split_id = split_id
-        split_node.__splitter = splitter
-        split_node.__is_split = True
-        split_node.__visible_samples = visible_samples
-        return split_node
+        # Produce clone of current task but restrict visible output and sample info available to task
+        # Visible output/sample partition defined by upstream splitting task
+        # Splitter is the name of the head task that created the split of current task
+        # Split_id is the name of the partition the newly created task will be able to access
+        # visible_samples is list of samples visible to new split
+
+        # Create copy of current task and give new id
+        split_task = copy.deepcopy(self)
+        split_task.__task_id = new_id
+
+        # Upstream task responsible for creating new split task
+        split_task.__splitter = splitter
+
+        # Split visible to this split task
+        split_task.__split_id = split_id
+
+        # Samples visible to split task
+        split_task.__visible_samples = visible_samples
+
+        # Specify that new split task is the result of a split
+        split_task.__is_split = True
+
+        return split_task
 
     def get_ID(self):
         return self.__task_id
@@ -85,7 +101,7 @@ class Task(object):
     def get_final_output_keys(self):
         return self.__final_output_keys
 
-    def get_user_module_args(self):
+    def get_graph_config_args(self):
         return self.__module_args
 
     def get_command(self, platform):
