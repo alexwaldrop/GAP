@@ -40,6 +40,10 @@ class Task(object):
         # Sample partition visible to task
         self.__visible_samples = "All"
 
+        # Flag for whether task has been split/replaced and shouldn't be executed
+        self.__deprecated = False
+
+
     #@property
     #def module_type(self):
     #    # Determine whether process is splitter, merger, or standard tool
@@ -75,6 +79,9 @@ class Task(object):
 
         # Specify that new split task is the result of a split
         split_task.__is_split = True
+
+        # Remove deprecated flag possibly inherited from parent
+        split_task.__deprecated = False
 
         return split_task
 
@@ -127,6 +134,12 @@ class Task(object):
 
     def is_complete(self):
         return(self.complete)
+
+    def flag_as_deprecated(self):
+        self.__deprecated = True
+
+    def is_deprecated(self):
+        return self.__deprecated
 
     def is_split(self):
         return self.__is_split

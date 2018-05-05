@@ -101,6 +101,14 @@ class Graph(object):
                 child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples)
                 self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
 
+        # Remove deprecated tasks after all splits tasks have been created
+        for task in self.__deprecated_tasks:
+            self.remove_task(task)
+
+    @property
+    def __deprecated_tasks(self):
+        return [task.get_ID() for task in self.tasks if task.is_deprecated()]
+
     def __generate_graph(self):
 
         tasks  = {}
@@ -161,8 +169,8 @@ class Graph(object):
             self.add_dependency(child_split.get_ID(), split_task.get_ID())
 
         if len(child_tasks) > 0:
-            # Set task to complete unless it's a leaf that doesn't get merged
-            task.set_complete(True)
+            # Mark original task as deprecated so it can be discarded
+            task.flag_as_deprecated()
 
         # Return split task
         return split_task
