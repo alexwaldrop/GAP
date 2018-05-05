@@ -170,7 +170,7 @@ class Graph(object):
 
         if len(child_tasks) > 0:
             # Mark original task as deprecated so it can be discarded
-            task.flag_as_deprecated()
+            task.deprecate()
 
         # Return split task
         return split_task

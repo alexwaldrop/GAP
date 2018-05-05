@@ -135,12 +135,6 @@ class Task(object):
     def is_complete(self):
         return(self.complete)
 
-    def flag_as_deprecated(self):
-        self.__deprecated = True
-
-    def is_deprecated(self):
-        return self.__deprecated
-
     def is_split(self):
         return self.__is_split
 
@@ -152,6 +146,12 @@ class Task(object):
 
     def get_split_id(self):
         return self.__split_id
+
+    def deprecate(self):
+        self.__deprecated = True
+
+    def is_deprecated(self):
+        return self.__deprecated
 
     def __load_module(self, module_name):
 
