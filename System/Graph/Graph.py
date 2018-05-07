@@ -1,7 +1,7 @@
 import logging
 
 from Config import ConfigParser
-from System.Graph import Task
+from Task import Task
 
 class Graph(object):
 
