@@ -16,7 +16,7 @@ class Sample(object):
         # Convert path strings to GAPFile objects
         for path_type, paths in self.paths.iteritems():
             # More than one path of same type
-            if isinstance(paths, "list"):
+            if isinstance(paths, list):
                 for i in range(len(paths)):
                     file_id = "%s_%s_%s" % (self.name, path_type, i)
                     self.paths[path_type][i] = GAPFile(file_id, path_type, paths[i])
@@ -39,7 +39,7 @@ class SampleSet (object):
     def __init__(self, sample_data_json):
 
         # Parse and validate SampleSet config file
-        sample_data_spec     = "/System/Datastore/SampleSet.validate"
+        sample_data_spec     = "System/Datastore/SampleSet.validate"
         config_parser        = ConfigParser(sample_data_json, sample_data_spec)
         self.config          = config_parser.get_config()
 
@@ -81,6 +81,10 @@ class SampleSet (object):
     def get_data(self, data_type=None, samples=None):
         # Return sample data
         # Optionally can subset by data type and samples. Default is all data types from all samples.
+
+        if data_type is None and samples is None:
+            return self.data
+
         data_type = self.data.keys() if data_type is None else data_type
         samples = self.sample_names if samples is None else samples
 
@@ -117,10 +121,19 @@ class SampleSet (object):
 
     def __subset_by_type(self, data, data_types):
         # Subset data to include only certain data types
-        return {key : data[key] for key in data_types}
+        if isinstance(data_types, list):
+            # Multiple data types
+            return {key : data[key] for key in data_types}
+        # Single data type
+        return {data_types : data[data_types]}
 
     def __subset_by_sample(self, data, samples):
         # Subset data to include only certain samples
+
+        # Coerce single sample to list
+        if isinstance(samples, basestring):
+            samples = [samples]
+
         sample_indices = [self.sample_names.index(sample) for sample in samples]
         new_data = {}
         for data_type in data:
