@@ -91,12 +91,12 @@ class Graph(object):
     def split_graph(self, splitter_task):
         # Recursively split tasks downstream of 'head_task' until a closing merge is reached
         child_tasks = self.get_children(splitter_task.get_ID())
-        for split in splitter_task.get_splits():
+        for split_id in splitter_task.get_output():
             # Create new graph partition for each new split
-            split_id = split.get_split_ID()
+            split = splitter_task.get_output(split_id=split_id)
             # Get visible samples for new graph partition
-            # If no visible samples declared, split nodes inherit sample partition from splitter task
-            visible_samples = split.get_visible_samples() if split.get_visible_samples() is not None else splitter_task.get_visible_samples()
+            # If no visible samples declared, split nodes inherit visible samples from splitter task
+            visible_samples = split["visible_samples"] if split["visible_samples"] is not None else splitter_task.get_visible_samples()
             for child_task in child_tasks:
                 child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples)
                 self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
