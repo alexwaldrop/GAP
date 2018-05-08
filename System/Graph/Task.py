@@ -43,7 +43,6 @@ class Task(object):
         # Flag for whether task has been split/replaced and shouldn't be executed
         self.__deprecated = False
 
-
     #@property
     #def module_type(self):
     #    # Determine whether process is splitter, merger, or standard tool
@@ -79,6 +78,9 @@ class Task(object):
 
         # Specify that new split task is the result of a split
         split_task.__is_split = True
+
+        # Give new module id to module
+        split_task.module.set_module_id(new_id)
 
         # Remove deprecated flag possibly inherited from parent
         split_task.__deprecated = False
