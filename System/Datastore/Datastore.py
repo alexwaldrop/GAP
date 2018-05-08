@@ -52,11 +52,12 @@ class Datastore(object):
     def __gather_parent_args(self, task_id, arg_type):
         # Get args of specified type inherited from parent tasks
         args = []
+        curr_task = self.graph.get_tasks(task_id)
         for parent_id in self.graph.get_parents(task_id):
             parent = self.graph.get_tasks(parent_id)
-            if parent.get_type() == "Splitter":
+            if parent.is_splitter_task():
                 # Limit output to partition visible to task
-                split_id = self.graph.get_tasks(task_id).get_split_id()
+                split_id = curr_task.get_split_id()
                 output = parent.get_output(split_id=split_id)
             else:
                 output = parent.get_output()
@@ -67,39 +68,39 @@ class Datastore(object):
     def __gather_sample_args(self, task_id, arg_type):
         # Get args of specified type from sample data
         args = []
-        # Limit sample data to task's sample scope
-        visible_samples = self.graph.get_tasks(task_id).get_visible_samples()
+        # Get list of samples visible to current task
+        curr_task = self.graph.get_task(task_id)
+        visible_samples = curr_task.get_visible_samples()
         if self.sample_data.has_data_type(arg_type):
-            if visible_samples != "All":
+
+            # Restrict sample sheet access to visible samples if necessary
+            if visible_samples is not None:
                 args = self.sample_data.get_data(arg_type, samples=visible_samples)
+
+            # Return variables from all samples
             else:
                 args = self.sample_data.get_data(arg_type)
+
         return args
 
     def __gather_res_kit_args(self, task_id, arg_type):
 
         args = []
-        # Search to see if the argument key appears in the config input
-        config_input = self.graph.get_tasks(task_id).get_graph_config_args()
-        if arg_type in config_input:
 
-            # Obtain the resource name
-            res_name = config_input[arg_type]
+        if self.resource_kit.has_resource_type(arg_type):
 
-            # Get the resource object with name "res_name" from resource input data
-            args = [self.resource_kit.get_resources(arg_type)[res_name]]
+            # Search to see if the argument key appears in the config input
+            config_input = self.graph.get_tasks(task_id).get_graph_config_args()
+            if arg_type in config_input:
+                # Obtain the resource name
+                res_name = config_input[arg_type]
 
-        # If not found in config input, search the argument key in the resource input
-        elif self.resource_kit.has_resource_type(arg_type):
+                # Get the resource object with name "res_name" from resource input data
+                args = [self.resource_kit.get_resources(arg_type)[res_name]]
 
-            # There should be only one resource of type "arg_key"
-            args = [self.resource_kit.get_resources(arg_type).values()[0]]
+            # If not in config input, should only be one resource of type "arg_key"
+            else:
+                # There should be only one resource of type "arg_key"
+                args = [self.resource_kit.get_resources(arg_type).values()[0]]
 
         return args
-
-
-
-
-
-
-
