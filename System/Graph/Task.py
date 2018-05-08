@@ -2,6 +2,8 @@ import logging
 import importlib
 import copy
 
+from Modules import Splitter, Merger
+
 class Task(object):
 
     def __init__(self, task_id, **kwargs):
@@ -23,11 +25,6 @@ class Task(object):
         # Whether task has been completed
         self.complete   = False
 
-        # Resources required to run task
-        self.cpus       = None
-        self.mem        = None
-        self.disk_space = None
-
         # Boolean for whether task was created by splitting an existing task
         self.__is_split = False
 
@@ -42,19 +39,6 @@ class Task(object):
 
         # Flag for whether task has been split/replaced and shouldn't be executed
         self.__deprecated = False
-
-    #@property
-    #def module_type(self):
-    #    # Determine whether process is splitter, merger, or standard tool
-    #    if isinstance(self.module, "splitter"):
-    #        return "Splitter"
-    #    elif isinstance(self.module, "merger"):
-    #        return "Merger"
-    #    else:
-    #        return "Tool"
-
-    def set_complete(self, is_complete):
-        self.complete = is_complete
 
     def split(self, new_id, splitter, split_id, visible_samples):
         # Produce clone of current task but restrict visible output and sample info available to task
@@ -93,6 +77,12 @@ class Task(object):
     def get_module(self):
         return self.module
 
+    def is_splitter_task(self):
+        return isinstance(self.module, Splitter)
+
+    def is_merger_task(self):
+        return isinstance(self.module, Merger)
+
     def get_input_args(self):
         return self.module.get_arguments()
 
@@ -113,29 +103,11 @@ class Task(object):
     def get_graph_config_args(self):
         return self.__module_args
 
-    def get_command(self, platform):
-        return self.module.get_command(platform, split_id=self.__split_id)
-
-    def get_cpus(self):
-        return self.cpus
-
-    def get_mem(self):
-        return self.mem
-
-    def get_disk_space(self):
-        return self.disk_space
-
-    def set_cpus(self, cpus):
-        self.cpus = cpus
-
-    def set_mem(self, mem):
-        self.mem = mem
-
-    def set_disk_space(self, disk_space):
-        self.disk_space = disk_space
+    def set_complete(self, is_complete):
+        self.complete = is_complete
 
     def is_complete(self):
-        return(self.complete)
+        return self.complete
 
     def is_split(self):
         return self.__is_split
