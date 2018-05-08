@@ -156,7 +156,7 @@ class Graph(object):
             return task
 
         # Split current task into new task and add split to graph
-        new_task_id = "%s/%s" % (task.get_ID(), split_id)
+        new_task_id = "%s.%s" % (task.get_ID(), split_id)
         split_task = task.split(new_task_id, splitter_task, split_id, visible_samples)
         self.add_task(split_task)
 
