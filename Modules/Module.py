@@ -109,3 +109,9 @@ class Module(object):
 
     def is_quick_command(self):
         return self.quick_command
+
+    def get_module_id(self):
+        return self.module_id
+
+    def set_module_id(self, new_id):
+        self.module_id = new_id
