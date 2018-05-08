@@ -63,8 +63,8 @@ class BwaFastqSplitter(Module):
         for i in range(nr_splits - 1):
             # Generate filenames with split names as they'll appear after being generated with unix split function
             split_name = "%02d" % i
-            r1_split = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", containing_dir=wrk_dir)
-            r2_split = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", containing_dir=wrk_dir) if R2 is not None else None
+            r1_split = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", output_dir=wrk_dir)
+            r2_split = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", output_dir=wrk_dir) if R2 is not None else None
 
             # Create next split
             split_data = {"nr_cpus" : max_nr_cpus,
@@ -81,8 +81,8 @@ class BwaFastqSplitter(Module):
 
         # Make final split
         split_name  = "%02d" % int(nr_splits - 1)
-        r1_split    = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", containing_dir=wrk_dir)
-        r2_split    = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", containing_dir=wrk_dir) if R2 is not None else None
+        r1_split    = self.generate_unique_file_name(split_name=split_name, extension="R1.fastq", output_dir=wrk_dir)
+        r2_split    = self.generate_unique_file_name(split_name=split_name, extension="R2.fastq", output_dir=wrk_dir) if R2 is not None else None
 
         # Create final split object
         split_data  = {"nr_cpus"    : nr_cpus_remaining,

@@ -38,7 +38,7 @@ class BAMChromosomeSplitter(Module):
         # Add split info for named chromosomes
         for chrom in chroms:
             split_name  = chrom
-            bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
+            bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", output_dir=wrk_dir)
             split_info = {"chroms"      : chrom,
                           "is_aligned"  : True,
                           "bam"         : bam }
@@ -46,7 +46,7 @@ class BAMChromosomeSplitter(Module):
 
         # Add split info for all chromosomes that aren't named in config
         split_name  = "remains"
-        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
+        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", output_dir=wrk_dir)
         split_info  = { "chroms"        : remains,
                         "is_aligned"    : True,
                         "bam"           : bam}
@@ -54,7 +54,7 @@ class BAMChromosomeSplitter(Module):
 
         # Add split info for unmapped reads
         split_name  = "unmapped"
-        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", containing_dir=wrk_dir)
+        bam         = self.generate_unique_file_name(split_name=split_name, extension=".bam", output_dir=wrk_dir)
         split_info  = { "chroms"      : None,
                         "is_aligned"  : False,
                         "bam"         : bam}
