@@ -1,4 +1,4 @@
-import logging
+import copy
 
 class Datastore(object):
     # Object containing all available information to GAP modules at any given instance
@@ -17,6 +17,9 @@ class Datastore(object):
         # Select the object using precedence rules
         final_arg = self.__select_arg(possible_args)
 
+        # Make deep copy of argument so internal datastore values can't be touched
+        final_arg = copy.deepcopy(final_arg) if final_arg is not None else final_arg
+
         return final_arg
 
     def __select_arg(self, avail_args):
@@ -25,9 +28,12 @@ class Datastore(object):
 
         # Search the key in each input type
         for input_type in input_order:
-            if len(avail_args[input_type]) > 0:
+            # List of values matching type
+            if len(avail_args[input_type]) > 1:
                 return avail_args[input_type]
-
+            # Single value matching type
+            if len(avail_args[input_type]) > 0:
+                return avail_args[input_type][0]
         return None
 
     def __gather_args(self, task_id, arg_type):

@@ -15,16 +15,6 @@ class Scheduler(object):
         # Initialize set of task workers
         self.task_workers = {}
 
-        # Scheduler resource limits
-        self.max_cpus       = 100
-        self.max_mem        = 100
-        self.max_disk_space = 100
-
-        # Current scheduler resource usage
-        self.cpus           = 0
-        self.mem            = 0
-        self.disk_space     = 0
-
     def run(self):
 
         while not self.task_graph.is_complete():
@@ -55,31 +45,17 @@ class Scheduler(object):
                     task.set_complete(True)
                     continue
 
-                # Check if there are enough resources to launch tasks waiting to execute
-                if task_worker is not None and task_worker.get_status() is TaskWorker.READY:
-                    if self.__can_launch(task):
-                        logging.info("Launching task: '%s'" % task_id)
-                        # Signal to TaskWorker that it can start executing the task on the platform
-                        self.__launch(task_worker)
-                    continue
-
                 # At least one of node's requirements is not complete, so this node cannot be processed yet
                 if not self.task_graph.parents_complete(task_id):
                     continue
 
+                logging.info("Launching task: '%s'" % task_id)
                 # Task dependencies are met. Initialize task graph.
                 self.task_workers[task_id] = TaskWorker(task, self.datastore, self.platform)
                 self.task_workers[task_id].start()
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
-
-    def __can_launch(self, task):
-        # Return true if enough resources are available to run job
-        new_cpus        = self.cpus + task.get_cpus()
-        new_mem         = self.mem + task.get_mem()
-        new_disk_space  = self.disk_space = task.get_disk_space()
-        return new_cpus < self.max_cpus and new_mem <= self.max_mem and new_disk_space <= self.disk_space
 
     def __launch(self, task_worker):
         # Specify that task worker can now run task
