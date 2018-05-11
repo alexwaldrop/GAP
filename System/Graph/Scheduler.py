@@ -56,11 +56,3 @@ class Scheduler(object):
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
-
-    def __launch(self, task_worker):
-        # Specify that task worker can now run task
-        task_worker.set_status(TaskWorker.RUNNING)
-        # Adjust current resource usage levels
-        self.cpus += task_worker.task.get_cpus()
-        self.mem += task_worker.task.get_mem()
-        self.disk_space += task_worker.task.get_disk_space()
