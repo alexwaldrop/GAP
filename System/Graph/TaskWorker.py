@@ -51,9 +51,6 @@ class TaskWorker(Thread):
         # Flag for whether TaskWorker was cancelled
         self.__cancelled = False
 
-        # Flag for whether TaskWorker completed without any errors
-        self.__err = True
-
         # Output directory where final output will be saved
         self.final_output_dir = os.path.join(self.platform.get_final_output_dir(), self.task.get_ID())
 
