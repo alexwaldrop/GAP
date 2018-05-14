@@ -117,15 +117,14 @@ class TaskWorker(Thread):
             self.set_status(TaskWorker.COMPLETE)
 
     def cancel(self):
-        # Halt and destroy pipeline during runtime
-        curr_status = self.get_status()
+        # Cancel pipeline during runtime
 
         # Don't do anything if task has already finished or is finishing
-        if curr_status in [self.FINALIZING, self.COMPLETE, self.CANCELLING]:
+        if self.get_status() in [self.FINALIZING, self.COMPLETE, self.CANCELLING]:
             return
 
         # Set pipeline to cancelling and stop any currently running jobs
-        logging.error("(TaskWorker %s) Pipeline cancelled!" % self.task.get_ID())
+        logging.error("Task '%s' cancelled!" % self.task.get_ID())
         self.set_status(self.CANCELLING)
         self.__cancelled = True
 
