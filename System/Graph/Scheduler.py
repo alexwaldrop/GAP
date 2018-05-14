@@ -76,6 +76,9 @@ class Scheduler(object):
 
     def __finalize(self):
 
+        # Prevent any new processors from being created on platform
+        self.platform.lock()
+
         # Cancel any still-running jobs
         self.__cancel_unfinished_tasks()
 
@@ -105,6 +108,6 @@ class Scheduler(object):
     def __cancel_unfinished_tasks(self):
         # Cancel any still-running jobs
         for task_id, task_worker in self.task_workers:
-            if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.CANCELLING]:
+            if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
                 task_worker.cancel()
