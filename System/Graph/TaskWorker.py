@@ -9,10 +9,12 @@ from System.Datastore import GAPFile
 
 class TaskWorker(Thread):
 
-    READY           = 0
-    RUNNING         = 1
-    COMPLETE        = 2
-    CANCELLED       = 3
+    IDLE            = 0
+    LOADING         = 1
+    RUNNING         = 2
+    FINALIZING      = 3
+    COMPLETE        = 4
+    CANCELLING      = 5
 
     def __init__(self, task, datastore, platform):
         # Class for executing task
@@ -33,10 +35,24 @@ class TaskWorker(Thread):
 
         # Status attributes
         self.status_lock = threading.Lock()
-        self.status = TaskWorker.READY
+        self.status = TaskWorker.IDLE
 
+        # Command to be executed to complete task
+        self.cmd        = None
         # Processor for executing task
-        self.proc = None
+        self.proc       = None
+        # Workspace where task will be executed
+        self.workspace  = None
+        # Resources required to execute task
+        self.cpus       = None
+        self.mem        = None
+        self.disk_space = None
+
+        # Flag for whether TaskWorker was cancelled
+        self.__cancelled = False
+
+        # Flag for whether TaskWorker completed without any errors
+        self.__err = True
 
         # Output directory where final output will be saved
         self.final_output_dir = os.path.join(self.platform.get_final_output_dir(), self.task.get_ID())
@@ -55,82 +71,165 @@ class TaskWorker(Thread):
         return self.task
 
     def task(self):
+        # Run task module command and save outputs
         try:
-            # Try to execute task
-            self.set_status(TaskWorker.RUNNING)
-            self.__execute()
+            # Set the input arguments that will be passed to the task module
+            self.__set_task_module_input()
+
+            # Compute task resource requirements
+            self.cpus        = self.module.get_arguments("nr_cpus")
+            self.mem         = self.module.get_arguments("mem")
+            self.disk_space  = self.__compute_disk_requirements()
+
+            # Wait for platform to have enough resources to run task
+            while not self.platform.can_run_task(self.cpus, self.mem, self.disk_space) and not self.get_status() is self.CANCELLING:
+                time.sleep(5)
+
+            # Get module command to be run
+            self.set_status(self.LOADING)
+            self.cmd = self.__get_task_cmd()
+
+            # Create processor capable of running job and run the module's command
+            self.set_status(self.RUNNING)
+            self.__run_task_cmd()
+
+            # Save any output files produced by module
+            self.set_status(self.FINALIZING)
+            self.__save_task_output()
+
+            # Indicate that task finished without any errors
+            with self.status_lock:
+                self.__err = False
 
         except BaseException, e:
             # Handle but do not raise exception if job was externally cancelled
-            if self.get_status() is TaskWorker.CANCELLED:
-                logging.warning("Execution of task with id '%s' has been externally cancelled!")
+            if self.__cancelled:
+                logging.warning("Task with id '%s' failed due to cancellation!")
 
+            else:
+                # Raise exception if job failed for any reason other than cancellation
+                raise
         finally:
             # Destroy processor if it exists
-            if self.platform.has_task_processor(self.task.get_ID()):
-                self.__persist_task_logs()
-                self.platform.destroy_task_processor(self.proc)
+            self.__clean_up()
 
             # Notify that task worker has completed regardless of success
             self.set_status(TaskWorker.COMPLETE)
 
-    def __execute(self):
+    def cancel(self):
+        # Halt and destroy pipeline during runtime
+        curr_status = self.get_status()
 
-        # Set the input arguments that will be passed to the task module
-        self.__set_input_args()
-
-        # Compute and set task resource requirements
-        cpus        = self.module.get_arguments("nr_cpus")
-        mem         = self.module.get_arguments("mem")
-        input_files = self.module.get_input_files()
-        disk_space  = self.__compute_disk_requirements(input_files)
-
-        # Wait for platform to have enough resources to run task
-        while not self.platform.can_run_task(cpus, mem, disk_space) and not TaskWorker.CANCELLED:
-            time.sleep(5)
-
-        # Simply return if no command given
-        if not self.module.is_runnable():
+        # Don't do anything if task has already finished or is finishing
+        if curr_status in [self.FINALIZING, self.COMPLETE, self.CANCELLING]:
             return
 
-        # Create processor, run task module command, process output, and persist any output files
+        # Set pipeline to cancelling and stop any currently running jobs
+        logging.error("(TaskWorker %s) Pipeline cancelled!" % self.task.get_ID())
+        self.set_status(self.CANCELLING)
+        self.__cancelled = True
+
+        if self.proc is not None:
+            # Stop any processes currently running on processor
+            self.proc.stop()
+            # Throw errors
+            self.proc.lock()
+
+    def is_success(self):
+        return not self.__err
+
+    def __get_task_cmd(self):
+        # Generate and return module command that will be run to complete task
+
+        # Define workspace where command will be run
+        self.workspace = self.platform.get_workspace(self.task.get_ID())
+
+        # Update module output directory to be consistent with workspace
+        self.module.set_output_dir(self.workspace.get_wrk_output_dir())
+
+        # Generate command to be executed
+        return self.module.get_command()
+
+    def __run_task_cmd(self):
+
+        # Return if there's no command to be run
+        if self.cmd is None:
+            return
+
         task_id = self.task.get_ID()
         input_files = self.task.get_input_files()
 
-        # Create processor capable of running task
-        # Load input files required by task module onto processor
-        self.proc = self.platform.get_processor(task_id, cpus, mem, disk_space, input_files)
+        # Create and load processor capable of running task
+        self.proc = self.platform.get_task_processor(task_id, self.cpus, self.mem, self.disk_space, input_files)
 
-        # Run the command generated by the module and store output in appropriate directory
-        tmp_output_dir = self.proc.get_output_dir()
-        cmd = self.module.get_command(tmp_output_dir)
-
-        # Run command and wait for output
-        self.proc.run_command(job_name = task_id, cmd=cmd)
+        # Run the command generated by the module
+        self.proc.run_command(job_name=task_id, cmd=self.cmd)
+        # Wait for command to finish and capture output
         out, err = self.proc.wait_process(task_id)
 
-        # Process command output if necessary
+        # Post-process command output if necessary
         self.module.process_cmd_output(out, err)
 
-        # Save output files
-        self.platform.persist(self.proc, tmp_output_dir, self.final_output_dir)
+    def __save_task_output(self):
+        # Persist any output files produced by task
+        # Final output types
+        final_output_types = self.task.get_final_output_keys()
 
-        # Update paths of output files
-        for  output_file in self.task.get_output_files():
-            output_file.update_path(dest_dir = self.final_output_dir)
+        # Get workspace places for output files
+        final_output_dir = self.workspace.get_final_output_dir()
+        tmp_output_dir = self.workspace.get_tmp_output_dir()
 
-    def __persist_task_logs(self):
+        for output_file in self.task.get_output_files():
+            if output_file.get_type() in final_output_types:
+                dest_dir = final_output_dir
+            else:
+                dest_dir = tmp_output_dir
+
+            # Calculate output file size
+            output_file.set_size(self.platform.calc_file_size(output_file))
+
+            # Transfer to correct output directory
+            self.platform.transfer(output_file, dest_dir)
+
+            # Update path of output file to reflect new location
+            output_file.update_path(dest_dir)
+
+    def __clean_up(self):
+        if self.proc is None:
+            return
+
+        # Try to return task log
         try:
-            # Return log files no matter what
-            proc_log_dir = self.proc.get_log_dir()
-            self.platform.persist(self.proc, proc_log_dir, self.final_output_dir)
+            # Unlock processor if it's been locked so logs can be returned
+            self.proc.unlock()
+            self.__save_task_logs()
+        except BaseException, e:
+            logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
+            if e.message != "":
+                logging.error("Received following error:\n%s" % e.message)
+
+        # Try to destroy platform
+        try:
+            self.proc.destroy()
+        except BaseException, e:
+            logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
+            if e.message != "":
+                logging.error("Received following error:\n%s" % e.message)
+
+    def __save_task_logs(self):
+        try:
+            # Move log directory to final output log directory
+            tmp_log_dir = self.workspace.get_wrk_log_dir()
+            final_log_dir = self.workspace.get_final_log_dir()
+            self.platform.transfer(tmp_log_dir, final_log_dir, log_transfer=False)
+
         except BaseException, e:
             # Handle but don't raise any exceptions and report why logs couldn't be returned
             logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
             if e.message != "":
                 logging.error("Recieved the following error:\n%s" % e.message)
 
-    def __set_input_args(self):
+    def __set_task_module_input(self):
 
         # Get required arguments for task module
         task_id = self.task.get_ID()
@@ -181,8 +280,9 @@ class TaskWorker(Thread):
         # Update module memory argument
         self.module.set_argument("mem", int(mem))
 
-    def __compute_disk_requirements(self, input_files, input_multiplier=2):
+    def __compute_disk_requirements(self, input_multiplier=2):
         # Compute size of disk needed to store input/output files
+        input_files = self.task.get_input_files()
         input_size = 0
         args = self.task.get_input_args()
         for arg_key, arg in args.iteritems():
