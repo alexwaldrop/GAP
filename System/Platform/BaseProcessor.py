@@ -4,16 +4,25 @@ import abc
 from collections import OrderedDict
 import subprocess as sp
 import time
+import threading
 
 from System.Platform import Process
 
-class Processor(object):
+class BaseProcessor(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    # Instance status values available between threads
+    OFF         = 0  # Destroyed or not allocated on the cloud
+    AVAILABLE   = 1  # Available for running processes
+    BUSY        = 2  # Instance actions, such as create and destroy are running
+    DEAD        = 3  # Instance is shutting down, as a DEAD signal was received
+    MAX_STATUS  = 3  # Maximum status value possible
+
+    def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         self.name       = name
         self.nr_cpus    = nr_cpus
         self.mem        = mem
+        self.disk_space = disk_space
 
         # Initialize the start and stop time
         self.start_time = None
@@ -22,14 +31,34 @@ class Processor(object):
         # Get name of directory where logs will be written
         self.log_dir    = kwargs.pop("log_dir", None)
 
+        # Get name of working directory
+        self.wrk_dir    = kwargs.pop("wrk_dir", None)
+
         # Ordered dictionary of processing being run by processor
         self.processes  = OrderedDict()
 
+        # Setting the instance status
+        self.status_lock    = threading.Lock()
+        self.status         = BaseProcessor.OFF
+
+    def set_status(self, new_status):
+        # Updates instance status with threading.lock() to prevent race conditions
+        if new_status > BaseProcessor.MAX_STATUS or new_status < 0:
+            logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+        with self.status_lock:
+            self.status = new_status
+
+    def get_status(self):
+        # Returns instance status with threading.lock() to prevent race conditions
+        with self.status_lock:
+            return self.status
+
     def create(self):
-        pass
+        self.set_status(BaseProcessor.AVAILABLE)
 
     def destroy(self):
-        pass
+        self.set_status(BaseProcessor.OFF)
 
     def run(self, job_name, cmd, num_retries=0):
 
@@ -86,8 +115,8 @@ class Processor(object):
     def set_log_dir(self, new_log_dir):
         self.log_dir = new_log_dir
 
-    def get_name(self):
-        return self.name
+    def set_wrk_dir(self, new_wrk_dir):
+        self.wrk_dir = new_wrk_dir
 
     def set_start_time(self):
         if self.start_time is None:
@@ -95,6 +124,9 @@ class Processor(object):
 
     def set_stop_time(self):
         self.stop_time = time.time()
+
+    def get_name(self):
+        return self.name
 
     def get_runtime(self):
         if self.start_time is None:
@@ -104,12 +136,17 @@ class Processor(object):
         else:
             return self.stop_time - self.start_time
 
-    @abc.abstractmethod
-    def wait_process(self, proc_name):
-        pass
+    def get_nr_cpus(self):
+        return self.nr_cpus
+
+    def get_mem(self):
+        return self.mem
+
+    def get_disk_space(self):
+        return self.disk_space
 
     @abc.abstractmethod
-    def set_env_variable(self, env_variable, path):
+    def wait_process(self, proc_name):
         pass
 
     @abc.abstractmethod
