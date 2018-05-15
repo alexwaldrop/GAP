@@ -5,8 +5,9 @@ import uuid
 import threading
 
 from Config import ConfigParser
+from BaseProcessor import BaseProcessor
 
-class Platform(object):
+class BasePlatform(object):
     __metaclass__ = abc.ABCMeta
 
     CONFIG_SPEC = None
@@ -30,11 +31,6 @@ class Platform(object):
         self.MAX_MEM            = self.config["PROC_MAX_MEM"]
         self.MAX_DISK_SPACE     = self.config["PROC_MAX_DISK_SPACE"]
 
-        # Current platform resource usage
-        self.curr_cpu           = 0
-        self.curr_mem           = 0
-        self.curr_disk_space    = 0
-
         # Define workspace directory names
         self.wrk_dir            = self.config["workspace_dir"]
         self.final_output_dir   = self.standardize_dir(final_output_dir)
@@ -46,80 +42,88 @@ class Platform(object):
         self.platform_lock = threading.Lock()
 
         # Boolean flag to lock processor creation upon cleanup
-        self.cleaning_up = False
+        self.__locked = False
+
+    def get_curr_usage(self):
+        # Return total cpus, mem, disk space currently in use on platform
+        with self.platform_lock:
+            cpu = 0
+            mem = 0
+            disk_space = 0
+            for processor_id, processor in self.processors.iteritems():
+                if processor.get_status() > BaseProcessor.OFF:
+                    cpu += processor.get_cpu()
+                    mem += processor.get_mem()
+                    disk_space += processor.get_disk_space()
+        return cpu, mem, disk_space
 
     def can_run_task(self, task_nr_cpus, task_mem, task_disk_space):
-        with self.platform_lock:
-            cpu_overload = self.curr_cpu + task_nr_cpus > self.MAX_NR_CPUS
-            mem_overload = self.curr_mem + task_mem > self.MAX_MEM
-            disk_overload = self.curr_disk_space + task_disk_space > self.MAX_DISK_SPACE
-            return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.cleaning_up)
+        cpu, mem, disk_space = self.get_curr_usage()
+        cpu_overload    = cpu + task_nr_cpus > self.MAX_NR_CPUS
+        mem_overload    = mem + task_mem > self.MAX_MEM
+        disk_overload   = disk_space + task_disk_space > self.MAX_DISK_SPACE
+        return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
 
-    def get_task_processor(self, task_id, nr_cpus, mem, disk_space, input_files):
-        # Create and return a processor that meets resource requirements and
+    def get_task_processor(self, task_id, nr_cpus, mem, disk_space):
+        # Ensure unique name for processor
+        name        = "proc-%s-%s-%s" % (self.name[:20], task_id[:25], self.generate_unique_id())
+        logging.info("Creating processor '%s' for task '%s'..." % (name, task_id))
 
-        # Throw error if processor is either too resource intensive or if cleaning up
-        if not self.can_run_task(nr_cpus, mem, disk_space):
-            logging.error("Cannot create processor for task '%s'! Platform either lacks resources or is cleaning up!" % task_id)
-            raise RuntimeError("Attempt to create processor failed due to resource limits or clean-up!")
+        # Initialize new processor with enough CPU/mem/disk space to complete task
+        processor   = self.init_task_processor(name, nr_cpus, mem, disk_space)
 
-        proc = self.__get_processor(task_id, nr_cpus, mem, disk_space)
+        # Add to list of processors if not already there
+        if task_id not in self.processors:
+            self.processors[task_id] = processor
+        else:
+            logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
+            raise RuntimeError("Platform attempted to create duplicate task processor!")
+
+        logging.info("Processor '%s' (%d vCPUs, %dGB RAM, %dGB disk space) ready for processing!" % (name, processor.nr_cpus, processor.mem, processor.disk_space))
+        return self.processors[task_id]
+
+    def load_task_processor(self, task_id, workspace, input_files):
+        # Create task workspace on assigned processor. Load necessary input files
+
+        # Launch task processor that has already been initialized
+        proc = self.processors[task_id]
+        proc_name = proc.get_name()
+        proc.create()
 
         # Initialize workspace directory structure
-        logging.info("Initializing workspace on processor for task '%s' with name '%s'..." % (task_id, proc.get_name()))
-        self.__init_proc_workspace(proc, workspace_id=task_id)
+        logging.info("Initializing workspace for task '%s' on processor '%s'..." % (task_id, proc_name))
 
-        # Localize remote files to workspace directory
-        logging.info("Transferring remote inputs for task '%s' to workspace of processor '%s'..." % (task_id, proc.get_name()))
-        self.__load_input_data(proc, input_files)
+        # Create working directories only visible to processor
+        proc.mkdir(workspace.get_wrk_dir())
+        proc.mkdir(workspace.get_log_dir())
+        proc.set_wrk_dir(workspace.get_wrk_dir())
+        proc.set_log_dir(workspace.get_log_dir())
 
-        # Update workspace permissions again
-        logging.info("Final permission update on processor '%s' for task '%s'..." % (proc.get_name(), task_id))
-        cmd = "sudo chmod -R 777 %s" % proc.get_workspace_dir()
-        proc.run("update_wrkspc_perms", cmd)
-
-        # Wait for everything to finish on processor
-        proc.wait()
-        return proc
-
-    def destroy_task_processor(self, task_id):
-        if task_id not in self.processors:
-            logging.error("Attempt to destroy non-existant processor! No processor has been created for task with id '%s'!" % task_id)
-            raise RuntimeError("Platform cannot destroy non-existant process!")
-
-        # Destroy processor and unlock resources it was using
-        proc = self.processors[task_id]
-        proc.destroy()
-        self.__unlock_resources(proc.nr_cpus, proc.mem, proc.disk_space)
-
-    def __init_proc_workspace(self, proc, workspace_id):
-
-        # Create workspace directories on processor
-        workspace = self.__define_task_workspace(workspace_id)
-
-        # Make work directory on processor if it doesn't exist
-        proc.mkdir(self.wrk_dir, job_name="mk_wrk_dir")
-
-        # Create workspace subdirectories
-        for dir_type in workspace:
-            if dir_type != "wrk":
-                logging.debug("Creating %s directory on proc '%s'..." % (dir_type, proc.get_name()))
-                proc.mkdir(workspace[dir_type], job_name="mk_%s_dir" % dir_type)
+        # Create output directories visible to entire platform
+        self.mkdir(workspace.get_tmp_output_dir())
+        self.mkdir(workspace.get_final_output_dir())
+        self.mkdir(workspace.get_final_log_dir())
 
         # Make the entire workspace directory accessible to everyone
         logging.debug("Updating workspace permissions on processor '%s'..." % proc.get_name())
         cmd = "sudo chmod -R 777 %s" % self.wrk_dir
         proc.run(job_name="update_wrkspace_perms", cmd=cmd)
 
-        # Wait for all commands to complete
+        # Wait for all the above commands to complete
         proc.wait()
 
-        # Set directories on processor
-        proc.set_log_dir(workspace["log"])
-        proc.set_output_dir(workspace["out"])
-        proc.set_tmp_dir(workspace["tmp"])
+        # Load task inputs (remote files, docker, etc.)
+        logging.info("Loading inputs into workspace for task '%s' on processor '%s'..." % (task_id, proc_name))
+        self.__load_inputs()
 
-        logging.debug("Workspace initialized successfully for processor '%s'!" % proc.get_name())
+        # Update workspace permissions again
+        logging.info("Final permission update for task '%s' on processor '%s'..." % (task_id, proc_name))
+        cmd = "sudo chmod -R 777 %s" % self.workspace.get_wrk_dir()
+        proc.run("update_wrk_dir_perms", cmd)
+
+        # Wait for everything to finish on processor
+        proc.wait()
+        logging.info("Successfully loaded processor (%s) for task '%s'!" % (proc_name, task_id))
 
     def __load_input_data(self, proc, input_files):
 
@@ -157,53 +161,6 @@ class Platform(object):
                 input_file.update_path(new_dir=proc.get_workspace_dir())
                 logging.debug("Updated path: %s" % input_file.get_path())
 
-    def __define_task_workspace(self, workspace_id):
-        # Define workspace directory for a task
-        workspace_dir = os.path.join(self.wrk_dir, workspace_id)
-        dirs = {"wrk" : self.standardize_dir(workspace_dir)}
-        for sub_dir in ["tmp", "out", "log"]:
-            dirs[sub_dir] = self.standardize_dir(os.path.join(workspace_dir, sub_dir))
-        return dirs
-
-    def __get_processor(self, task_id, nr_cpus, mem, disk_space):
-        # Ensure unique name for processor
-        name        = "proc-%s-%s-%s" % (self.name[:20], task_id[:25], self.generate_unique_id())
-        logging.info("Creating processor '%s' for task '%s'..." % (name, task_id))
-
-        # Create processor with requested resources (CPU/Mem)
-        processor   = self.create_processor(name, nr_cpus, mem, disk_space)
-
-        # Add to list of processors if not already there
-        if task_id not in self.processors:
-            self.processors[task_id] = processor
-        else:
-            logging.error("Platform cannot create two processors for task with id '%s'!" % task_id)
-            raise RuntimeError("Platform attempted to create duplicate task processor!")
-
-        logging.info("Processor '%s' (%d vCPUs, %dGB RAM) ready for processing!" % (name, processor.nr_cpus, processor.mem))
-        return self.processors[task_id]
-
-    def __lock_resources(self, cpus, mem, disk_space):
-        # Lock cpus, mem, disk space as currently used on platform
-        with self.platform_lock:
-            self.curr_cpu += cpus
-            self.curr_mem += mem
-            self.curr_disk_space += disk_space
-
-    def __unlock_resources(self, cpus, mem, disk_space):
-        # Unlock resources after task has completed
-        with self.platform_lock:
-            self.curr_cpu -= cpus
-            self.curr_mem -= mem
-            self.curr_disk_space -= disk_space
-            # Make sure nothing is below 0
-            self.curr_cpu = max(self.curr_cpu, 0)
-            self.curr_mem = max(self.curr_mem, 0)
-            self.curr_disk_space = max(self.curr_disk_space)
-
-    def has_task_processor(self, task_id):
-        return task_id in self.processors
-
     def get_config(self):
         return self.config
 
@@ -216,22 +173,26 @@ class Platform(object):
     def get_final_output_dir(self):
         return self.final_output_dir
 
-    def finalize(self):
-        # Lock new processors from launching on platform
-        with self.platform_lock:
-            self.cleaning_up = True
+    def get_wrk_dir(self):
+        return self.wrk_dir
 
-        # Do any final cleanup
-        self.clean_up()
+    def lock(self):
+        with self.platform_lock:
+            self.__locked = True
+
+    def unlock(self):
+        with self.platform_lock:
+            self.__locked = False
 
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
     @abc.abstractmethod
-    def clean_up(self):
+    def init_task_processor(self, name, nr_cpus, mem, disk_space):
+        # Return a processor object with given resource requirements
         pass
 
     @abc.abstractmethod
-    def create_processor(self, name, nr_cpus, mem, disk_space):
-        # Return a processor ready to run a process requiring the given amount of CPUs and Memory
+    def mkdir(self, dir_path):
+        # Make a directory if it doesn't already exists
         pass
 
     @abc.abstractmethod
