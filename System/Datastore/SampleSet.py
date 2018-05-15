@@ -60,6 +60,9 @@ class SampleSet (object):
         # Organize global and sample-level metadata by data type
         self.data   = self.__organize_data_by_type()
 
+    def get_num_samples(self):
+        return len(self.sample_names)
+
     def has_data_type(self, data_type):
         # Return true if data type exists in sample data
         return data_type in self.data
