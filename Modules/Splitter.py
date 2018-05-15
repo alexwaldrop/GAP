@@ -31,6 +31,10 @@ class Splitter(Module):
             logging.error("Module of type '%s' declared split with duplicate id (%s)!" % (self.__class__.__name__, split_id))
             raise RuntimeError("Module declared split with duplicate id!")
 
+        # Convert visible samples to list if its a string so we can always assume its a list
+        if isinstance(visible_samples, basestring):
+            visible_samples = [visible_samples]
+
         # Create split with the following samples visible
         self.output[split_id] = {"visible_samples" : visible_samples}
 
