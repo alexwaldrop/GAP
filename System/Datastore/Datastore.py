@@ -28,25 +28,32 @@ class Datastore(object):
 
         return final_arg
 
-    def get_task_workspace(self, task_id):
+    def get_task_workspace(self, task_id=None):
         # Use task information to generate unique directories for input/output files
-        task = self.graph.get_task(task_id)
-        visible_samples = task.get_visible_samples()
 
-        # Create subfolders for split tasks
-        if task.is_split():
-            task_id = task_id.replace(".", "/")
+        if task_id is None:
+            wrk_dir = self.__base_wrk_dir
+            tmp_output_dir = os.path.join(self.__base_output_dir, "tmp")
+            final_output_dir = self.__base_output_dir
 
-        wrk_dir = os.path.join(self.__base_wrk_dir, task_id)
-        tmp_output_dir = os.path.join(self.__base_output_dir,"tmp", task_id)
-        final_output_dir = os.path.join(self.__base_output_dir, task_id)
+        else:
+            task = self.graph.get_task(task_id)
+            visible_samples = task.get_visible_samples()
 
-        if visible_samples is not None and len(visible_samples) <= 1 and self.sample_data.get_num_samples() <=1:
-            # Single sample output of multi-sample analysis always goes in sample level folder
-            sample_name = visible_samples[0]
-            # Remove sample name from path if it already appears and put it as the first directory
-            task_id = task_id.replace(sample_name+"/", "")
-            final_output_dir = os.path.join(self.__base_output_dir, sample_name, task_id)
+            # Create subfolders for split tasks
+            if task.is_split():
+                task_id = task_id.replace(".", "/")
+
+            wrk_dir = os.path.join(self.__base_wrk_dir, task_id)
+            tmp_output_dir = os.path.join(self.__base_output_dir,"tmp", task_id)
+            final_output_dir = os.path.join(self.__base_output_dir, task_id)
+
+            if visible_samples is not None and len(visible_samples) <= 1 and self.sample_data.get_num_samples() <=1:
+                # Single sample output of multi-sample analysis always goes in sample level folder
+                sample_name = visible_samples[0]
+                # Remove sample name from path if it already appears and put it as the first directory
+                task_id = task_id.replace(sample_name+"/", "")
+                final_output_dir = os.path.join(self.__base_output_dir, sample_name, task_id)
 
         # Standardize directories
         wrk_dir             = self.platform.standardize_dir(wrk_dir)
@@ -144,6 +151,7 @@ class Datastore(object):
                 args = [self.resource_kit.get_resources(arg_type).values()[0]]
 
         return args
+
 
 class TaskWorkspace(object):
     # Defines folder structure where task will execute/files generated
