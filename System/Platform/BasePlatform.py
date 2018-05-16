@@ -6,6 +6,7 @@ import threading
 
 from Config import ConfigParser
 from BaseProcessor import BaseProcessor
+from RemoteFileHelper import RemoteFileHelper
 
 class BasePlatform(object):
     __metaclass__ = abc.ABCMeta
@@ -43,6 +44,9 @@ class BasePlatform(object):
 
         # Boolean flag to lock processor creation upon cleanup
         self.__locked = False
+
+        # Remote file helper class
+        self.remote_file_helper = RemoteFileHelper
 
     def get_curr_usage(self):
         # Return total cpus, mem, disk space currently in use on platform
@@ -198,6 +202,12 @@ class BasePlatform(object):
     @abc.abstractmethod
     def path_exists(self, path):
         # Determine if a path exists either locally on platform or remotely
+        pass
+
+    @abc.abstractmethod
+    def transfer(self, src_path, dest_dir, dest_file=None, log_transfer=True, job_name=None):
+        # Transfer a remote file from src_path to a local directory dest_dir
+        # Log the transfer unless otherwise specified
         pass
 
     @abc.abstractmethod
