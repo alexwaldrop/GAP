@@ -52,6 +52,20 @@ class GAPFile:
     def get_type(self):
         return self.type
 
+    def get_transferrable_path(self):
+        # Get path as it should appear if trying to move file to new location
+
+        # Files in containing directories should be moved inside their containing directory
+        if self.containing_dir is not None:
+            return self.containing_dir
+
+        # Wildcard files should be moved together
+        elif self.__is_prefix:
+            return self.path + "*"
+
+        # All other files should be moved as a single file
+        return self.path
+
     @property
     def filename(self):
         return self.path.rstrip("/").split("/")[-1]
