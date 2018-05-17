@@ -5,6 +5,7 @@ class Process(sp.Popen):
     def __init__(self, args, **kwargs):
         self.command        = kwargs.pop("cmd",     True)
         self.num_retries    = kwargs.pop("num_retries", 0)
+        self.docker_image   = kwargs.pop("docker_image", None)
         super(Process, self).__init__(args,     **kwargs)
         self.complete = False
 
@@ -23,3 +24,6 @@ class Process(sp.Popen):
 
     def get_num_retries(self):
         return self.num_retries
+
+    def get_docker_image(self):
+        return self.docker_image
