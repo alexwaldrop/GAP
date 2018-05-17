@@ -103,13 +103,13 @@ class GAPFile:
     def set_path(self, new_path):
         self.path = new_path
 
-    def update_path(self, dest_dir):
+    def update_path(self, new_dir):
         # Updates path assuming file has been moved to a new directory
         if self.containing_dir is not None:
             # Assume file has been moved inside containing dir
-            self.__update_containing_dir(dest_dir)
+            self.__update_containing_dir(new_dir)
         else:
-            self.path = os.path.join(dest_dir, self.filename)
+            self.path = os.path.join(new_dir, self.filename)
 
     def __update_containing_dir(self, dest_dir):
         # Updates path assuming entire containing directory has been moved to a new directory
