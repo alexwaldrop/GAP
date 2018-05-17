@@ -93,12 +93,15 @@ class TaskWorker(Thread):
                 # Create processor capable of running job
                 self.proc = self.platform.get_task_processor(self.task.get_ID(), self.cpus, self.mem, self.disk_space)
 
-                # Create workspace and load inputs onto processor
-                self.__load_task_proc()
+                # Create workspace on processor
+                self.proc.create_workspace(self.workspace)
+
+                # Load inputs declared by task module into processor workspace
+                self.proc.load_inputs(self.task.get_input_files())
 
                 # Run module's command
                 self.set_status(self.RUNNING)
-                self.proc.run_command(job_name=self.task.get_ID(), cmd=self.cmd)
+                self.proc.run(job_name=self.task.get_ID(), cmd=self.cmd)
 
                 # Wait for command to finish and capture output
                 out, err = self.proc.wait_process(self.task.get_ID())
@@ -150,32 +153,6 @@ class TaskWorker(Thread):
     def is_success(self):
         return not self.__err
 
-    def __load_task_proc(self):
-
-        # Create task workspace on processor
-        task_id = self.task.get_ID()
-        proc_name = self.proc.get_name()
-
-        # Create workspace and load input files
-        self.proc.create()
-
-        # Initialize workspace directory structure
-        logging.info("Initializing workspace for task '%s' on processor '%s'..." % (task_id, proc_name))
-        self.__create_workspace()
-
-        # Load task inputs (remote files, docker, etc.)
-        logging.info("Loading inputs into workspace for task '%s' on processor '%s'..." % (task_id, proc_name))
-        self.__load_inputs()
-
-        # Update workspace permissions again
-        logging.info("Final permission update for task '%s' on processor '%s'..." % (task_id, proc_name))
-        cmd = "sudo chmod -R 777 %s" % self.workspace.get_wrk_dir()
-        self.proc.run("update_wrk_dir_perms", cmd)
-
-        # Wait for everything to finish on processor
-        self.proc.wait()
-        logging.info("Successfully loaded processor (%s) for task '%s'!" % (proc_name, task_id))
-
     def __save_task_output(self):
         # Persist any output files produced by task
         # Final output types
@@ -192,10 +169,10 @@ class TaskWorker(Thread):
                 dest_dir = tmp_output_dir
 
             # Calculate output file size
-            output_file.set_size(self.platform.calc_file_size(output_file))
+            output_file.set_size(self.proc.calc_file_size(output_file))
 
             # Transfer to correct output directory
-            self.platform.transfer(output_file, dest_dir)
+            self.proc.transfer_file(output_file, dest_dir)
 
             # Update path of output file to reflect new location
             output_file.update_path(dest_dir)
@@ -227,7 +204,7 @@ class TaskWorker(Thread):
             # Move log directory to final output log directory
             tmp_log_dir = self.workspace.get_wrk_log_dir()
             final_log_dir = self.workspace.get_final_log_dir()
-            self.platform.transfer(tmp_log_dir, final_log_dir, log_transfer=False)
+            self.proc.transfer(tmp_log_dir, final_log_dir, log_transfer=False)
 
         except BaseException, e:
             # Handle but don't raise any exceptions and report why logs couldn't be returned
