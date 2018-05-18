@@ -28,12 +28,6 @@ class GAPFile:
         # E.g. BWA index files may be listed as /path/to/bwa_index and refer to a set of files sharing a common suffix
         self.__is_prefix = self.path.endswith("*")
 
-        # Boolean for whether resource is an executable
-        self.__is_executable = kwargs.pop("export_to_path", False)
-
-        # Boolean flag for whether resource is a library
-        self.__is_library    = kwargs.pop("export_to_ld_lib", False)
-
         # File size
         self.size = kwargs.pop("file_size", None)
 
@@ -42,6 +36,22 @@ class GAPFile:
 
         # Metadata associated with an object
         self.metadata = kwargs
+
+    @property
+    def filename(self):
+        return self.path.rstrip("/").split("/")[-1]
+
+    @property
+    def containing_dir_name(self):
+        if self.containing_dir is not None:
+            return self.containing_dir.rstrip("/").split("/")[-1]
+        return None
+
+    @property
+    def protocol(self):
+        if ":" not in self.path:
+            return "Local"
+        return self.path.split(":")[0]
 
     def get_file_id(self):
         return self.file_id
@@ -66,33 +76,20 @@ class GAPFile:
         # All other files should be moved as a single file
         return self.path
 
-    @property
-    def filename(self):
-        return self.path.rstrip("/").split("/")[-1]
-
-    @property
-    def containing_dir_name(self):
-        if self.containing_dir is not None:
-            return self.containing_dir.rstrip("/").split("/")[-1]
-        return None
-
     def get_containing_dir(self):
         return self.containing_dir
 
     def get_size(self):
         return self.size
 
+    def get_protocol(self):
+        return self.protocol
+
     def is_prefix(self):
         return self.__is_prefix
 
     def is_remote(self):
         return ":" in self.path if self.containing_dir is None else ":" in self.containing_dir
-
-    def is_executable(self):
-        return self.__is_executable
-
-    def is_library(self):
-        return self.__is_library
 
     def size_known(self):
         # Return true if size is known
@@ -151,9 +148,8 @@ class GAPFile:
         to_return += "Type:\t%s\n" % self.type
         to_return += "Path:\t%s\n" % self.path
         to_return += "Containing_dir:\t%s\n" % self.containing_dir
+        to_return += "Protocol:\t%s\n" % self.protocol
         to_return += "is_remote:\t%s\n" % self.is_remote()
-        to_return += "is_executable:\t%s\n" % self.__is_executable
-        to_return += "is_library:\t%s\n" % self.__is_library
         to_return += "is_prefix:\t%s\n" % self.__is_prefix
         to_return += "size:\t%s\n" % self.size
         to_return += "=============\n"
