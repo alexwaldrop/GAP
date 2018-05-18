@@ -5,6 +5,7 @@ import logging
 
 from System.Workers.Thread import Thread
 from System.Datastore import GAPFile
+from ModuleExecutor import ModuleExecutor
 
 class TaskWorker(Thread):
 
@@ -47,11 +48,11 @@ class TaskWorker(Thread):
         # Processor for executing task
         self.proc       = None
 
-        # Define unique workspace for task input/output
-        self.workspace  = self.datastore.get_task_workspace(task_id=self.task.get_ID())
+        # Module command executor
+        self.module_executor = None
 
-        # Set module working output directory
-        self.module.set_output_dir(self.workspace.get_wrk_output_dir())
+        # Flag for whether task successfully completed
+        self.__err = True
 
         # Flag for whether TaskWorker was cancelled
         self.__cancelled = False
@@ -84,34 +85,43 @@ class TaskWorker(Thread):
             while not self.platform.can_run_task(self.cpus, self.mem, self.disk_space) and not self.get_status() is self.CANCELLING:
                 time.sleep(5)
 
+            # Define unique workspace for task input/output
+            task_workspace = self.datastore.get_task_workspace(task_id=self.task.get_ID())
+
+            # Specify that module output files should be placed in task workspace output dir
+            self.module.set_output_dir(task_workspace.get_wrk_output_dir())
+
+            # Create processor capable of running job
+            self.proc = self.platform.get_processor(self.task.get_ID(), self.cpus, self.mem, self.disk_space)
+
             # Get module command to be run
-            self.cmd = self.module.get_command()
+            task_cmd = self.module.get_command()
 
-            if self.cmd is not None:
+            if task_cmd is not None:
+
+                # Execute command if one exists
                 self.set_status(self.LOADING)
+                self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
+                                                      processor=self.proc,
+                                                      workspace=task_workspace)
 
-                # Create processor capable of running job
-                self.proc = self.platform.get_task_processor(self.task.get_ID(), self.cpus, self.mem, self.disk_space)
-
-                # Create workspace on processor
-                self.proc.create_workspace(self.workspace)
-
-                # Load inputs declared by task module into processor workspace
-                self.proc.load_inputs(self.task.get_input_files())
+                # Load task inputs onto module executor
+                self.module_executor.load_input(self.task.get_inputs())
 
                 # Run module's command
                 self.set_status(self.RUNNING)
-                self.proc.run(job_name=self.task.get_ID(), cmd=self.cmd)
-
-                # Wait for command to finish and capture output
-                out, err = self.proc.wait_process(self.task.get_ID())
+                out, err = self.module_executor.run(task_cmd)
 
                 # Post-process command output if necessary
                 self.module.process_cmd_output(out, err)
 
-            # Save any output files produced by module
+
+            # Save output files in workspace output dirs (if any)
             self.set_status(self.FINALIZING)
-            self.__save_task_output()
+            output_files        = self.task.get_output_files()
+            final_output_types  = self.task.get_final_output_keys()
+            if len(output_files) > 0:
+                self.module_executor.save_output(output_files, final_output_types)
 
             # Indicate that task finished without any errors
             with self.status_lock:
@@ -126,9 +136,8 @@ class TaskWorker(Thread):
                 # Raise exception if job failed for any reason other than cancellation
                 raise
         finally:
-            # Destroy processor if it exists
+            # Return logs and destroy processor if they exist
             self.__clean_up()
-
             # Notify that task worker has completed regardless of success
             self.set_status(TaskWorker.COMPLETE)
 
@@ -147,45 +156,24 @@ class TaskWorker(Thread):
         if self.proc is not None:
             # Stop any processes currently running on processor
             self.proc.stop()
-            # Throw errors
-            self.proc.lock()
 
     def is_success(self):
         return not self.__err
 
-    def __save_task_output(self):
-        # Persist any output files produced by task
-        # Final output types
-        final_output_types = self.task.get_final_output_keys()
-
-        # Get workspace places for output files
-        final_output_dir = self.workspace.get_final_output_dir()
-        tmp_output_dir = self.workspace.get_tmp_output_dir()
-
-        for output_file in self.task.get_output_files():
-            if output_file.get_type() in final_output_types:
-                dest_dir = final_output_dir
-            else:
-                dest_dir = tmp_output_dir
-
-            # Calculate output file size
-            output_file.set_size(self.proc.calc_file_size(output_file))
-
-            # Transfer to correct output directory
-            self.proc.transfer_file(output_file, dest_dir)
-
-            # Update path of output file to reflect new location
-            output_file.update_path(dest_dir)
-
     def __clean_up(self):
+
+        # Do nothing if errors occurred before processor was even created
         if self.proc is None:
             return
+
+        # Unlock processor in case task was cancelled and processor was locked
+        self.proc.unlock()
 
         # Try to return task log
         try:
             # Unlock processor if it's been locked so logs can be returned
-            self.proc.unlock()
-            self.__save_task_logs()
+            if self.module_executor is not None:
+                self.module_executor.save_logs()
         except BaseException, e:
             logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
             if e.message != "":
@@ -198,19 +186,6 @@ class TaskWorker(Thread):
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
-
-    def __save_task_logs(self):
-        try:
-            # Move log directory to final output log directory
-            tmp_log_dir = self.workspace.get_wrk_log_dir()
-            final_log_dir = self.workspace.get_final_log_dir()
-            self.proc.transfer(tmp_log_dir, final_log_dir, log_transfer=False)
-
-        except BaseException, e:
-            # Handle but don't raise any exceptions and report why logs couldn't be returned
-            logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
-            if e.message != "":
-                logging.error("Recieved the following error:\n%s" % e.message)
 
     def __set_task_module_input(self):
 
