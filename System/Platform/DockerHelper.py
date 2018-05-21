@@ -1,15 +1,21 @@
 import logging
 
-from TaskPlatform import TaskPlatform
-
 class DockerHelper(object):
     # Class designed to facilitate remote file manipulations for a processor
 
     def __init__(self, proc):
         self.proc = proc
 
-    def pull(self, image_name, job_name=None, log=True, num_retries=0):
+    def pull(self, image_name, host=None, tag="latest", job_name=None, log=True, num_retries=0):
         # Pull docker image on local processor
+
+        # Add docker host name to image name
+        if host is not None:
+            image_name = "%s/%s:%s" % (host, image_name,tag)
+
+        # Default host: DockerHub
+        else:
+            image_name = "%s:%s" % (image_name, tag)
 
         cmd = "sudo docker pull %s" % image_name
 
