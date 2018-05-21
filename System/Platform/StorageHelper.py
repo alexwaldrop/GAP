@@ -1,44 +1,102 @@
 import logging
 
+from TaskPlatform import TaskPlatform
+
 class InvalidStorageTypeError(Exception):
     pass
 
 class StorageHelper(object):
     # Class designed to facilitate remote file manipulations for a processor
 
-    @staticmethod
-    def mv(src_path, dest_dir):
-        # Transfer a remote file from src_path to a local directory dest_dir
+    def __init__(self, proc):
+        self.proc = proc
+
+    def mv(self, src_path, dest_path, job_name=None, log=True, num_retries=0):
+        # Transfer file or dir from src_path to dest_path
         # Log the transfer unless otherwise specified
-        storage_handler = StorageHelper.get_storage_handler_obj(src_path, dest_dir)
-        return storage_handler.mv(src_path, dest_dir)
+        cmd_generator = StorageHelper.__get_storage_cmd_generator(src_path, dest_path)
+        cmd = cmd_generator.mv(src_path, dest_path)
 
-    @staticmethod
-    def mkdir(dir_path):
+        job_name = "mv_%s" % TaskPlatform.generate_unique_id() if job_name is None else job_name
+
+        # Optionally add logging
+        cmd = "%s !LOG3!" % cmd if log else cmd
+
+        # Run command and return job name
+        self.proc.run(job_name, cmd, num_retries=num_retries)
+        return job_name
+
+    def mkdir(self, dir_path, job_name=None, log=False, num_retries=0):
         # Makes a directory if it doesn't already exists
-        storage_handler = StorageHelper.get_storage_handler_obj(dir_path)
-        return storage_handler.mkdir(dir_path)
+        cmd_generator = StorageHelper.__get_storage_cmd_generator(dir_path)
+        cmd = cmd_generator.mkdir(dir_path)
+
+        job_name = "mkdir_%s" % TaskPlatform.generate_unique_id() if job_name is None else job_name
+
+        # Optionally add logging
+        cmd = "%s !LOG3!" % cmd if log else cmd
+
+        # Run command and return job name
+        self.proc.run(job_name, cmd, num_retries=num_retries)
+        return job_name
+
+    def path_exists(self, path, job_name=None, num_retries=0):
+        # Return true if file exists, false otherwise
+        cmd_generator = StorageHelper.__get_storage_cmd_generator(path)
+        cmd = cmd_generator.ls(path)
+
+        # Run command and return job name
+        job_name = "check_exists_%s" % TaskPlatform.generate_unique_id() if job_name is None else job_name
+        self.proc.run(job_name, cmd, num_retries=num_retries)
+
+        # Wait for cmd to finish and get output
+        try:
+            out, err = self.proc.wait_process(job_name)
+            return len(err) == 0
+        except RuntimeError:
+            return False
+        except:
+            logging.error("Unable to check path existence: %s" % path)
+            raise
+
+    def get_file_size(self, path, job_name=None, num_retries=0):
+        # Return file size in gigabytes
+        cmd_generator = StorageHelper.__get_storage_cmd_generator(path)
+        cmd = cmd_generator.get_file_size(path)
+
+        # Run command and return job name
+        job_name = "get_size_%s" % TaskPlatform.generate_unique_id() if job_name is None else job_name
+        self.proc.run(job_name, cmd, num_retries=num_retries)
+
+        # Wait for cmd to finish and get output
+        try:
+            # Try to return file size in gigabytes
+            out, err = self.proc.wait_process(job_name)
+            # Iterate over all files if multiple files (can happen if wildcard)
+            bytes = [int(x.split()[0]) for x in out.split("\n") if x != ""]
+            # Add them up and divide by billion bytes
+            return sum(bytes)/(1024**3.0)
+
+        except BaseException, e:
+            logging.error("Unable to check path existence: %s" % path)
+            if e.message != "":
+                logging.error("Received the following msg:\n%s" % e.message)
+            raise
 
     @staticmethod
-    def get_file_size(path):
-        # Determine file size
-        storage_handler = StorageHelper.get_storage_handler_obj(path)
-        return storage_handler.get_file_size(path)
-
-    @staticmethod
-    def get_storage_handler_obj(src_path, dest_path=None):
+    def __get_storage_cmd_generator(src_path, dest_path=None):
         # Determine the class of file handler to use base on input file protocol types
 
         # Get file storage protocol for src, dest files
-        src_protocol = StorageHelper.get_file_protocol(src_path)
-        dest_protocol = None if dest_path is None else StorageHelper.get_file_protocol(dest_path)
-        protocols = [src_protocol, dest_protocol]
-
-        # Remove 'NoneType' protocol
-        protocols.remove(None)
+        protocols = [StorageHelper.__get_file_protocol(src_path)]
+        if dest_path is not None:
+            protocols.append(StorageHelper.__get_file_protocol(dest_path))
 
         # Remove 'Local' protocol
-        protocols.remove("Local")
+        while "Local" in protocols:
+            protocols.remove("Local")
+
+        print protocols
 
         # If no other protocols remain then use local storage handler
         if len(protocols) == 0:
@@ -47,7 +105,7 @@ class StorageHelper(object):
         # Cycle through file handlers to see which ones satisfy file protocol type required
 
         # Get available storage handlers
-        storage_handlers = StorageHandler.__subclasses__()
+        storage_handlers = StorageCmdGenerator.__subclasses__()
         for storage_handler in storage_handlers:
             if storage_handler.PROTOCOL.lower() in protocols:
                 return storage_handler
@@ -60,17 +118,21 @@ class StorageHelper(object):
         raise InvalidStorageTypeError("Cannot handle input file storage type!")
 
     @staticmethod
-    def get_file_protocol(path):
+    def __get_file_protocol(path):
         if ":" not in path:
             return "Local"
         return path.split(":")[0]
 
+    @staticmethod
+    def get_base_filename(path):
+        return path.rstrip("/").split("/")[-1]
 
-class StorageHandler(object):
+
+class StorageCmdGenerator(object):
     PROTOCOL = None
 
 
-class LocalStorageHandler(StorageHandler):
+class LocalStorageCmdGenerator(StorageCmdGenerator):
 
     PROTOCOL = "Local"
 
@@ -89,8 +151,12 @@ class LocalStorageHandler(StorageHandler):
         # Return cmd for getting file size in bytes
         return "sudo du -sh --apparent-size --bytes %s" % path
 
+    @staticmethod
+    def ls(path):
+        return "sudo ls %s" % path
 
-class GoogleStorageHandler(StorageHandler):
+
+class GoogleStorageCmdGenerator(StorageCmdGenerator):
 
     PROTOCOL = "gs"
 
@@ -109,3 +175,8 @@ class GoogleStorageHandler(StorageHandler):
     def get_file_size(path):
         # Return cmd for getting file size in bytes
         return "gsutil du -s %s" % path
+
+    @staticmethod
+    def ls(path):
+        return "gsutil ls %s" % path
+
