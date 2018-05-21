@@ -1,6 +1,7 @@
 import logging
+import os
 
-from System.Platform import StorageHelper
+from System.Platform import StorageHelper, DockerHelper
 
 class ModuleExecutor(object):
 
@@ -8,7 +9,8 @@ class ModuleExecutor(object):
         self.task_id        = task_id
         self.processor      = processor
         self.workspace      = workspace
-        self.storage_helper = StorageHelper
+        self.storage_helper = StorageHelper(self.processor)
+        self.docker_helper  = DockerHelper(self.processor)
         self.docker_image   = None
 
     def load_input(self, inputs):
@@ -25,7 +27,7 @@ class ModuleExecutor(object):
             if task_input.has_metadata("docker_image"):
                 docker_image = task_input.get_metadata("docker_image")
                 if docker_image not in seen:
-                    self.storage_helper.pull_docker_image(docker_image)
+                    self.docker_helper.pull(docker_image)
                     seen.append(docker_image)
 
             # Case: Transfer file into wrk directory if its not already there
@@ -33,7 +35,9 @@ class ModuleExecutor(object):
 
                 # Transfer file to workspace directory
                 src_path = task_input.get_transferrable_path()
-                self.storage_helper.mv(src_path, dest_dir=self.workspace.get_wrk_dir())
+                dest_path = os.path.join(self.workspace.get_wrk_dir(), StorageHelper.get_base_filename(src_path))
+
+                self.storage_helper.mv(src_path, dest_path)
 
                 # Add transfer path to list of remote paths that have been transferred to local workspace
                 seen.append(src_path)
@@ -84,7 +88,7 @@ class ModuleExecutor(object):
         # Move log directory to final output log directory
         tmp_log_dir = self.workspace.get_wrk_log_dir()
         final_log_dir = self.workspace.get_final_log_dir()
-        self.storage_helper.mv(tmp_log_dir, final_log_dir, log_transfer=False)
+        self.storage_helper.mv(tmp_log_dir, final_log_dir)
 
     def __create_workspace(self):
         # Create all directories specified in task workspace
