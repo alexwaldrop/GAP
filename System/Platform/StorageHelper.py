@@ -11,7 +11,7 @@ class StorageHelper(object):
     def __init__(self, proc):
         self.proc = proc
 
-    def mv(self, src_path, dest_path, job_name=None, log=True, num_retries=0):
+    def mv(self, src_path, dest_path, job_name=None, log=True, num_retries=0, wait=False):
         # Transfer file or dir from src_path to dest_path
         # Log the transfer unless otherwise specified
         cmd_generator = StorageHelper.__get_storage_cmd_generator(src_path, dest_path)
@@ -21,12 +21,15 @@ class StorageHelper(object):
 
         # Optionally add logging
         cmd = "%s !LOG3!" % cmd if log else cmd
+        print cmd
 
         # Run command and return job name
         self.proc.run(job_name, cmd, num_retries=num_retries)
+        if wait:
+            self.proc.wait_process(job_name)
         return job_name
 
-    def mkdir(self, dir_path, job_name=None, log=False, num_retries=0):
+    def mkdir(self, dir_path, job_name=None, log=False, num_retries=0, wait=False):
         # Makes a directory if it doesn't already exists
         cmd_generator = StorageHelper.__get_storage_cmd_generator(dir_path)
         cmd = cmd_generator.mkdir(dir_path)
@@ -38,6 +41,8 @@ class StorageHelper(object):
 
         # Run command and return job name
         self.proc.run(job_name, cmd, num_retries=num_retries)
+        if wait:
+            self.proc.wait_process(job_name)
         return job_name
 
     def path_exists(self, path, job_name=None, num_retries=0):
@@ -96,11 +101,9 @@ class StorageHelper(object):
         while "Local" in protocols:
             protocols.remove("Local")
 
-        print protocols
-
         # If no other protocols remain then use local storage handler
         if len(protocols) == 0:
-            return LocalStorageHandler
+            return LocalStorageCmdGenerator
 
         # Cycle through file handlers to see which ones satisfy file protocol type required
 
@@ -164,7 +167,7 @@ class GoogleStorageCmdGenerator(StorageCmdGenerator):
     def mv(src_path, dest_dir):
         # Move a file from one directory to another
         options_fast = '-m -o "GSUtil:sliced_object_download_max_components=200"'
-        return "gsutil %s cp -r %s %s" % (options_fast, src_path, dest_dir)
+        return "sudo gsutil %s cp -r %s %s" % (options_fast, src_path, dest_dir)
 
     @staticmethod
     def mkdir(dir_path):
