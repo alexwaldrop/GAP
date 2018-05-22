@@ -73,8 +73,6 @@ class DockerImage:
     # Class for holding information about Dockers and the files they contain
     def __init__(self, config):
         self.image      = config.pop("image")
-        self.host       = config.pop("host",    None)
-        self.tag        = config.pop("tag",     "Latest")
         self.config     = config
         self.resources  = self.__init_resource_files()
         self.resources  = self.__organize_by_type()
@@ -104,12 +102,6 @@ class DockerImage:
     def get_image_name(self):
         return self.image
 
-    def get_host(self):
-        return self.host
-
-    def get_tag(self):
-        return self.tag
-
     def has_resource_type(self, resource_type):
         return resource_type in self.resources
 
@@ -118,8 +110,3 @@ class DockerImage:
             return self.resources
         else:
             return self.resources[resource_type]
-
-    def get_usable_name(self):
-        if self.host is not None:
-            return "%s/%s:%s" % (self.host, self.image, self.tag)
-        return "%s:%s" % (self.image, self.tag)
