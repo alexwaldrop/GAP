@@ -5,33 +5,30 @@ from System.Platform import StorageHelper, DockerHelper
 
 class ModuleExecutor(object):
 
-    def __init__(self, task_id, processor, workspace):
+    def __init__(self, task_id, processor, workspace, docker_image=None):
         self.task_id        = task_id
         self.processor      = processor
         self.workspace      = workspace
         self.storage_helper = StorageHelper(self.processor)
         self.docker_helper  = DockerHelper(self.processor)
-        self.docker_image   = None
+        self.docker_image   = docker_image
 
     def load_input(self, inputs):
 
         # Create workspace directory structure
         self.__create_workspace()
 
+        # Pull docker image if necessary
+        if self.docker_image is not None:
+            self.docker_helper.pull(self.docker_image.get_image_name())
+
         # Load input files
         # Inputs: list containing remote files, local files, and docker images
         seen = []
         for task_input in inputs:
 
-            # Case: Pull docker image if it hasn't already been pulled
-            if task_input.has_metadata("docker_image"):
-                docker_image = task_input.get_metadata("docker_image")
-                if docker_image not in seen:
-                    self.docker_helper.pull(docker_image)
-                    seen.append(docker_image)
-
             # Case: Transfer file into wrk directory if its not already there
-            elif task_input.get_transferrable_path() not in seen:
+            if task_input.get_transferrable_path() not in seen:
 
                 # Transfer file to workspace directory
                 src_path = task_input.get_transferrable_path()
@@ -42,12 +39,8 @@ class ModuleExecutor(object):
                 # Add transfer path to list of remote paths that have been transferred to local workspace
                 seen.append(src_path)
 
-                # Update path after transferring to wrk directory
-                task_input.update_path(new_dir=self.workspace.get_wrk_dir())
-
-            elif task_input.get_transferrable_path() in seen:
-                # Update path after transferring to wrk directory
-                task_input.update_path(new_dir=self.workspace.get_wrk_dir())
+            # Update path after transferring to wrk directory
+            task_input.update_path(new_dir=self.workspace.get_wrk_dir())
 
         # Recursively give every permission to all files we just added
         logging.info("(%s) Final workspace perm. update for task '%s'..." % self.processor.name, self.task_id)
@@ -57,8 +50,12 @@ class ModuleExecutor(object):
         self.processor.wait()
 
     def run(self, cmd):
+        # Job name
         job_name = self.task_id
-        self.processor.run(job_name, cmd, docker_image=self.docker_image)
+        # Get name of docker image where command should be run (if any)
+        docker_image_name = None if self.docker_image is None else self.docker_image.get_image_name()
+        # Begin running job and return stdout, stderr after job has finished running
+        self.processor.run(job_name, cmd, docker_image=docker_image_name)
         return self.processor.wait_process(job_name)
 
     def save_output(self, outputs, final_output_types):
