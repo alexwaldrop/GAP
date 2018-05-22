@@ -37,6 +37,9 @@ class GAPFile:
         # Metadata associated with an object
         self.metadata = kwargs
 
+        # Flags
+        self.flags = []
+
     @property
     def filename(self):
         return self.path.rstrip("/").split("/")[-1]
@@ -99,6 +102,12 @@ class GAPFile:
         # Set file size (GB)
         self.size = file_size
 
+    def flag(self, flag_type):
+        self.flags.append(flag_type)
+
+    def is_flagged(self, flag_type):
+        return flag_type in self.flags
+
     def has_metadata_type(self, meta_type):
         return meta_type in self.metadata
 
@@ -143,6 +152,9 @@ class GAPFile:
             self.path = self.path.replace("*", "")
 
     def __str__(self):
+        return self.path
+
+    def debug_string(self):
         to_return = "=============\n"
         to_return += "FileID:\t%s\n" % self.file_id
         to_return += "Type:\t%s\n" % self.type
@@ -152,6 +164,7 @@ class GAPFile:
         to_return += "is_remote:\t%s\n" % self.is_remote()
         to_return += "is_prefix:\t%s\n" % self.__is_prefix
         to_return += "size:\t%s\n" % self.size
+        to_return += "flags:\t%s\n" % ",".join(self.flags)
         to_return += "=============\n"
         return to_return
 
