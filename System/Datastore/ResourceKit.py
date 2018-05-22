@@ -85,6 +85,7 @@ class DockerImage:
             path          = resource_data.pop("path")
             resource_type = resource_data.pop("resource_type")
             resources[resource_id] = GAPFile(resource_id, resource_type, path, **resource_data)
+            resources[resource_id].flag("docker")
         return resources
 
     def __organize_by_type(self):

@@ -1,8 +1,6 @@
 [Docker]
     [[__many__]]
         image                   = string
-        host                    = string(default=None)
-        tag                     = string(default="Latest")
         [[[__many__]]]
             resource_type           = string
             path                    = string
