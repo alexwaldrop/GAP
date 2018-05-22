@@ -1,6 +1,15 @@
-[__many__]
-    resource_type           = string
-    path                    = string
-    export_to_path          = boolean(default=False)
-    export_to_ld_lib        = boolean(default=False)
-    containing_dir          = string(default=None)
+[Docker]
+    [[__many__]]
+        image                   = string
+        host                    = string(default=None)
+        tag                     = string(default="Latest")
+        [[[__many__]]]
+            resource_type           = string
+            path                    = string
+            containing_dir          = string(default=None)
+
+[Path]
+    [[__many__]]
+        resource_type           = string
+        path                    = string
+        containing_dir          = string(default=None)
