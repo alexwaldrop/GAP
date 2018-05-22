@@ -163,6 +163,14 @@ class Module(object):
     def set_output_dir(self, new_output_dir):
         self.output_dir = new_output_dir
 
+    def get_input_values(self):
+        # Get list of current input values
+        return [arg.get_value() for arg in self.arguments.values()]
+
+    def get_output_values(self):
+        # Get list of current output values
+        return self.output.values()
+
 
 class Argument(object):
     # Class for holding data and metadata for module input arguments
