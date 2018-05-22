@@ -94,11 +94,11 @@ class Task(object):
 
     def get_input_keys(self):
         # Return input keys. get_keys() returns input_keys and output_keys.
-        return self.module.get_keys()[0]
+        return self.module.get_input_types()
 
     def get_output_keys(self):
         # Return output keys. get_keys() returns input_keys and output_keys.
-        return self.module.get_keys()[1]
+        return self.module.get_output_types()
 
     def get_final_output_keys(self):
         return self.__final_output_keys
