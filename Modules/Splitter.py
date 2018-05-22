@@ -98,3 +98,10 @@ class Splitter(Module):
 
         return path
 
+    def get_output_values(self):
+        # Get list of current output values from all splits aggregated into single list
+        outputs = []
+        for split_id, split_ouptut in self.output.iteritems():
+            outputs.extend(split_ouptut.values())
+        return outputs
+
