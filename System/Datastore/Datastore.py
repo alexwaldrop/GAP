@@ -65,6 +65,9 @@ class Datastore(object):
         # Create and return TaskWorkspace
         return TaskWorkspace(wrk_dir, tmp_output_dir, final_output_dir, task_id)
 
+    def get_docker_image(self, docker_id):
+        return self.resource_kit.get_docker_image(docker_id)
+
     def __select_arg(self, avail_args):
         # Priority of checking for argument
         input_order = ["parent_input", "resource_input", "sample_input", "config_input"]
