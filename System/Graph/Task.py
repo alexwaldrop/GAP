@@ -17,7 +17,7 @@ class Task(object):
         self.__final_output_keys    = kwargs.pop("final_output")
 
         # Id of docker image declared in Resource kit where task will be executed
-        self.__docker_image         = kwargs.pop("docker_image")
+        self.__docker_image         = kwargs.pop("docker_image", None)
 
         # Get the config inputs
         self.__module_args          = kwargs.pop("args", [])
