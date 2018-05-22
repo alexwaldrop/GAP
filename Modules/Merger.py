@@ -4,7 +4,6 @@ class Merger(Module):
 
     def __init__(self, module_id):
         super(Merger, self).__init__(module_id)
-        self.merger = True
 
     def define_input(self):
         raise NotImplementedError(

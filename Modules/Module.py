@@ -26,9 +26,6 @@ class Module(object):
         # Module output file directory
         self.output_dir = "/tmp/"
 
-        # Specify whether module is tool or merger
-        self.merger = False
-
     @abc.abstractmethod
     def define_input(self):
         pass
@@ -70,6 +67,12 @@ class Module(object):
         # Check that all required inputs are set
         err = False
         for arg_type, arg in self.arguments.iteritems():
+
+            # Set argument to default value if it hasn't been set
+            if not arg.is_set():
+                arg.set(arg.get_default_value())
+
+            # Throw error if mandatory argument hasn't been set at runtime
             if not arg.is_set() and arg.is_mandatory():
                 logging.error("Module of type %s with id %s missing required input type: %s" % (self.__class__.__name__, self.module_id, arg_type))
                 err = True
@@ -137,6 +140,9 @@ class Module(object):
             raise RuntimeError("Attempt to get undeclared input type for module!")
         return self.arguments[key].get_value()
 
+    def get_arguments(self):
+        return self.arguments
+
     def get_output(self, key=None):
         if key is None:
             return self.output
@@ -156,9 +162,6 @@ class Module(object):
 
     def set_output_dir(self, new_output_dir):
         self.output_dir = new_output_dir
-
-    def is_merger(self):
-        return self.merger
 
 
 class Argument(object):
