@@ -14,7 +14,6 @@ class Module(object):
 
         # Initialize the input arguments
         self.arguments = {}
-        self.required = []
         self.define_input()
 
         # Initialize the output variables
@@ -42,51 +41,37 @@ class Module(object):
     def define_command(self):
         pass
 
-    def add_argument(self, key, is_required=False, default_value=None):
+    def add_argument(self, key, is_required=False, is_resource=False, default_value=None):
 
         if key in self.arguments:
             logging.error("In module %s, the input argument '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Input argument '%s' has been defined multiple times!" % key)
 
-        self.arguments[key] = default_value
-        if is_required:
-            self.required.append(key)
+        self.arguments[key] = Argument(key,
+                                       is_required=is_required,
+                                       is_resource=is_resource,
+                                       default_value=default_value)
 
-    def add_output(self, key, value, is_path=True):
+    def add_output(self, key, value, is_path=True, **kwargs):
         if key in self.output:
             logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
 
-        if is_path:
-            # Enforce output to be in platform workspace
-            value = value.replace(self.output_dir, "")
-            value = os.path.join(self.output_dir, value)
+        if is_path and not isinstance(value, GAPFile):
+            # Convert paths to GAPFiles if they haven't already been converted
+            file_id = "%s.%s" % (self.module_id, key)
+            self.output[key] = GAPFile(file_id, file_type=key, path=value, **kwargs)
 
-        self.output[key] = value
-
-    def add_output_variable(self, key, value):
-        # Declare a variable whose value will be set by the module
-        if key in self.output:
-            logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
-            raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
-        self.output[key] = value
-
-    def add_output_file(self, key, path, **kwargs):
-        # Declare an output file that will be created by the module
-        if key in self.output:
-            logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
-            raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
-
-        file_id = "%s.%s" % (self.module_id, key)
-        self.output[key] = GAPFile(file_id, key, path, **kwargs)
+        else:
+            self.output[key] = value
 
     def get_command(self, output_dir=None):
 
         # Check that all required inputs are set
         err = False
-        for req_type in self.required:
-            if self.arguments[req_type] is None:
-                logging.error("Module of type %s with id %s missing required input type: %s" % (self.__class__.__name__, self.module_id, req_type))
+        for arg_type, arg in self.arguments.iteritems():
+            if not arg.is_set() and arg.is_mandatory():
+                logging.error("Module of type %s with id %s missing required input type: %s" % (self.__class__.__name__, self.module_id, arg_type))
                 err = True
         if err:
             # Raise error if any required arguments have not been set
@@ -103,43 +88,6 @@ class Module(object):
         # Function to be overriden by inheriting classes that process output from their command to set one of their outputs
         # Example: Module that determines how many lines are in a file
         pass
-
-    def get_ID(self):
-        return self.module_id
-
-    def set_ID(self, new_id):
-        self.module_id = new_id
-
-    def get_keys(self):
-        return self.input_keys, self.output_keys
-
-    def get_arguments(self, key=None):
-        if key is None:
-            return self.arguments
-        return self.arguments[key]
-
-    def set_argument(self, key, value):
-        # Set value for input argument
-        if key not in self.arguments:
-            logging.error("Attempt to set undeclared input '%s' for module with id '%s' of type %s!" % (key,
-                                                                                                        self.module_id,
-                                                                                                        self.__class__.__name__))
-            raise RuntimeError("Attempt to set undeclared input type for module!")
-        self.arguments[key] = value
-
-    def get_output(self, key=None):
-        if key is None:
-            return self.output
-        return self.output[key]
-
-    def set_output(self, key, value):
-        # Set value for output object
-        if key not in self.output_keys:
-            logging.error("Attempt to set undeclared output type '%s' for module with id '%s' of type %s" % (key,
-                                                                                                             self.module_id,
-                                                                                                             self.__class__.__name__))
-            raise RuntimeError("Attempt to set undeclared output type for module!")
-        self.output[key] = value
 
     def generate_unique_file_name(self, extension=".dat", output_dir=None):
 
@@ -159,19 +107,91 @@ class Module(object):
 
         return path
 
+    ############### Getters and setters
+    def get_ID(self):
+        return self.module_id
+
+    def set_ID(self, new_id):
+        self.module_id = new_id
+
+    def get_input_types(self):
+        return self.input_keys
+
+    def get_output_types(self):
+        return self.output_keys
+
+    def set_argument(self, key, value):
+        # Set value for input argument
+        if key not in self.arguments:
+            logging.error("Attempt to set undeclared input '%s' for module with id '%s' of type %s!" % (key,
+                                                                                                        self.module_id,
+                                                                                                        self.__class__.__name__))
+            raise RuntimeError("Attempt to set undeclared input type for module!")
+        self.arguments[key].set(value)
+
+    def get_argument(self, key):
+        # Return value of an input argument
+        if key not in self.arguments:
+            logging.error("Attempt to get undeclared input '%s' for module with id '%s' of type %s!" % (key,
+                                                                                                        self.module_id,
+                                                                                                        self.__class__.__name__))
+            raise RuntimeError("Attempt to get undeclared input type for module!")
+        return self.arguments[key].get_value()
+
+    def get_output(self, key=None):
+        if key is None:
+            return self.output
+        return self.output[key]
+
+    def set_output(self, key, value):
+        # Set value for output object
+        if key not in self.output_keys:
+            logging.error("Attempt to set undeclared output type '%s' for module with id '%s' of type %s" % (key,
+                                                                                                             self.module_id,
+                                                                                                             self.__class__.__name__))
+            raise RuntimeError("Attempt to set undeclared output type for module!")
+        self.output[key] = value
+
     def get_output_dir(self):
         return self.output_dir
 
     def set_output_dir(self, new_output_dir):
         self.output_dir = new_output_dir
 
-    def get_input_files(self):
-        # Convenience function to return all files passed to module as input
-        pass
-
-    def get_output_files(self):
-        # Convenience function to return all files produced by module as output
-        pass
-
     def is_merger(self):
         return self.merger
+
+
+class Argument(object):
+    # Class for holding data and metadata for module input arguments
+    def __init__(self, name, is_required=False, is_resource=False, default_value=None):
+
+        self.__name = name
+
+        self.__is_required = is_required
+        self.__is_resource = is_resource
+
+        self.__default_value = default_value
+
+        self.__value = None
+
+    def set(self, value):
+        self.__value = value
+
+    def get_name(self):
+        return self.__name
+
+    def get_default_value(self):
+        return self.__default_value
+
+    def get_value(self):
+        return self.__value
+
+    def is_set(self):
+        return self.__value is not None
+
+    def is_mandatory(self):
+        return self.__is_required
+
+    def is_resource(self):
+        return self.__is_resource

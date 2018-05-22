@@ -38,21 +38,25 @@ class Splitter(Module):
         # Create split with the following samples visible
         self.output[split_id] = {"visible_samples" : visible_samples}
 
-    def add_output_variable(self, split_id, key, value):
-        # Declare a variable whose value will be set by the module
+    def add_output(self, split_id, key, value, is_path=True, **kwargs):
+
+        # Check that split id exists
+        if split_id not in self.output:
+            logging.error("In module %s, cannot add output of type '%s' to undeclared split with id '%s'!" % (self.module_id, key, split_id))
+            raise RuntimeError("Splitter attempted to add output to undeclared split!")
+
+        # Check that output type hasn't already been set
         if key in self.output[split_id]:
             logging.error("In module %s, the output key '%s' is defined multiple times in same split (split_id: %s)!" % (self.module_id, key, split_id))
             raise RuntimeError("Output key '%s' has been defined multiple times within the same split!" % key)
-        self.output[split_id][key] = value
 
-    def add_output_file(self, split_id, key, path, **kwargs):
-        # Declare an output file that will be created by the module
-        if key in self.output[split_id]:
-            logging.error("In module %s, the output key '%s' is defined multiple times in same split (split_id: %s)!" % (self.module_id, key, split_id))
-            raise RuntimeError("Output key '%s' has been defined multiple times within the same split!" % key)
-
-        file_id = "%s.%s.%s" % (self.module_id, split_id, key)
-        self.output[split_id][key] = GAPFile(file_id, key, path, **kwargs)
+        # Convert paths to GAPFiles if they haven't already been converted
+        if is_path and not isinstance(value, GAPFile):
+            file_id = "%s.%s.%s" % (self.module_id, split_id, key)
+            self.output[split_id][key] = GAPFile(file_id, file_type=key, path=value, **kwargs)
+        # Otherwise just set the value
+        else:
+            self.output[split_id][key] = value
 
     def get_output(self, key=None, split_id=None):
         if split_id is None:
@@ -94,10 +98,3 @@ class Splitter(Module):
 
         return path
 
-    def get_input_files(self):
-        # Convenience function to return all files passed to module as input
-        pass
-
-    def get_output_files(self):
-        # Convenience function to return all files produced by module as output
-        pass
