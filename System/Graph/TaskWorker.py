@@ -103,7 +103,7 @@ class TaskWorker(Thread):
                 self.set_status(self.LOADING)
 
                 # Get docker information for running module
-                docker_image = self.datastore.get_docker(docker_id=self.task.get_docker_image_id())
+                docker_image = self.datastore.get_docker_image(docker_id=self.task.get_docker_image_id())
 
                 self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
                                                       processor=self.proc,
