@@ -65,7 +65,7 @@ class Module(object):
         else:
             self.output[key] = value
 
-    def get_command(self, output_dir=None):
+    def get_command(self):
 
         # Check that all required inputs are set
         err = False
@@ -78,11 +78,10 @@ class Module(object):
             raise RuntimeError("Module could not generate command! Required inputs missing at runtime!")
 
         # Define the names of output files given an output directory (default: self.output_dir)
-        self.define_output(output_dir)
+        self.define_output()
 
         # Define the command
-        cmd = self.define_command()
-        return cmd
+        return self.define_command()
 
     def process_cmd_output(self, out, err):
         # Function to be overriden by inheriting classes that process output from their command to set one of their outputs

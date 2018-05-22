@@ -58,7 +58,7 @@ class Splitter(Module):
         else:
             self.output[split_id][key] = value
 
-    def get_output(self, key=None, split_id=None):
+    def get_output(self, split_id=None, key=None):
         if split_id is None:
             return self.output
         elif key is None:
