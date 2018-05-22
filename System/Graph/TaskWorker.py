@@ -101,9 +101,14 @@ class TaskWorker(Thread):
 
                 # Execute command if one exists
                 self.set_status(self.LOADING)
+
+                # Get docker information for running module
+                docker_image = self.datastore.get_docker(docker_id=self.task.get_docker_image_id())
+
                 self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
                                                       processor=self.proc,
-                                                      workspace=task_workspace)
+                                                      workspace=task_workspace,
+                                                      docker_image=docker_image)
 
                 # Load task inputs onto module executor
                 self.module_executor.load_input(self.task.get_inputs())
