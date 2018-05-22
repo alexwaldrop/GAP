@@ -8,7 +8,7 @@ class Graph(object):
     def __init__(self, pipeline_config_file):
 
         # Parse and validate pipeline config
-        pipeline_config_spec    = "Config/Schema/Graph.validate"
+        pipeline_config_spec    = "System/Graph/Graph.validate"
         config_parser           = ConfigParser(pipeline_config_file, pipeline_config_spec)
         self.config             = config_parser.get_config()
 
