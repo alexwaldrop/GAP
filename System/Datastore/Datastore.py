@@ -70,7 +70,7 @@ class Datastore(object):
 
     def __select_arg(self, avail_args):
         # Priority of checking for argument
-        input_order = ["parent_input", "resource_input", "sample_input", "config_input"]
+        input_order = ["parent_input", "docker_input", "resource_input", "sample_input", "config_input"]
 
         # Search the key in each input type
         for input_type in input_order:
@@ -88,6 +88,9 @@ class Datastore(object):
 
         # Get args from parent tasks
         possible["parent_input"] = self.__gather_parent_args(task_id, arg_type)
+
+        # Get args from docker requested by task
+        possible["docker_input"] = self.__gather_docker_args(task_id, arg_type)
 
         # Get args from resource kit
         possible["resource_input"] = self.__gather_res_kit_args(task_id, arg_type)
@@ -157,6 +160,29 @@ class Datastore(object):
 
         return args
 
+    def __gather_docker_args(self, task_id, arg_type):
+
+        args = []
+        docker_image_id = self.graph.get_tasks(task_id).get_docker_image_id()
+
+        if docker_image_id is not None and self.resource_kit.has_docker_image(docker_image_id):
+            docker_image = self.resource_kit.get_docker_image(docker_image_id)
+            if docker_image.has_resource_type(arg_type):
+
+                # Search to see if the argument key appears in the config input
+                config_input = self.graph.get_tasks(task_id).get_graph_config_args()
+                if arg_type in config_input:
+
+                    res_name = config_input[arg_type]
+
+                    # Get the resource object with name "res_name" from docker input data
+                    args = [docker_image.get_resources(arg_type)[res_name]]
+
+                # If not in config input, shoudl only be one resource of type "arg_key" in docker
+                else:
+                    args = [self.resource_kit.get_resources(arg_type).values()[0]]
+
+        return args
 
 class TaskWorkspace(object):
     # Defines folder structure where task will execute/files generated
