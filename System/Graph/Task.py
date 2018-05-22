@@ -16,6 +16,9 @@ class Task(object):
         # Get the final output keys
         self.__final_output_keys    = kwargs.pop("final_output")
 
+        # Id of docker image declared in Resource kit where task will be executed
+        self.__docker_image         = kwargs.pop("docker_image")
+
         # Get the config inputs
         self.__module_args          = kwargs.pop("args", [])
 
@@ -102,6 +105,9 @@ class Task(object):
 
     def get_graph_config_args(self):
         return self.__module_args
+
+    def get_docker_image_id(self):
+        return self.__docker_image
 
     def set_complete(self, is_complete):
         self.complete = is_complete
