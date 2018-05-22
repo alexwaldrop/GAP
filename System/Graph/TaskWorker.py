@@ -74,7 +74,7 @@ class TaskWorker(Thread):
         # Run task module command and save outputs
         try:
             # Set the input arguments that will be passed to the task module
-            self.__set_task_module_input()
+            self.__set_module_input()
 
             # Compute task resource requirements
             self.cpus        = self.module.get_arguments("nr_cpus")
@@ -111,7 +111,8 @@ class TaskWorker(Thread):
                                                       docker_image=docker_image)
 
                 # Load task inputs onto module executor
-                self.module_executor.load_input(self.task.get_inputs())
+                input_files = self.datastore.get_task_input_files(self.task.get_ID())
+                self.module_executor.load_input(input_files)
 
                 # Run module's command
                 self.set_status(self.RUNNING)
@@ -123,7 +124,7 @@ class TaskWorker(Thread):
 
             # Save output files in workspace output dirs (if any)
             self.set_status(self.FINALIZING)
-            output_files        = self.task.get_output_files()
+            output_files        = self.datastore.get_task_output_files(self.task.get_ID())
             final_output_types  = self.task.get_final_output_keys()
             if len(output_files) > 0:
                 self.module_executor.save_output(output_files, final_output_types)
@@ -192,7 +193,7 @@ class TaskWorker(Thread):
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-    def __set_task_module_input(self):
+    def __set_module_input(self):
 
         # Get required arguments for task module
         task_id = self.task.get_ID()
