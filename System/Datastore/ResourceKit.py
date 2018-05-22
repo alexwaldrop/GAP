@@ -123,8 +123,3 @@ class DockerImage:
         if self.host is not None:
             return "%s/%s:%s" % (self.host, self.image, self.tag)
         return "%s:%s" % (self.image, self.tag)
-
-
-
-
-
