@@ -68,6 +68,44 @@ class Datastore(object):
     def get_docker_image(self, docker_id):
         return self.resource_kit.get_docker_image(docker_id)
 
+    def get_task_input_files(self, task_id):
+        # Return list of input files that need to be loaded for in order for task to run
+
+        # Get nested list of module arguments
+        module = self.graph.get_tasks(task_id).get_module()
+        inputs = module.get_input_values()
+
+        # Flatten nested list into a single list
+        inputs = flatten(inputs)
+
+        # Loop through and determine which are files
+        input_files = []
+        for input in inputs:
+            # Append input if it's a file and one that doesn't appear on the docker
+            if isinstance(input, GAPFile) and not input.is_flagged("docker"):
+                input_files.append(input)
+
+        # Return deep copy so that file objects aren't editable
+        return copy.deepcopy(input_files)
+
+    def get_task_output_files(self, task_id):
+        # Return list of output files produced by task
+        module = self.graph.get_tasks(task_id).get_module()
+        outputs = module.get_output_values()
+
+        # Flatten nested list into a single list
+        outputs = flatten(outputs)
+
+        # Loop through and determine which are files
+        output_files = []
+        for output in outputs:
+            # Append if output is an instance of
+            if isinstance(output, GAPFile):
+                output_files.append(output)
+
+        # Return actual copies so that module paths get updated as they are transferred
+        return output_files
+
     def __select_arg(self, avail_args):
         # Priority of checking for argument
         input_order = ["parent_input", "docker_input", "resource_input", "sample_input", "config_input"]
@@ -218,4 +256,16 @@ class TaskWorkspace(object):
 
     def get_final_log_dir(self):
         return self.workspace["final_log"]
+
+
+# Method for unpacking nested list taken from http://code.activestate.com/recipes/578948-flattening-an-arbitrarily-nested-list-in-python/
+def flatten(lis):
+    """Given a list, possibly nested to any level, return it flattened."""
+    new_lis = []
+    for item in lis:
+        if type(item) == type([]):
+            new_lis.extend(flatten(item))
+        else:
+            new_lis.append(item)
+    return new_lis
 
