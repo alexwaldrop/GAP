@@ -15,9 +15,6 @@ class Scheduler(object):
         # Initialize set of task workers
         self.task_workers = {}
 
-        # Initialize set of finalized task workers
-        self.finalized_workers = []
-
     def run(self):
         try:
             self.__run_tasks()
@@ -62,7 +59,7 @@ class Scheduler(object):
         task = task_worker.get_task()
 
         # Add to list of finalized task workers
-        self.finalized_workers.append(task.get_ID())
+        task_worker.set_status(TaskWorker.FINALIZED)
 
         # Checks for and raises any runtime errors that occurred while running task
         task_worker.finalize()
@@ -88,10 +85,10 @@ class Scheduler(object):
             # Wait for all task workers to finish up cancelling
             done = True
             for task_id, task_worker in self.task_workers:
-                if not task_worker.get_status() is TaskWorker.COMPLETE:
-                    # Indicate that not all tasks have finished up
+                if not task_worker.get_status() is TaskWorker.FINALIZED:
+                    # Indicate that not all tasks have been finalized
                     done = False
-                elif task_id not in self.finalized_workers:
+                elif task_worker.get_status() is TaskWorker.COMPLETE:
                     # Finalize task if it hasn't already been finalized
                     try:
                         self.__finalize_task_worker(task_worker)
@@ -108,6 +105,6 @@ class Scheduler(object):
     def __cancel_unfinished_tasks(self):
         # Cancel any still-running jobs
         for task_id, task_worker in self.task_workers:
-            if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING]:
+            if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.FINALIZED]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
                 task_worker.cancel()
