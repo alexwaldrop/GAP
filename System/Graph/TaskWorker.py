@@ -4,7 +4,6 @@ import math
 import logging
 
 from System.Workers.Thread import Thread
-from System.Datastore import GAPFile
 from ModuleExecutor import ModuleExecutor
 
 class TaskWorker(Thread):
