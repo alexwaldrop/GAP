@@ -54,7 +54,7 @@ class Module(object):
             logging.error("In module %s, the output key '%s' is defined multiple time!" % (self.module_id, key))
             raise RuntimeError("Output key '%s' has been defined multiple times!" % key)
 
-        if is_path and not isinstance(value, GAPFile):
+        if is_path and not isinstance(value, GAPFile) and value is not None:
             # Convert paths to GAPFiles if they haven't already been converted
             file_id = "%s.%s" % (self.module_id, key)
             self.output[key] = GAPFile(file_id, file_type=key, path=value, **kwargs)
@@ -138,7 +138,10 @@ class Module(object):
                                                                                                         self.module_id,
                                                                                                         self.__class__.__name__))
             raise RuntimeError("Attempt to get undeclared input type for module!")
-        return self.arguments[key].get_value()
+        val = self.arguments[key].get_value()
+        if isinstance(val, GAPFile):
+            return val.get_path()
+        return val
 
     def get_arguments(self):
         return self.arguments
