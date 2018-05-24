@@ -67,7 +67,7 @@ class TaskWorker(Thread):
         # Run task module command and save outputs
         try:
             # Set the input arguments that will be passed to the task module
-            self.__set_module_input()
+            self.datastore.set_task_input_args(self.task.get_ID())
 
             # Compute task resource requirements
             cpus    = self.module.get_arguments("nr_cpus")
@@ -185,55 +185,6 @@ class TaskWorker(Thread):
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
-
-    def __set_module_input(self):
-
-        # Get required arguments for task module
-        task_id = self.task.get_ID()
-
-        # Get and set arg values from datastore
-        for input_type, input_arg in self.module.get_arguments().iteritems():
-            val = self.datastore.get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
-            self.module.set_argument(input_type, val)
-
-        # Make sure nr_cpus, mem arguments are properly formatted
-        self.__format_nr_cpus()
-        self.__format_mem()
-
-    def __format_nr_cpus(self):
-        # Makes sure the argument for nr_cpus is valid
-        nr_cpus  = self.module.get_argument("nr_cpus")
-        max_cpus = self.platform.get_max_nr_cpus()
-
-        # CPUs = 'max' converted to platform maximum cpus
-        if isinstance(nr_cpus, basestring) and nr_cpus.lower() == "max":
-            # Set special case for maximum nr_cpus
-            nr_cpus = max_cpus
-
-        # CPUs > 'max' converted to maximum cpus
-        elif nr_cpus > max_cpus:
-            nr_cpus = max_cpus
-
-        # Update module nr_cpus argument
-        self.module.set_argument("nr_cpus", int(nr_cpus))
-
-    def __format_mem(self):
-        mem = self.module.get_argment("mem")
-        nr_cpus = self.module.get_argument("nr_cpus")
-        max_mem = self.platform.get_max_mem()
-        if isinstance(mem, basestring):
-            # Special case where mem is platform max
-            if mem.lower() == "max":
-                mem = max_mem
-            # Special case if memory is scales with nr_cpus (e.g. 'nr_cpus * 1.5')
-            elif "nr_cpus" in mem.lower():
-                mem_expr = mem.lower()
-                mem = int(eval(mem_expr.replace("nr_cpus", str(nr_cpus))))
-        # Set to platform max mem if over limit
-        if mem > max_mem:
-            mem = max_mem
-        # Update module memory argument
-        self.module.set_argument("mem", int(mem))
 
     def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=2):
         # Compute size of disk needed to store input/output files

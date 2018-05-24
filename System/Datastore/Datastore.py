@@ -1,5 +1,6 @@
 import copy
 import os
+import logging
 
 from GAPFile import GAPFile
 from System.Platform import TaskPlatform
@@ -17,19 +18,20 @@ class Datastore(object):
         self.__base_wrk_dir = self.platform.wrk_dir
         self.__base_output_dir = self.platform.final_output_dir
 
-    def get_task_arg(self, task_id, arg_type):
-        # Return the object that best satisfies the arg_type for a task
+    def set_task_input_args(self, task_id):
+        # Set input arguments for a task module
+        task_module = self.graph.get_task(task_id).module
+        for input_type, input_arg in task_module.get_arguments().iteritems():
+            val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
+            task_module.set_argument(input_type, val)
 
-        # Get all objects visible to task that match the arg_type
-        possible_args = self.__gather_args(task_id, arg_type)
+        # Re-format nr_cpus, mem
+        nr_cpus     = self.__reformat_nr_cpus(task_module.get_argument("nr_cpus"))
+        mem         = self.__reformat_mem(task_module.get_argument("mem"), nr_cpus)
 
-        # Select the object using precedence rules
-        final_arg = self.__select_arg(possible_args)
-
-        # Make deep copy of argument so internal datastore values can't be touched
-        final_arg = copy.deepcopy(final_arg) if final_arg is not None else final_arg
-
-        return final_arg
+        # Reset nr_cpus, mem
+        task_module.set_argument("nr_cpus", nr_cpus)
+        task_module.set_argument("mem", mem)
 
     def get_task_workspace(self, task_id=None):
         # Use task information to generate unique directories for input/output files
@@ -106,9 +108,28 @@ class Datastore(object):
         # Return actual copies so that module paths get updated as they are transferred
         return output_files
 
-    def __select_arg(self, avail_args):
+    def __get_task_arg(self, task_id, arg_type, is_resource=False):
+        # Return the object that best satisfies the arg_type for a task
+
+        # Get all objects visible to task that match the arg_type
+        possible_args = self.__gather_args(task_id, arg_type)
+
+        # Select the object using precedence rules
+        final_arg = self.__select_arg(possible_args, is_resource=is_resource)
+
+        # Make deep copy of argument so internal datastore values can't be touched
+        final_arg = copy.deepcopy(final_arg) if final_arg is not None else final_arg
+
+        return final_arg
+
+    def __select_arg(self, avail_args, is_resource=False):
         # Priority of checking for argument
-        input_order = ["parent_input", "docker_input", "resource_input", "sample_input", "config_input"]
+        if not is_resource:
+            input_order = ["parent_input", "docker_input", "resource_input", "sample_input", "config_input"]
+
+        # Special case when argument MUST be a resource type. In this case we can only get the arg from the RK.
+        else:
+            input_order = ["docker_input", "resource_input"]
 
         # Search the key in each input type
         for input_type in input_order:
@@ -221,6 +242,38 @@ class Datastore(object):
                     args = [self.resource_kit.get_resources(arg_type).values()[0]]
 
         return args
+
+    def __reformat_nr_cpus(self, nr_cpus):
+        # Makes sure the argument for nr_cpus is valid
+        max_cpus = self.platform.get_max_nr_cpus()
+
+        # CPUs = 'max' converted to platform maximum cpus
+        if isinstance(nr_cpus, basestring) and nr_cpus.lower() == "max":
+            # Set special case for maximum nr_cpus
+            nr_cpus = max_cpus
+
+        # CPUs > 'max' converted to maximum cpus
+        elif nr_cpus > max_cpus:
+            nr_cpus = max_cpus
+
+        # Update module nr_cpus argument
+        return int(nr_cpus)
+
+    def __reformat_mem(self, mem, nr_cpus):
+        max_mem = self.platform.get_max_mem()
+        if isinstance(mem, basestring):
+            # Special case where mem is platform max
+            if mem.lower() == "max":
+                mem = max_mem
+            # Special case if memory is scales with nr_cpus (e.g. 'nr_cpus * 1.5')
+            elif "nr_cpus" in mem.lower():
+                mem_expr = mem.lower()
+                mem = int(eval(mem_expr.replace("nr_cpus", str(nr_cpus))))
+        # Set to platform max mem if over limit
+        if mem > max_mem:
+            mem = max_mem
+        # Update module memory argument
+        return int(mem)
 
 class TaskWorkspace(object):
     # Defines folder structure where task will execute/files generated
