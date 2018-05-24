@@ -85,8 +85,7 @@ class Datastore(object):
             if isinstance(input, GAPFile) and not input.is_flagged("docker"):
                 input_files.append(input)
 
-        # Return deep copy so that file objects aren't editable
-        return copy.deepcopy(input_files)
+        return input_files
 
     def get_task_output_files(self, task_id):
         # Return list of output files produced by task
