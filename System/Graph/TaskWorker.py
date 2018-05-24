@@ -15,6 +15,7 @@ class TaskWorker(Thread):
     FINALIZING      = 3
     COMPLETE        = 4
     CANCELLING      = 5
+    FINALIZED       = 6
 
     def __init__(self, task, datastore, platform):
         # Class for executing task
@@ -36,14 +37,6 @@ class TaskWorker(Thread):
         # Status attributes
         self.status_lock = threading.Lock()
         self.status = TaskWorker.IDLE
-
-        # Command to be executed to complete task
-        self.cmd        = None
-
-        # Resources required to execute task
-        self.cpus       = None
-        self.mem        = None
-        self.disk_space = None
 
         # Processor for executing task
         self.proc       = None
@@ -77,12 +70,16 @@ class TaskWorker(Thread):
             self.__set_module_input()
 
             # Compute task resource requirements
-            self.cpus        = self.module.get_arguments("nr_cpus")
-            self.mem         = self.module.get_arguments("mem")
-            self.disk_space  = self.__compute_disk_requirements()
+            cpus    = self.module.get_arguments("nr_cpus")
+            mem     = self.module.get_arguments("mem")
+
+            # Compute disk space requirements
+            input_files     = self.datastore.get_task_input_files(self.task.get_ID())
+            docker_image    = self.datastore.get_docker_image(docker_id=self.task.get_docker_image_id())
+            disk_space      = self.__compute_disk_requirements(input_files, docker_image)
 
             # Wait for platform to have enough resources to run task
-            while not self.platform.can_run_task(self.cpus, self.mem, self.disk_space) and not self.get_status() is self.CANCELLING:
+            while not self.platform.can_run_task(cpus, mem, disk_space) and not self.get_status() is self.CANCELLING:
                 time.sleep(5)
 
             # Define unique workspace for task input/output
@@ -90,9 +87,6 @@ class TaskWorker(Thread):
 
             # Specify that module output files should be placed in task workspace output dir
             self.module.set_output_dir(task_workspace.get_wrk_output_dir())
-
-            # Create processor capable of running job
-            self.proc = self.platform.get_processor(self.task.get_ID(), self.cpus, self.mem, self.disk_space)
 
             # Get module command to be run
             task_cmd = self.module.get_command()
@@ -102,8 +96,8 @@ class TaskWorker(Thread):
                 # Execute command if one exists
                 self.set_status(self.LOADING)
 
-                # Get docker information for running module
-                docker_image = self.datastore.get_docker_image(docker_id=self.task.get_docker_image_id())
+                # Get processor capable of running job
+                self.proc = self.platform.get_processor(self.task.get_ID(), cpus, mem, disk_space)
 
                 self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
                                                       processor=self.proc,
@@ -111,7 +105,6 @@ class TaskWorker(Thread):
                                                       docker_image=docker_image)
 
                 # Load task inputs onto module executor
-                input_files = self.datastore.get_task_input_files(self.task.get_ID())
                 self.module_executor.load_input(input_files)
 
                 # Run module's command
@@ -197,13 +190,11 @@ class TaskWorker(Thread):
 
         # Get required arguments for task module
         task_id = self.task.get_ID()
-        input_types = self.task.get_input_keys()
 
         # Get and set arg values from datastore
-        for input_type in input_types:
-            val = self.datastore.get_task_arg(task_id, input_type)
-            if val is not None:
-                self.task.get_module().set_argument(input_type, val)
+        for input_type, input_arg in self.module.get_arguments().iteritems():
+            val = self.datastore.get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
+            self.module.set_argument(input_type, val)
 
         # Make sure nr_cpus, mem arguments are properly formatted
         self.__format_nr_cpus()
@@ -211,8 +202,8 @@ class TaskWorker(Thread):
 
     def __format_nr_cpus(self):
         # Makes sure the argument for nr_cpus is valid
-        nr_cpus  = self.module.get_arguments("nr_cpus")
-        max_cpus = self.platform.get_max_cpus()
+        nr_cpus  = self.module.get_argument("nr_cpus")
+        max_cpus = self.platform.get_max_nr_cpus()
 
         # CPUs = 'max' converted to platform maximum cpus
         if isinstance(nr_cpus, basestring) and nr_cpus.lower() == "max":
@@ -227,8 +218,8 @@ class TaskWorker(Thread):
         self.module.set_argument("nr_cpus", int(nr_cpus))
 
     def __format_mem(self):
-        mem = self.module.get_argments("mem")
-        nr_cpus = self.module.get_arguments("nr_cpus")
+        mem = self.module.get_argment("mem")
+        nr_cpus = self.module.get_argument("nr_cpus")
         max_mem = self.platform.get_max_mem()
         if isinstance(mem, basestring):
             # Special case where mem is platform max
@@ -244,21 +235,17 @@ class TaskWorker(Thread):
         # Update module memory argument
         self.module.set_argument("mem", int(mem))
 
-    def __compute_disk_requirements(self, input_multiplier=2):
+    def __compute_disk_requirements(self, input_files, docker_image, input_multiplier=2):
         # Compute size of disk needed to store input/output files
-        input_files = self.task.get_input_files()
         input_size = 0
-        args = self.task.get_input_args()
-        for arg_key, arg in args.iteritems():
-            input = arg.get_value()
-            # Determine if arg is a file
-            if isinstance(input.get_value(), GAPFile):
-                # Check to see if file size exists
-                if input.get_file_size() is None:
-                    # Calc input size of file
-                    input.set_file_size(self.platform.calc_file_size(input))
-                # Increment input file size (GB)
-                input_size += input.get_file_size()
+
+        # Add size of docker image if one needs to be loaded for task
+        if docker_image is not None:
+            input_size += docker_image.get_size()
+
+        # Add sizes of each input file
+        for input_file in input_files:
+            input_size += input_file.get_file_size()
 
         # Set size of desired disk
         disk_size = int(math.ceil(input_multiplier * input_size))
@@ -272,7 +259,6 @@ class TaskWorker(Thread):
 
         # And smaller than max disk size
         disk_size = min(disk_size, max_disk_size)
-        #logging.debug("Computing disk size for task '%s': %s" % (self.task.get_ID(), disk_size))
         return disk_size
 
 
