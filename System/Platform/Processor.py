@@ -4,16 +4,25 @@ import abc
 from collections import OrderedDict
 import subprocess as sp
 import time
+import threading
 
-from System.Platform import Process
+from System.Platform import Process, TaskPlatform, StorageHelper
 
 class Processor(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    # Instance status values available between threads
+    OFF         = 0  # Destroyed or not allocated on the cloud
+    AVAILABLE   = 1  # Available for running processes
+    BUSY        = 2  # Instance actions, such as create and destroy are running
+    DEAD        = 3  # Instance is shutting down, as a DEAD signal was received
+    MAX_STATUS  = 3  # Maximum status value possible
+
+    def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         self.name       = name
         self.nr_cpus    = nr_cpus
         self.mem        = mem
+        self.disk_space = disk_space
 
         # Initialize the start and stop time
         self.start_time = None
@@ -22,16 +31,34 @@ class Processor(object):
         # Get name of directory where logs will be written
         self.log_dir    = kwargs.pop("log_dir", None)
 
+        # Get name of working directory
+        self.wrk_dir    = kwargs.pop("wrk_dir", None)
+
         # Ordered dictionary of processing being run by processor
         self.processes  = OrderedDict()
 
+        # Setting the instance status
+        self.status_lock    = threading.Lock()
+        self.status         = TaskProcessor.OFF
+
+        # Lock for preventing further commands from being run on processor
+        self.locked = False
+
+        # Remote storage helper for handling files not stored locally on processor (e.g. GS, S3)
+        self.storage_helper = StorageHelper(self)
+
     def create(self):
-        pass
+        self.set_status(TaskProcessor.AVAILABLE)
 
     def destroy(self):
-        pass
+        self.set_status(TaskProcessor.OFF)
 
-    def run(self, job_name, cmd, num_retries=0):
+    def run(self, job_name, cmd, num_retries=0, docker_image=None):
+
+        # Throw error if attempting to run command on stopped processor
+        if self.locked:
+            logging.error("(%s) Attempt to run process '%s' on stopped processor!" % (self.name, job_name))
+            raise RuntimeError("Attempt to run process of stopped processor!")
 
         # Checking if logging is required
         if "!LOG" in cmd:
@@ -56,6 +83,10 @@ class Processor(object):
         # Save original command
         original_cmd = cmd
 
+        # Run in docker image if specified
+        if docker_image is not None:
+            cmd = "docker run -it -v %s:%s %s %s" % (self.wrk_dir, self.wrk_dir, docker_image, cmd)
+
         # Make any modifications to the command to allow it to be run on a specific platform
         cmd = self.adapt_cmd(cmd)
 
@@ -74,6 +105,7 @@ class Processor(object):
         kwargs["stdout"] = sp.PIPE
         kwargs["stderr"] = sp.PIPE
         kwargs["num_retries"] = num_retries
+        kwargs["docker_image"] = docker_image
 
         # Add process to list of processes
         self.processes[job_name] = Process(cmd, **kwargs)
@@ -83,11 +115,45 @@ class Processor(object):
         for proc_name, proc_obj in self.processes.iteritems():
             self.wait_process(proc_name)
 
+    def lock(self):
+        # Prevent any additional processes from being run
+        with threading.Lock():
+            self.locked = True
+
+    def unlock(self):
+        # Allow processes to run on processor
+        with threading.Lock():
+            self.locked = False
+
+    def stop(self):
+        # Lock so that no new processes can be run on processor
+        self.lock()
+
+        # Kill all currently executing processes on processor
+        for proc_name, proc_obj in self.processes.iteritems():
+            if not proc_obj.is_complete() and proc_name.lower() != "destroy":
+                logging.debug("(%s) Killing process: %s" % (self.name, proc_name))
+                proc_obj.terminate()
+
+    ############ Getters and Setters
+    def set_status(self, new_status):
+        # Updates instance status with threading.lock() to prevent race conditions
+        if new_status > TaskProcessor.MAX_STATUS or new_status < 0:
+            logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
+            raise RuntimeError("Instance %s has failed!" % self.name)
+        with self.status_lock:
+            self.status = new_status
+
+    def get_status(self):
+        # Returns instance status with threading.lock() to prevent race conditions
+        with self.status_lock:
+            return self.status
+
     def set_log_dir(self, new_log_dir):
         self.log_dir = new_log_dir
 
-    def get_name(self):
-        return self.name
+    def set_wrk_dir(self, new_wrk_dir):
+        self.wrk_dir = new_wrk_dir
 
     def set_start_time(self):
         if self.start_time is None:
@@ -95,6 +161,9 @@ class Processor(object):
 
     def set_stop_time(self):
         self.stop_time = time.time()
+
+    def get_name(self):
+        return self.name
 
     def get_runtime(self):
         if self.start_time is None:
@@ -104,16 +173,24 @@ class Processor(object):
         else:
             return self.stop_time - self.start_time
 
+    def get_nr_cpus(self):
+        return self.nr_cpus
+
+    def get_mem(self):
+        return self.mem
+
+    def get_disk_space(self):
+        return self.disk_space
+
+    def compute_cost(self):
+        # Compute running cost of current task processor
+        return 0
+
+    ############ Abstract methods
     @abc.abstractmethod
     def wait_process(self, proc_name):
         pass
 
     @abc.abstractmethod
-    def set_env_variable(self, env_variable, path):
-        pass
-
-    @abc.abstractmethod
     def adapt_cmd(self, cmd):
         pass
-
-
