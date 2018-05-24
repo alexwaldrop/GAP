@@ -51,7 +51,7 @@ class Splitter(Module):
             raise RuntimeError("Output key '%s' has been defined multiple times within the same split!" % key)
 
         # Convert paths to GAPFiles if they haven't already been converted
-        if is_path and not isinstance(value, GAPFile):
+        if is_path and not isinstance(value, GAPFile) and value is not None:
             file_id = "%s.%s.%s" % (self.module_id, split_id, key)
             self.output[split_id][key] = GAPFile(file_id, file_type=key, path=value, **kwargs)
         # Otherwise just set the value
