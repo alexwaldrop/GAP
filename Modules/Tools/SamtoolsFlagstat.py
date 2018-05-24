@@ -4,11 +4,7 @@ class SamtoolsFlagstat(Module):
     def __init__(self, module_id):
         super(SamtoolsFlagstat, self).__init__(module_id)
 
-        self.input_keys = ["bam", "bam_idx", "samtools", "nr_cpus", "mem"]
         self.output_keys = ["flagstat"]
-
-        # Command should be run on main processor
-        self.quick_command = True
 
     def define_input(self):
         self.add_argument("bam",        is_required=True)
@@ -17,15 +13,15 @@ class SamtoolsFlagstat(Module):
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
         self.add_argument("mem",        is_required=True, default_value=1)
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare bam index output filename
-        flagstat = self.generate_unique_file_name(split_name=split_name, extension=".flagstat.out")
-        self.add_output(platform, "flagstat", flagstat)
+        flagstat = self.generate_unique_file_name(".flagstat.out")
+        self.add_output("flagstat", flagstat, is_path=True)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Define command for running samtools index from a platform
-        bam         = self.get_arguments("bam").get_value()
-        samtools    = self.get_arguments("samtools").get_value()
+        bam         = self.get_argument("bam")
+        samtools    = self.get_argument("samtools")
         flagstat    = self.get_output("flagstat")
 
         # Generating Flagstat command
