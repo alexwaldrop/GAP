@@ -163,7 +163,7 @@ class Graph(object):
         # Create dependencies between current task and splits created for each child task
         child_tasks = self.get_children(task.get_ID())
         for child_task in child_tasks:
-            # Split each child subraph
+            # Split each child subgraph
             child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples, level)
             # Connect task to split child subgraph
             self.add_dependency(child_split.get_ID(), split_task.get_ID())
