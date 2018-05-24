@@ -76,6 +76,7 @@ class DockerImage:
         self.config     = config
         self.resources  = self.__init_resource_files()
         self.resources  = self.__organize_by_type()
+        self.size = 0
 
     def __init_resource_files(self):
         # Parse resources available to docker image
@@ -111,3 +112,9 @@ class DockerImage:
             return self.resources
         else:
             return self.resources[resource_type]
+
+    def get_size(self):
+        return self.size
+
+    def set_size(self, image_size):
+        self.size = image_size
