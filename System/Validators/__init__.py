@@ -3,3 +3,4 @@ from GraphValidator import GraphValidator
 from PlatformValidator import PlatformValidator
 from ResourcesValidator import ResourcesValidator
 from SampleValidator import SampleValidator
+from Validator2 import Validator
