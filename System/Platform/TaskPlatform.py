@@ -5,12 +5,14 @@ import uuid
 import threading
 
 from Config import ConfigParser
-from BaseProcessor import BaseProcessor
 
 class TaskPlatformResourceLimitError(Exception):
     pass
 
 class TaskPlatformLockError(Exception):
+    pass
+
+class InvalidProcessorError(Exception):
     pass
 
 class TaskPlatform(object):
@@ -80,6 +82,14 @@ class TaskPlatform(object):
                     mem += processor.get_mem()
                     disk_space += processor.get_disk_space()
         return cpu, mem, disk_space
+
+    def prepare(self):
+        # Perform any platform-specific tasks prior to running pipeline
+        pass
+
+    def clean_up(self):
+        # Perform any platform-specific tasks after pipeline has run
+        pass
 
     def can_make_processor(self, req_cpus, req_mem, req_disk_space):
         cpu, mem, disk_space = self.__get_curr_usage()
