@@ -25,10 +25,11 @@ gv = GraphValidator(graph, rk, ss)
 gv.validate()
 
 # Test graph splitting
-graph.tasks["split_fastq"].module.set_argument("max_nr_cpus", graph.tasks["split_fastq"].get_graph_config_args()["max_nr_cpus"])
-graph.tasks["split_fastq"].module.set_argument("nr_reads", graph.tasks["split_fastq"].get_graph_config_args()["nr_reads"])
-graph.tasks["split_fastq"].module.set_argument("read_len", graph.tasks["split_fastq"].get_graph_config_args()["read_len"])
-graph.tasks["split_fastq"].module.set_argument("R1", ss.get_data(data_type="R1")["R1"])
+t1 = graph.tasks["split_fastq"].module
+t1.set_argument("max_nr_cpus", graph.tasks["split_fastq"].get_graph_config_args()["max_nr_cpus"])
+t1.set_argument("nr_reads", graph.tasks["split_fastq"].get_graph_config_args()["nr_reads"])
+t1.set_argument("read_len", graph.tasks["split_fastq"].get_graph_config_args()["read_len"])
+t1.set_argument("R1", ss.get_data(data_type="R1")["R1"])
 print graph.tasks["split_fastq"].module.get_command()
 
 graph.split_graph(splitter_task_id="split_fastq")
