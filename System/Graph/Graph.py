@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 
 from Config import ConfigParser
 from Task import Task
@@ -94,9 +95,10 @@ class Graph(object):
         parents = self.get_parents(task_id)
         return len(parents) == len([x for x in parents if self.get_tasks(x).is_complete()])
 
-    def split_graph(self, splitter_task):
+    def split_graph(self, splitter_task_id):
         # Recursively split tasks downstream of 'head_task' until a closing merge is reached
-        child_tasks = self.get_children(splitter_task.get_ID())
+        child_tasks = self.get_children(splitter_task_id)
+        splitter_task = self.tasks[splitter_task_id]
         for split_id in splitter_task.get_output():
             # Create new graph partition for each new split
             split = splitter_task.get_output(split_id=split_id)
@@ -104,6 +106,7 @@ class Graph(object):
             # If no visible samples declared, split nodes inherit visible samples from splitter task
             visible_samples = split["visible_samples"] if split["visible_samples"] is not None else splitter_task.get_visible_samples()
             for child_task in child_tasks:
+                print "Child task being spit: %s" % child_task.get_ID()
                 child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples)
                 self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
 
@@ -113,11 +116,11 @@ class Graph(object):
 
     @property
     def __deprecated_tasks(self):
-        return [task.get_ID() for task in self.tasks if task.is_deprecated()]
+        return [task.get_ID() for task in self.tasks.values() if task.is_deprecated()]
 
     def __generate_graph(self):
 
-        tasks  = {}
+        tasks  = OrderedDict()
         adj_list  = {}
 
         for task_id in self.config:
@@ -216,6 +219,12 @@ class Graph(object):
         # Pop current task from recursion stack
         recStack.remove(task_id)
         return False
+
+    def __str__(self):
+        to_ret = ""
+        for task_id, task in self.tasks.iteritems():
+            to_ret += "%s\n" % task
+        return to_ret
 
 
 

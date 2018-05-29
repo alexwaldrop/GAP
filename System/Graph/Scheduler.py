@@ -66,7 +66,7 @@ class Scheduler(object):
 
         # Split subgraph if task is a splitter
         if task.get_type() == "Splitter":
-            self.task_graph.split_graph(task)
+            self.task_graph.split_graph(task.get_ID())
 
         # Set task to complete
         task.set_complete(True)
