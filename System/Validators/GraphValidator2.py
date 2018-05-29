@@ -13,8 +13,6 @@ class GraphValidator(Validator):
         if len(self.graph.get_tasks()) < 1:
             self.report_error("No tasks could be parsed from Graph config. Please define at least one valid task!")
 
-        # TODO: Validate that graph is DAG (no cycles)
-
         returns_input = False
 
         # Perform checking for each task in the graph
