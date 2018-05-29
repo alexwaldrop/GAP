@@ -3,9 +3,12 @@ from Validator2 import Validator
 
 class GraphValidator(Validator):
 
-    def __init__(self, datastore):
+    def __init__(self, graph, resource_kit, sample_data):
 
-        super(GraphValidator, self).__init__(datastore)
+        self.graph      = graph
+        self.resources  = resource_kit
+        self.samples    = sample_data
+        super(GraphValidator, self).__init__()
 
     def validate(self):
 
@@ -16,7 +19,7 @@ class GraphValidator(Validator):
         returns_input = False
 
         # Perform checking for each task in the graph
-        for task in self.graph.get_nodes().itervalues():
+        for task in self.graph.get_tasks().itervalues():
 
             # Check to see if any input is returned
             returns_input = returns_input or len(task.get_final_output_keys()) > 0
@@ -56,7 +59,7 @@ class GraphValidator(Validator):
         docker_image = task.get_docker_image_id()
         if docker_image is not None and not self.resources.has_docker_image(docker_image):
             self.report_error("In task '%s', the docker image declared in the graph config '%s' does not"
-                              "exist in the 'Docker' section of the resource kit! This could be a possible typo." %(task.get_ID(), docker_image))
+                              " exist in the 'Docker' section of the resource kit! This could be a possible typo." %(task.get_ID(), docker_image))
 
     def __check_graph_config_input(self, task):
 
@@ -112,16 +115,17 @@ class GraphValidator(Validator):
         task_id = task.get_ID()
 
         # Get task docker image
-        docker_image = None if task.get_docker_image_id() is None else self.resources.get_docker_image(task.get_docker_image_id())
+        docker_image = task.get_docker_image_id()
+        docker_image = None if (docker_image is None or not self.resources.has_docker_image(docker_image)) else self.resources.get_docker_images(task.get_docker_image_id())
 
         # Get task inputs specified in the graph config
         config_input = task.get_graph_config_args()
 
         # Get parent output types available to task at runtime
-        parent_tasks = [self.graph.get_task(parent_task) for parent_task in self.graph.get_parents(task_id)]
+        parent_tasks = [self.graph.get_tasks(parent_task) for parent_task in self.graph.get_parents(task_id)]
         parent_output_types = []
         for parent_task in parent_tasks:
-            parent_output_types.extend(parent_task.get_output_types())
+            parent_output_types.extend(parent_task.get_output_keys())
 
         # Get task arguments that will need to be set at runtime
         args = task.module.get_arguments()
@@ -136,7 +140,7 @@ class GraphValidator(Validator):
 
                 # Check if resource key is defined in the resource kit
                 file_resources = self.resources.get_resources()
-                docker_resources = [] if docker_image is None else docker_image.get_resources()
+                docker_resources = {} if docker_image is None else docker_image.get_resources()
 
                 # Throw error if no resources of the desired type are found in resource kit
                 if arg_key not in file_resources and arg_key not in docker_resources:
@@ -150,7 +154,7 @@ class GraphValidator(Validator):
                                             "definition is needed." % (task_id, arg_key, task_id, arg_key))
 
                 # Throw error if required resource has multiple definitions in the same docker image
-                elif len(docker_resources[arg_key]) > 1 and arg_key not in config_input:
+                elif arg_key in docker_resources and len(docker_resources[arg_key]) > 1 and arg_key not in config_input:
                     if arg_obj.is_mandatory():
                         self.report_error("In module '%s', the resource argument '%s' has multiple definitions in the same docker image. "
                                         "Please specify in the graph config, for task '%s', which resource '%s'"
@@ -162,7 +166,7 @@ class GraphValidator(Validator):
                                             "definition is needed." % (task_id, arg_key, task_id, arg_key))
 
                 # Throw error if required resource has multiple definitions in the resource kit file section
-                elif len(file_resources[arg_key]) > 1 and arg_key not in config_input and len(docker_resources[arg_key]) < 1:
+                elif arg_key in file_resources and len(file_resources[arg_key]) > 1 and arg_key not in config_input and arg_key not in docker_resources:
                     if arg_obj.is_mandatory():
                         self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
                                         "Please specify in the graph config, for node '%s', which resource '%s'"
