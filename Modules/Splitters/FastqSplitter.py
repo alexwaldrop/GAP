@@ -24,9 +24,9 @@ class FastqSplitter(Splitter):
     def define_output(self):
         # Obtaining the arguments
         R2          = self.get_argument("R2")
-        max_nr_cpus = self.get_argument("max_nr_cpus")
-        nr_reads    = self.get_argument("nr_reads")
-        read_len    = self.get_argument("read_len")
+        max_nr_cpus = int(self.get_argument("max_nr_cpus"))
+        nr_reads    = int(self.get_argument("nr_reads"))
+        read_len    = int(self.get_argument("read_len"))
 
         # Computing the number of lines to be split for each file considering:
         #  - The aligning speed which is in bps/vCPU
