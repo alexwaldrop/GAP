@@ -2,17 +2,10 @@ import logging
 
 class Validator(object):
 
-    def __init__(self, datastore):
+    def __init__(self):
 
         # Initializing validator name
         self.name = self.__class__.__name__
-
-        # Obtaining the pipeline components
-        self.datastore  = datastore
-        self.graph      = datastore.graph
-        self.resources  = datastore.resource_kit
-        self.samples    = datastore.sample_data
-        self.platform   = datastore.platform
 
         # Define responses
         self.warnings   = []
