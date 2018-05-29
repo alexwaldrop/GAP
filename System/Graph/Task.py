@@ -150,3 +150,36 @@ class Task(object):
         module_id = "%s_%s" % (self.__task_id, module_name)
 
         return _class(module_id)
+
+    def __str__(self):
+        # Get the module names
+        to_ret = "[%s]\n" % self.__task_id
+        to_ret +="\tmodule\t= %s\n" % self.module.__class__.__name__
+
+        if len(self.__final_output_keys) == 1:
+            to_ret += "\tfinal_output\t= %s\n" % self.__final_output_keys[0]
+        elif len(self.__final_output_keys) > 1:
+            to_ret += "\tfinal_output\t= %s\n" % ",".join(self.__final_output_keys)
+
+        if self.__docker_image is not None:
+            to_ret += "\tdocker_image\t= %s\n" % self.__docker_image
+
+        to_ret += "\tis_complete\t= %s\n" % self.complete
+        to_ret += "\tis_split\t= %s\n" % self.__is_split
+        to_ret += "\tsplitter_task\t= %s\n" % self.__splitter
+        to_ret += "\tsplit_id\t= %s\n" % self.__split_id
+
+        if isinstance(self.__visible_samples, list):
+            if len(self.__visible_samples) == 1:
+                to_ret += "\tvisible_samples\t= %s\n" % self.__visible_samples
+            else:
+                to_ret += "\tvisible_samples\t= %s\n" % ",".join(self.__visible_samples)
+
+        to_ret += "\tdeprecated\t= %s\n" % self.__deprecated
+
+        if len(self.__module_args) > 0:
+            to_ret += "\t[[args]]\n"
+            for key in self.__module_args:
+                to_ret += "\t\t%s\t= %s\n" % (key, self.__module_args[key])
+
+        return to_ret
