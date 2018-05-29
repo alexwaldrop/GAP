@@ -1,12 +1,43 @@
 import logging
 from System.Graph import Graph
+from System.Datastore import ResourceKit, SampleSet
+from System.Validators.GraphValidator2 import GraphValidator
 from Main import configure_import_paths
 import time
 import importlib
 
 configure_import_paths()
+######################### Graph tests
+
+# Test cycle checking algorithm
+graph_file = "/home/alex/Desktop/projects/gap/test/graph_cycle.config"
+graph_file = "/home/alex/Desktop/projects/gap/test/graph.config"
+graph = Graph(graph_file)
+
+#print graph
+rk_file = "/home/alex/Desktop/projects/gap/test/rk.config"
+rk = ResourceKit(rk_file)
+
+ss_file = "/home/alex/Desktop/projects/gap/test/ss.json"
+ss = SampleSet(ss_file)
+
+gv = GraphValidator(graph, rk, ss)
+gv.validate()
+
+# Test graph splitting
+graph.tasks["split_fastq"].module.set_argument("max_nr_cpus", graph.tasks["split_fastq"].get_graph_config_args()["max_nr_cpus"])
+graph.tasks["split_fastq"].module.set_argument("R1", ss.get_data(data_type="R1"))
+print graph.tasks["split_fastq"].module.get_command()
+
+graph.split_graph(splitter_task_id="split_fastq")
+print graph
+
+# Test graph validator
+
+# Read RK, SS, Platform
 
 
+exit(0)
 
 ######################### Workspace tests
 from System.Datastore.Datastore import TaskWorkspace
