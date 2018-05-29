@@ -93,6 +93,7 @@ class SampleSet (object):
 
         # Subset by type
         data = self.__subset_by_type(self.data, data_type)
+        print data
 
         # Subset by sample
         data = self.__subset_by_sample(data, samples)
@@ -144,8 +145,10 @@ class SampleSet (object):
                 new_data[data_type] = []
                 for sample_index in sample_indices:
                     new_data[data_type].append(data[data_type][sample_index])
-            else:
+            elif isinstance(data[data_type], list):
                 new_data[data_type] = data[data_type][sample_indices[0]]
+            else:
+                new_data[data_type] = data[data_type]
         return new_data
 
     def __organize_data_by_type(self):
