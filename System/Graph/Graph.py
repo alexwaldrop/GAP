@@ -14,7 +14,13 @@ class Graph(object):
 
         # Generate graph
         self.tasks, self.adj_list = self.__generate_graph()
+
+        # Check validity of adjacency list
         self.__check_adjacency_list()
+
+        # Check for cycles
+        self.__check_cycles()
+
 
     def add_task(self, task):
         # Connect new node to existing graph
@@ -174,6 +180,42 @@ class Graph(object):
 
         # Return split task
         return split_task
+
+    def __check_cycles(self, runtime=False):
+        # Taken with modification from https://www.geeksforgeeks.org/detect-cycle-in-a-graph/
+        cycle = True
+        visited = []
+        recStack = []
+        for task in self.tasks:
+            task_id = task.get_ID()
+            if task_id not in visited:
+                if self.__is_cycle(task_id, visited, recStack):
+                    cycle = True
+        if cycle:
+            if not runtime:
+                raise IOError("Incorrect pipeline graph: Cycle detected!")
+            else:
+                raise RuntimeError("Runtime graph alteration resulted in invalid graph: Cycle detected!")
+
+    def __is_cycle(self, task_id, visited, recStack):
+
+        # Mark current task as visited
+        visited.append(task_id)
+        # Add current task to current recursion stack
+        recStack.append(task_id)
+
+        # Check if any subgraph of current task contains a cycle
+        for child_id in self.get_children(task_id):
+            if child_id not in visited:
+                if self.__is_cycle(child_id, visited, recStack):
+                    return True
+                elif child_id in recStack:
+                    logging.error("Incorrect pipeline graph: Cycle detected! Task '%s' is both upstream and downstream of task '%s' !" % (child_id, task_id))
+                    return True
+
+        # Pop current task from recursion stack
+        recStack.remove(task_id)
+        return False
 
 
 
