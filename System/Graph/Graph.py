@@ -1,5 +1,6 @@
 import logging
 from collections import OrderedDict
+import copy
 
 from Config import ConfigParser
 from Task import Task
@@ -101,14 +102,15 @@ class Graph(object):
         splitter_task = self.tasks[splitter_task_id]
         for split_id in splitter_task.get_output():
             # Create new graph partition for each new split
-            split = splitter_task.get_output(split_id=split_id)
+            print split_id
+            split = splitter_task.module.get_output(split_id=split_id)
             # Get visible samples for new graph partition
             # If no visible samples declared, split nodes inherit visible samples from splitter task
             visible_samples = split["visible_samples"] if split["visible_samples"] is not None else splitter_task.get_visible_samples()
             for child_task in child_tasks:
-                print "Child task being spit: %s" % child_task.get_ID()
-                child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples)
-                self.add_dependency(child_split.get_ID(), splitter_task.get_ID())
+                print "Child task being spit: %s" % child_task
+                child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples)
+                self.add_dependency(child_split, splitter_task_id)
 
         # Remove deprecated tasks after all splits tasks have been created
         for task in self.__deprecated_tasks:
@@ -150,39 +152,48 @@ class Graph(object):
             else:
                 raise RuntimeError("Runtime graph alteration resulted in invalid graph!")
 
-    def __split_subgraph(self, task, splitter_task, split_id, visible_samples, level=1):
+    def __split_subgraph(self, task_id, splitter_task_id, split_id, visible_samples, level=1, split_task_ids=[]):
         # Recursively split subgraph that depends on 'task'
-        if task.get_type() == "Merger":
+
+        task = self.tasks[task_id]
+
+        if task.is_merger_task():
             # Decrement current nesting scope after merge
             level -= 1
 
-        if task.get_type() == "Splitter":
+        if task.is_splitter_task():
             # Increment current nesting scope after split
             level += 1
 
         if level == 0:
             # Current split has been merged (don't split downstream tasks)
-            return task
+            return task_id
 
         # Split current task into new task and add split to graph
-        new_task_id = "%s.%s" % (task.get_ID(), split_id)
-        split_task = task.split(new_task_id, splitter_task, split_id, visible_samples)
+        split_task = task.split(splitter_task_id, split_id, visible_samples)
+
+        # Only add new split task if it hasn't already been seen in subtree
+        if split_task.get_ID() in self.tasks:
+            task.deprecate()
+            return split_task.get_ID()
+
         self.add_task(split_task)
 
         # Create dependencies between current task and splits created for each child task
-        child_tasks = self.get_children(task.get_ID())
+        child_tasks = self.get_children(task_id)
         for child_task in child_tasks:
             # Split each child subgraph
-            child_split = self.__split_subgraph(child_task, splitter_task, split_id, visible_samples, level)
+            print "Task Id: %s. Child task: %s" % (task_id, child_task)
+            child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples, level)
             # Connect task to split child subgraph
-            self.add_dependency(child_split.get_ID(), split_task.get_ID())
+            self.add_dependency(child_split, split_task.get_ID())
 
-        if len(child_tasks) > 0:
-            # Mark original task as deprecated so it can be discarded
-            task.deprecate()
+        #if len(child_tasks) > 0:
+        # Mark original task as deprecated so it can be discarded
+        task.deprecate()
 
         # Return split task
-        return split_task
+        return split_task.get_ID()
 
     def __check_cycles(self, runtime=False):
         # Taken with modification from https://www.geeksforgeeks.org/detect-cycle-in-a-graph/
@@ -223,7 +234,7 @@ class Graph(object):
     def __str__(self):
         to_ret = ""
         for task_id, task in self.tasks.iteritems():
-            to_ret += "%s\n" % task
+            to_ret += "%s\n" % task.get_task_string(input_from=self.adj_list[task_id])
         return to_ret
 
 

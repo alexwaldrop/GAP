@@ -43,7 +43,7 @@ class Task(object):
         # Flag for whether task has been split/replaced and shouldn't be executed
         self.__deprecated = False
 
-    def split(self, new_id, splitter, split_id, visible_samples):
+    def split(self, splitter_id, split_id, visible_samples):
         # Produce clone of current task but restrict visible output and sample info available to task
         # Visible output/sample partition defined by upstream splitting task
         # Splitter is the name of the head task that created the split of current task
@@ -52,10 +52,11 @@ class Task(object):
 
         # Create copy of current task and give new id
         split_task = copy.deepcopy(self)
+        new_id = "%s.%s" % (self.__task_id, split_id)
         split_task.__task_id = new_id
 
         # Upstream task responsible for creating new split task
-        split_task.__splitter = splitter
+        split_task.__splitter = splitter_id
 
         # Split visible to this split task
         split_task.__split_id = split_id
@@ -67,7 +68,7 @@ class Task(object):
         split_task.__is_split = True
 
         # Give new module id to module
-        split_task.module.set_module_id(new_id)
+        split_task.module.set_ID(new_id)
 
         # Remove deprecated flag possibly inherited from parent
         split_task.__deprecated = False
@@ -151,7 +152,7 @@ class Task(object):
 
         return _class(module_id)
 
-    def __str__(self):
+    def get_task_string(self, input_from=None):
         # Get the module names
         to_ret = "[%s]\n" % self.__task_id
         to_ret +="\tmodule\t= %s\n" % self.module.__class__.__name__
@@ -163,6 +164,12 @@ class Task(object):
 
         if self.__docker_image is not None:
             to_ret += "\tdocker_image\t= %s\n" % self.__docker_image
+
+        if isinstance(input_from, list) and len(input_from) == 1:
+            to_ret += "\tinput_from\t= %s\n" % input_from[0]
+
+        elif isinstance(input_from, list) and len(input_from) > 1:
+            to_ret += "\tinput_from\t= %s\n" % ",".join(input_from)
 
         to_ret += "\tis_complete\t= %s\n" % self.complete
         to_ret += "\tis_split\t= %s\n" % self.__is_split
