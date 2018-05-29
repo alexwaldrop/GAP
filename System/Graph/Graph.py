@@ -183,11 +183,10 @@ class Graph(object):
 
     def __check_cycles(self, runtime=False):
         # Taken with modification from https://www.geeksforgeeks.org/detect-cycle-in-a-graph/
-        cycle = True
+        cycle = False
         visited = []
         recStack = []
-        for task in self.tasks:
-            task_id = task.get_ID()
+        for task_id in self.tasks.keys():
             if task_id not in visited:
                 if self.__is_cycle(task_id, visited, recStack):
                     cycle = True
@@ -205,13 +204,14 @@ class Graph(object):
         recStack.append(task_id)
 
         # Check if any subgraph of current task contains a cycle
-        for child_id in self.get_children(task_id):
-            if child_id not in visited:
-                if self.__is_cycle(child_id, visited, recStack):
+        neighbors = self.get_children(task_id)
+        for neighbor_id in neighbors:
+            if neighbor_id not in visited:
+                if self.__is_cycle(neighbor_id, visited, recStack):
                     return True
-                elif child_id in recStack:
-                    logging.error("Incorrect pipeline graph: Cycle detected! Task '%s' is both upstream and downstream of task '%s' !" % (child_id, task_id))
-                    return True
+            elif neighbor_id in recStack:
+                logging.error("Incorrect pipeline graph: Cycle detected that includes task '%s'!" % task_id)
+                return True
 
         # Pop current task from recursion stack
         recStack.remove(task_id)
