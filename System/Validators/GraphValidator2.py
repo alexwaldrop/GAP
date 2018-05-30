@@ -125,7 +125,15 @@ class GraphValidator(Validator):
         parent_tasks = [self.graph.get_tasks(parent_task) for parent_task in self.graph.get_parents(task_id)]
         parent_output_types = []
         for parent_task in parent_tasks:
-            parent_output_types.extend(parent_task.get_output_keys())
+            # Check to make sure that only merge type modules receive the same input from multiple different parents
+            parent_outputs = parent_task.get_output_keys()
+            for parent_output in parent_outputs:
+                if parent_output in parent_output_types and not task.is_merger_task():
+                    self.report_error("In task '%s', the input argument '%s' is satisfied by two or more upstream tasks and is NOT a Merger module."
+                                      " Tasks can only receive one type of argument from each parent task to prevent runtime ambiguity! "
+                                      % (task_id, parent_output))
+                parent_output_types.append(parent_output)
+
 
         # Get task arguments that will need to be set at runtime
         args = task.module.get_arguments()
@@ -254,4 +262,3 @@ class GraphValidator(Validator):
         for final_key in final_output_keys:
             if final_key not in out_keys:
                 self.report_error("In task '%s', the specified final output type '%s' is not part of the module's output!" % (task_ID, final_key))
-
