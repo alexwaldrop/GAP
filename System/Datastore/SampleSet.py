@@ -88,17 +88,13 @@ class SampleSet (object):
         if data_type is None and samples is None:
             return self.data
 
-        data_type = self.data.keys() if data_type is None else data_type
-        samples = self.sample_names if samples is None else samples
-
-        # Subset by type
-        data = self.__subset_by_type(self.data, data_type)
-        print data
-
         # Subset by sample
-        data = self.__subset_by_sample(data, samples)
+        data = self.data if samples is None else self.__subset_by_sample(self.data, samples)
 
-        return data
+        if data_type is None:
+            return data
+
+        return data[data_type]
 
     def __create_samples(self):
         # Parse sample data list in config and convert to Sample objects
