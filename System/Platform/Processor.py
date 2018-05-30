@@ -6,7 +6,7 @@ import subprocess as sp
 import time
 import threading
 
-from System.Platform import Process, TaskPlatform, StorageHelper
+from System.Platform import Process
 
 class Processor(object):
     __metaclass__ = abc.ABCMeta
@@ -39,19 +39,16 @@ class Processor(object):
 
         # Setting the instance status
         self.status_lock    = threading.Lock()
-        self.status         = TaskProcessor.OFF
+        self.status         = Processor.OFF
 
         # Lock for preventing further commands from being run on processor
         self.locked = False
 
-        # Remote storage helper for handling files not stored locally on processor (e.g. GS, S3)
-        self.storage_helper = StorageHelper(self)
-
     def create(self):
-        self.set_status(TaskProcessor.AVAILABLE)
+        self.set_status(Processor.AVAILABLE)
 
     def destroy(self):
-        self.set_status(TaskProcessor.OFF)
+        self.set_status(Processor.OFF)
 
     def run(self, job_name, cmd, num_retries=0, docker_image=None):
 
@@ -138,7 +135,7 @@ class Processor(object):
     ############ Getters and Setters
     def set_status(self, new_status):
         # Updates instance status with threading.lock() to prevent race conditions
-        if new_status > TaskProcessor.MAX_STATUS or new_status < 0:
+        if new_status > Processor.MAX_STATUS or new_status < 0:
             logging.debug("(%s) Status level %d not available!" % (self.name, new_status))
             raise RuntimeError("Instance %s has failed!" % self.name)
         with self.status_lock:
