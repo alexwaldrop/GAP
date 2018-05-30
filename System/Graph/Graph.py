@@ -23,7 +23,6 @@ class Graph(object):
         # Check for cycles
         self.__check_cycles()
 
-
     def add_task(self, task):
         # Connect new node to existing graph
         if task.get_ID() in self.tasks:
@@ -102,13 +101,11 @@ class Graph(object):
         splitter_task = self.tasks[splitter_task_id]
         for split_id in splitter_task.get_output():
             # Create new graph partition for each new split
-            print split_id
             split = splitter_task.module.get_output(split_id=split_id)
             # Get visible samples for new graph partition
             # If no visible samples declared, split nodes inherit visible samples from splitter task
             visible_samples = split["visible_samples"] if split["visible_samples"] is not None else splitter_task.get_visible_samples()
             for child_task in child_tasks:
-                print "Child task being spit: %s" % child_task
                 child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples)
                 self.add_dependency(child_split, splitter_task_id)
 
@@ -172,25 +169,28 @@ class Graph(object):
         # Split current task into new task and add split to graph
         split_task = task.split(splitter_task_id, split_id, visible_samples)
 
-        # Only add new split task if it hasn't already been seen in subtree
-        if split_task.get_ID() in self.tasks:
+        # Don't try to add new split if it's already been added to graph
+        # Can happen if two tasks in split subtree have same child
+        if split_task.get_ID() in split_task_ids:
             task.deprecate()
             return split_task.get_ID()
 
+        # Mark original task as deprecated so it can be discarded
+        task.deprecate()
+
+        # Add newly created task to existing graph
         self.add_task(split_task)
+
+        # Add new task ID to list of ids in current split
+        split_task_ids.append(split_task.get_ID())
 
         # Create dependencies between current task and splits created for each child task
         child_tasks = self.get_children(task_id)
         for child_task in child_tasks:
             # Split each child subgraph
-            print "Task Id: %s. Child task: %s" % (task_id, child_task)
-            child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples, level)
+            child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples, level, split_task_ids)
             # Connect task to split child subgraph
             self.add_dependency(child_split, split_task.get_ID())
-
-        #if len(child_tasks) > 0:
-        # Mark original task as deprecated so it can be discarded
-        task.deprecate()
 
         # Return split task
         return split_task.get_ID()
