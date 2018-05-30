@@ -3,7 +3,10 @@ import os
 import logging
 
 from GAPFile import GAPFile
-from System.Platform import TaskPlatform
+from System.Platform import Platform
+
+class PrematureTaskInputSetError(Exception):
+    pass
 
 class Datastore(object):
     # Object containing all available information to GAP modules at any given instance
@@ -20,6 +23,12 @@ class Datastore(object):
 
     def set_task_input_args(self, task_id):
         # Set input arguments for a task module
+
+        # Throw error if task inputs aren't ready to be set
+        if not self.graph.tasks[task_id].parents_complete():
+            logging.error("Cannot set arguments for task '%s' before upstream tasks have completed!")
+            raise PrematureTaskInputSetError("Cannot set task arguments before a task dependencies have completed!")
+
         task_module = self.graph.get_task(task_id).module
         for input_type, input_arg in task_module.get_arguments().iteritems():
             val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
@@ -83,10 +92,10 @@ class Datastore(object):
 
         # Loop through and determine which are files
         input_files = []
-        for input in inputs:
+        for input_file in inputs:
             # Append input if it's a file and one that doesn't appear on the docker
-            if isinstance(input, GAPFile) and not input.is_flagged("docker"):
-                input_files.append(input)
+            if isinstance(input_file, GAPFile) and not input_file.is_flagged("docker"):
+                input_files.append(input_file)
 
         return input_files
 
@@ -166,7 +175,7 @@ class Datastore(object):
     def __gather_parent_args(self, task_id, arg_type):
         # Get args of specified type inherited from parent tasks
         args = []
-        curr_task = self.graph.get_tasks(task_id)
+        curr_task = self.graph.get_task(task_id)
         for parent_id in self.graph.get_parents(task_id):
             parent = self.graph.get_tasks(parent_id)
             if parent.is_splitter_task():
@@ -209,8 +218,10 @@ class Datastore(object):
                 # Obtain the resource name
                 res_name = config_input[arg_type]
 
-                # Get the resource object with name "res_name" from resource input data
-                args = [self.resource_kit.get_resources(arg_type)[res_name]]
+                if res_name in self.resource_kit.get_resources(arg_type):
+
+                    # Get the resource object with name "res_name" from resource input data
+                    args = [self.resource_kit.get_resources(arg_type)[res_name]]
 
             # If not in config input, should only be one resource of type "arg_key"
             else:
@@ -234,10 +245,11 @@ class Datastore(object):
 
                     res_name = config_input[arg_type]
 
-                    # Get the resource object with name "res_name" from docker input data
-                    args = [docker_image.get_resources(arg_type)[res_name]]
+                    if res_name in docker_image.get_resources(arg_type):
+                        # Get the resource object with name "res_name" from docker input data
+                        args = [docker_image.get_resources(arg_type)[res_name]]
 
-                # If not in config input, shoudl only be one resource of type "arg_key" in docker
+                # If not in config input, should only be one resource of type "arg_key" in docker
                 else:
                     args = [self.resource_kit.get_resources(arg_type).values()[0]]
 
@@ -291,7 +303,7 @@ class TaskWorkspace(object):
 
         # Convert directories to GAPFiles
         for dir_type, dir_path in self.workspace.iteritems():
-            dir_path = TaskPlatform.standardize_dir(dir_path)
+            dir_path = Platform.standardize_dir(dir_path)
             self.workspace[dir_type] = GAPFile(file_id=dir_type, file_type=dir_type, path=dir_path)
 
     def get_wrk_dir(self):
