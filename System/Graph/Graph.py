@@ -1,6 +1,5 @@
 import logging
 from collections import OrderedDict
-import copy
 
 from Config import ConfigParser
 from Task import Task
