@@ -11,7 +11,7 @@ configure_import_paths()
 
 # Test cycle checking algorithm
 graph_file = "/home/alex/Desktop/projects/gap/test/graph_cycle.config"
-graph_file = "/home/alex/Desktop/projects/gap/test/graph.config"
+graph_file = "/home/alex/Desktop/projects/gap/test/graph_bqsr_test.config"
 graph = Graph(graph_file)
 
 #print graph
@@ -25,15 +25,36 @@ gv = GraphValidator(graph, rk, ss)
 gv.validate()
 
 # Test graph splitting
+
+print ss.get_data(data_type="paired_end")
+print ss.get_data(data_type="R1", samples="Jijoye_early2")
+
+print ss.get_paths(samples="Jijoye_early2")
+
 t1 = graph.tasks["split_fastq"].module
 t1.set_argument("max_nr_cpus", graph.tasks["split_fastq"].get_graph_config_args()["max_nr_cpus"])
 t1.set_argument("nr_reads", graph.tasks["split_fastq"].get_graph_config_args()["nr_reads"])
 t1.set_argument("read_len", graph.tasks["split_fastq"].get_graph_config_args()["read_len"])
-t1.set_argument("R1", ss.get_data(data_type="R1")["R1"])
+t1.set_argument("R1", ss.get_data(data_type="R1", samples="Jijoye_early2"))
 print graph.tasks["split_fastq"].module.get_command()
 
-graph.split_graph(splitter_task_id="split_fastq")
+t2 = graph.tasks["SPLIT_SAMPLES"].module
+t2.set_argument("sample_name", ss.get_data("sample_name"))
+t2.get_command()
+
+t3 = graph.tasks["tool11_split_chr"].module
+t3.set_argument("chrom_list", graph.tasks["tool11_split_chr"].get_graph_config_args()["chrom_list"])
+t3.set_argument("nr_splits", int(graph.tasks["tool11_split_chr"].get_graph_config_args()["nr_splits"]))
+t3.get_command()
+
+graph.split_graph(splitter_task_id="tool11_split_chr")
+graph.split_graph(splitter_task_id="SPLIT_SAMPLES")
+graph.split_graph(splitter_task_id="split_fastq.Jijoye_early1")
+graph.split_graph(splitter_task_id="split_fastq.Jijoye_early2")
 print graph
+
+gv = GraphValidator(graph, rk, ss)
+gv.validate()
 
 # Test graph validator
 
