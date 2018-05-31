@@ -7,15 +7,12 @@ class GATKBaseRecalibrator(Module):
     def __init__(self, module_id):
         super(GATKBaseRecalibrator, self).__init__(module_id)
 
-        self.input_keys     = ["bam", "bam_idx", "gatk", "java",
-                               "samtools", "ref", "dbsnp", "nr_cpus", "mem",
-                               "max_nr_reads"]
-
         self.output_keys    = ["BQSR_report"]
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("chrom_list",     is_required=False)
         self.add_argument("gatk",           is_required=True, is_resource=True)
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("samtools",       is_required=True, is_resource=True)
@@ -25,22 +22,23 @@ class GATKBaseRecalibrator(Module):
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
         self.add_argument("max_nr_reads",   is_required=True, default_value=2.5*10**7)
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare BQSR report file
-        bqsr_report = self.generate_unique_file_name(split_name=split_name, extension=".grp")
-        self.add_output(platform, "BQSR_report", bqsr_report)
+        bqsr_report = self.generate_unique_file_name(extension=".grp")
+        self.add_output("BQSR_report", bqsr_report)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Get arguments needed to generate GATK BQSR command
-        bam             = self.get_arguments("bam").get_value()
-        gatk            = self.get_arguments("gatk").get_value()
-        java            = self.get_arguments("java").get_value()
-        samtools        = self.get_arguments("samtools").get_value()
-        ref             = self.get_arguments("ref").get_value()
-        dbsnp           = self.get_arguments("dbsnp").get_value()
-        nr_cpus         = self.get_arguments("nr_cpus").get_value()
-        mem             = self.get_arguments("mem").get_value()
-        max_nr_reads    = self.get_arguments("max_nr_reads").get_value()
+        bam             = self.get_argument("bam")
+        gatk            = self.get_argument("gatk")
+        java            = self.get_argument("java")
+        samtools        = self.get_argument("samtools")
+        chrom_list      = self.get_argument("chrom_list")
+        ref             = self.get_argument("ref")
+        dbsnp           = self.get_argument("dbsnp")
+        nr_cpus         = self.get_argument("nr_cpus")
+        mem             = self.get_argument("mem")
+        max_nr_reads    = self.get_argument("max_nr_reads")
 
         # Convert max_nr_reads to integer if necessary
         max_nr_reads    = eval(max_nr_reads) if isinstance(max_nr_reads, basestring) else max_nr_reads
@@ -49,7 +47,7 @@ class GATKBaseRecalibrator(Module):
         bqsr_report     = self.get_output("BQSR_report")
 
         # Generate JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem*4/5, platform.get_workspace_dir("tmp"))
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=/tmp/" % (mem*4/5)
 
         # Generating the base recalibration options
         opts = list()
@@ -64,12 +62,12 @@ class GATKBaseRecalibrator(Module):
         opts.append("-cov ContextCovariate")
 
         # Limit the number of reads processed
-        try:
-            logging.info("Determining chromosomes to include for BQSR...")
-            chrom_list = GATKBaseRecalibrator.__get_chrom_locations(platform, bam, max_nr_reads, samtools)
-        except:
-            logging.error("Unable to determine the number of chromosomes for BQSR!")
-            raise
+        #try:
+            #logging.info("Determining chromosomes to include for BQSR...")
+            #chrom_list = GATKBaseRecalibrator.__get_chrom_locations(platform, bam, max_nr_reads, samtools)
+        #except:
+        #    logging.error("Unable to determine the number of chromosomes for BQSR!")
+        #    raise
 
         # Add the minimum amount of chromosomes to exceed the max_read_nr
         if chrom_list is not None:
