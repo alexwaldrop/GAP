@@ -92,7 +92,7 @@ class GraphValidator(Validator):
                 # Add any resources declared on the docker image
                 docker_image_id = task.get_docker_image_id()
                 if docker_image_id is not None:
-                    docker_image = self.resources.get_docker_image(docker_image_id)
+                    docker_image = self.resources.get_docker_images(docker_image_id)
                     if docker_image.has_resource_type(config_arg):
                         possible_resources.extend(docker_image.get_resources(resource_type=config_arg).keys())
 
