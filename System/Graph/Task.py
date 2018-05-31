@@ -28,6 +28,9 @@ class Task(object):
         # Whether task has been completed
         self.complete   = False
 
+        # ID of task that cloned current task
+        self.__clones = []
+
         # Boolean for whether task was created by splitting an existing task
         self.__is_split = False
 
@@ -54,6 +57,11 @@ class Task(object):
         split_task = copy.deepcopy(self)
         new_id = "%s.%s" % (self.__task_id, split_id)
         split_task.__task_id = new_id
+
+        # Add daughter split to list of clones spawned from current task
+        self.__clones.append(new_id)
+
+        split_task.__clones = []
 
         # Upstream task responsible for creating new split task
         split_task.__splitter = splitter_id
@@ -133,6 +141,9 @@ class Task(object):
 
     def is_deprecated(self):
         return self.__deprecated
+
+    def get_clones(self):
+        return self.__clones
 
     def __load_module(self, module_name):
 

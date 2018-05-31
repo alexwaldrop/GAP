@@ -82,7 +82,7 @@ class Graph(object):
         if task_id not in self.tasks:
             logging.error("Cannot list parent tasks for non-existant task: %s" % task_id)
             raise RuntimeError("Graph Error: Attempt to get parents from nonexistant task!")
-        return self.adj_list[task_id]
+        return [x for x in self.adj_list[task_id]]
 
     def is_complete(self):
         for task in self.tasks:
@@ -109,8 +109,19 @@ class Graph(object):
                 child_split = self.__split_subgraph(child_task, splitter_task_id, split_id, visible_samples)
                 self.add_dependency(child_split, splitter_task_id)
 
-        # Remove deprecated tasks after all splits tasks have been created
+        # Loop through deprecated tasks and give upstream dependencies for parent tasks that weren't in splitter's subtree
         for task in self.__deprecated_tasks:
+            # Get parents of deprecated task
+            parents = self.get_parents(task)
+            for parent in parents:
+                # If a parent task hasn't been deprecated (i.e. not in the splitter subtree)
+                # Add that dependency for all a tasks's newly created daughter splits
+                if not self.tasks[parent].is_deprecated() and parent != splitter_task_id:
+                    for clone_task_id in self.tasks[task].get_clones():
+                        if parent not in self.get_parents(clone_task_id):
+                            self.add_dependency(clone_task_id, parent)
+
+            # Remove deprecated task from graph completely
             self.remove_task(task)
 
     @property
@@ -175,11 +186,11 @@ class Graph(object):
             task.deprecate()
             return split_task.get_ID()
 
+        # Add newly created task to existing graph and clone parental dependencies
+        self.add_task(split_task)
+
         # Mark original task as deprecated so it can be discarded
         task.deprecate()
-
-        # Add newly created task to existing graph
-        self.add_task(split_task)
 
         # Add new task ID to list of ids in current split
         split_task_ids.append(split_task.get_ID())
