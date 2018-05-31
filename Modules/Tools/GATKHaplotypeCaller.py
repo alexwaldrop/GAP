@@ -5,10 +5,6 @@ class GATKHaplotypeCaller(Module):
     def __init__(self, module_id):
         super(GATKHaplotypeCaller, self).__init__(module_id)
 
-        self.input_keys = ["bam", "bam_idx", "BQSR_report", "location",
-                           "excluded_location", "gatk", "java", "ref",
-                           "nr_cpus", "mem"]
-
         self.output_keys = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
@@ -23,30 +19,30 @@ class GATKHaplotypeCaller(Module):
         self.add_argument("location")
         self.add_argument("excluded_location")
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare GVCF output filename
-        gvcf = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf")
-        self.add_output(platform, "gvcf", gvcf)
+        gvcf = self.generate_unique_file_name(extension=".g.vcf")
+        self.add_output("gvcf", gvcf)
         # Declare GVCF index output filename
-        gvcf_idx = self.generate_unique_file_name(split_name=split_name, extension=".g.vcf.idx")
-        self.add_output(platform, "gvcf_idx", gvcf_idx)
+        gvcf_idx = self.generate_unique_file_name(extension=".g.vcf.idx")
+        self.add_output("gvcf_idx", gvcf_idx)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Get input arguments
-        bam     = self.get_arguments("bam").get_value()
-        BQSR    = self.get_arguments("BQSR_report").get_value()
-        gatk    = self.get_arguments("gatk").get_value()
-        java    = self.get_arguments("java").get_value()
-        ref     = self.get_arguments("ref").get_value()
-        L       = self.get_arguments("location").get_value()
-        XL      = self.get_arguments("excluded_location").get_value()
-        mem     = self.get_arguments("mem").get_value()
+        bam     = self.get_argument("bam")
+        BQSR    = self.get_argument("BQSR_report")
+        gatk    = self.get_argument("gatk")
+        java    = self.get_argument("java")
+        ref     = self.get_argument("ref")
+        L       = self.get_argument("location")
+        XL      = self.get_argument("excluded_location")
+        mem     = self.get_argument("mem")
 
         # Get output file
         gvcf    = self.get_output("gvcf")
 
         # Set JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 9 / 10, platform.get_workspace_dir("tmp"))
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 9 / 10, "/tmp/")
 
         # Generating the haplotype caller options
         opts = list()
