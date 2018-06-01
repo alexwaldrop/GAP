@@ -20,9 +20,9 @@ class GoogleStandardProcessor(Processor):
     DEAD        = 3     # Instance is shutting down, as a DEAD signal was received
     MAX_STATUS  = 3     # Maximum status value possible
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         # Call super constructor
-        super(GoogleStandardProcessor,self).__init__(name, nr_cpus, mem, **kwargs)
+        super(GoogleStandardProcessor,self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
 
         # Get required arguments
         self.zone               = kwargs.pop("zone")
@@ -239,12 +239,21 @@ class GoogleStandardProcessor(Processor):
                     logging.warning("(%s) Process '%s' failed but we still got %s retries left. Re-running command!" % (self.name, proc_name, proc_obj.get_num_retries()))
                     self.run(job_name=proc_name,
                              cmd=proc_obj.get_command(),
-                             num_retries=proc_obj.get_num_retries()-1)
+                             num_retries=proc_obj.get_num_retries()-1,
+                             docker_image=proc_obj.get_docker_image(),
+                             quiet_failure=proc_obj.is_quiet())
                     return self.wait_process(proc_name)
+
+                # Throw error if no retries left
                 else:
-                    # Throw error if no retries left
-                    logging.error("(%s) Process '%s' failed!" % (self.name, proc_name))
-                    logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    # Log failure to debug logger if quiet failure
+                    if proc_obj.is_quiet():
+                        logging.debug("(%s) Process '%s' failed!" % (self.name, proc_name))
+                        logging.debug("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
+                    # Otherwise log failure to error logger
+                    else:
+                        logging.error("(%s) Process '%s' failed!" % (self.name, proc_name))
+                        logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise RuntimeError("Instance %s has failed!" % self.name)
 
         # Set the start time
