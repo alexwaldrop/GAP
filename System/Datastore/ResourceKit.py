@@ -35,7 +35,7 @@ class ResourceKit (object):
         # Return dictionary of resource objects indexed by resource name
         dockers = {}
         for docker_id, docker_data in self.config["Docker"].iteritems():
-            dockers[docker_id] = DockerImage(docker_data)
+            dockers[docker_id] = DockerImage(docker_id, docker_data)
         return dockers
 
     def __organize_by_type(self):
@@ -71,12 +71,14 @@ class ResourceKit (object):
 
 class DockerImage:
     # Class for holding information about Dockers and the files they contain
-    def __init__(self, config):
+    def __init__(self, docker_id, config):
+        self.docker_id  = docker_id
         self.image      = config.pop("image")
         self.config     = config
         self.resources  = self.__init_resource_files()
         self.resources  = self.__organize_by_type()
         self.size = 0
+        self.flags = []
 
     def __init_resource_files(self):
         # Parse resources available to docker image
@@ -118,3 +120,17 @@ class DockerImage:
 
     def set_size(self, image_size):
         self.size = image_size
+
+    def flag(self, flag_type):
+        if flag_type not in self.flags:
+            self.flags.append(flag_type)
+
+    def unflag(self, flag_type):
+        if self.is_flagged(flag_type):
+            self.flags.remove(flag_type)
+
+    def is_flagged(self, flag_type):
+        return flag_type in self.flags
+
+    def get_ID(self):
+        return self.docker_id
