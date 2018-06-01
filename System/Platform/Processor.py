@@ -50,7 +50,7 @@ class Processor(object):
     def destroy(self):
         self.set_status(Processor.OFF)
 
-    def run(self, job_name, cmd, num_retries=0, docker_image=None):
+    def run(self, job_name, cmd, num_retries=0, docker_image=None, quiet_failure=False):
 
         # Throw error if attempting to run command on stopped processor
         if self.locked:
@@ -103,6 +103,7 @@ class Processor(object):
         kwargs["stderr"] = sp.PIPE
         kwargs["num_retries"] = num_retries
         kwargs["docker_image"] = docker_image
+        kwargs["quiet_failure"] = quiet_failure
 
         # Add process to list of processes
         self.processes[job_name] = Process(cmd, **kwargs)
