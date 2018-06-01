@@ -2,11 +2,46 @@ import logging
 from System.Graph import Graph
 from System.Datastore import ResourceKit, SampleSet
 from System.Validators.GraphValidator2 import GraphValidator
-from Main import configure_import_paths
+from System.Platform import StorageHelper, DockerHelper
+from System.Platform.Google import GoogleStandardProcessor
+from Main import configure_import_paths, configure_logging
 import time
 import importlib
 
 configure_import_paths()
+configure_logging(3)
+
+######################### InputValidator Tests
+
+from System.Validators import InputValidator
+
+rk_good = "/home/alex/Desktop/projects/gap/test/rk.good.config"
+rk_bad  = "/home/alex/Desktop/projects/gap/test/rk.config"
+rk = ResourceKit(rk_good)
+
+ss_file = "/home/alex/Desktop/projects/gap/test/ss.json"
+ss = SampleSet(ss_file)
+
+proc = GoogleStandardProcessor("test-proc-4", 4, 12, 75, zone="us-east1-c",
+                               service_acct="gap-412@davelab-gcloud.iam.gserviceaccount.com",
+                               boot_disk_size=75, disk_image="davelab-image-docker")
+
+sh = StorageHelper(proc)
+dh = DockerHelper(proc)
+iv = InputValidator(rk, ss, sh, dh)
+
+try:
+    proc.create()
+    proc.configure_SSH()
+    print "We validatin'"
+    print iv.validate()
+    print "We done validatin'"
+
+finally:
+    proc.destroy(wait=False)
+
+exit(0)
+
 ######################### Graph tests
 
 # Test cycle checking algorithm
