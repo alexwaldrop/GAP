@@ -6,17 +6,8 @@ class DockerHelper(object):
     def __init__(self, proc):
         self.proc = proc
 
-    def pull(self, image_name, host=None, tag="latest", job_name=None, log=True, num_retries=0):
+    def pull(self, image_name, job_name=None, log=True, **kwargs):
         # Pull docker image on local processor
-
-        # Add docker host name to image name
-        if host is not None:
-            image_name = "%s/%s:%s" % (host, image_name,tag)
-
-        # Default host: DockerHub
-        else:
-            image_name = "%s:%s" % (image_name, tag)
-
         cmd = "sudo docker pull %s" % image_name
 
         job_name = "pull_%s" % image_name if job_name is None else job_name
@@ -25,10 +16,10 @@ class DockerHelper(object):
         cmd = "%s !LOG3!" % cmd if log else cmd
 
         # Run command and return job name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, **kwargs)
         return job_name
 
-    def image_exists(self, image_name, job_name=None, num_retries=0):
+    def image_exists(self, image_name, job_name=None, **kwargs):
         # Return true if file exists, false otherwise
 
         # Run command and return job name
@@ -36,7 +27,7 @@ class DockerHelper(object):
 
         # Wait for cmd to finish and get output
         try:
-            self.pull(image_name, job_name, log=False, num_retries=num_retries)
+            self.pull(image_name, job_name, log=False, quiet_failure=True, **kwargs)
             out, err = self.proc.wait_process(job_name)
             return len(err) == 0
         except RuntimeError:
@@ -45,13 +36,13 @@ class DockerHelper(object):
             logging.error("Unable to check docker image existence: %s" % image_name)
             raise
 
-    def get_image_size(self, image_name, job_name=None, num_retries=0):
+    def get_image_size(self, image_name, job_name=None, **kwargs):
         # Return file size in gigabytes
         cmd = "sudo docker image inspect %s --format='{{.Size}}'" % image_name
 
         # Run command and return job name
         job_name = "get_size_%s" % image_name if job_name is None else job_name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, **kwargs)
 
         # Wait for cmd to finish and get output
         try:
