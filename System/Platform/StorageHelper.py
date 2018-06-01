@@ -11,7 +11,7 @@ class StorageHelper(object):
     def __init__(self, proc):
         self.proc = proc
 
-    def mv(self, src_path, dest_path, job_name=None, log=True, num_retries=0, wait=False):
+    def mv(self, src_path, dest_path, job_name=None, log=True, wait=False, **kwargs):
         # Transfer file or dir from src_path to dest_path
         # Log the transfer unless otherwise specified
         cmd_generator = StorageHelper.__get_storage_cmd_generator(src_path, dest_path)
@@ -24,12 +24,12 @@ class StorageHelper(object):
         print cmd
 
         # Run command and return job name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, **kwargs)
         if wait:
             self.proc.wait_process(job_name)
         return job_name
 
-    def mkdir(self, dir_path, job_name=None, log=False, num_retries=0, wait=False):
+    def mkdir(self, dir_path, job_name=None, log=False, wait=False, **kwargs):
         # Makes a directory if it doesn't already exists
         cmd_generator = StorageHelper.__get_storage_cmd_generator(dir_path)
         cmd = cmd_generator.mkdir(dir_path)
@@ -40,19 +40,19 @@ class StorageHelper(object):
         cmd = "%s !LOG3!" % cmd if log else cmd
 
         # Run command and return job name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, **kwargs)
         if wait:
             self.proc.wait_process(job_name)
         return job_name
 
-    def path_exists(self, path, job_name=None, num_retries=0):
+    def path_exists(self, path, job_name=None, **kwargs):
         # Return true if file exists, false otherwise
         cmd_generator = StorageHelper.__get_storage_cmd_generator(path)
         cmd = cmd_generator.ls(path)
 
         # Run command and return job name
         job_name = "check_exists_%s" % Platform.generate_unique_id() if job_name is None else job_name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, quiet_failure=True, **kwargs)
 
         # Wait for cmd to finish and get output
         try:
@@ -64,14 +64,14 @@ class StorageHelper(object):
             logging.error("Unable to check path existence: %s" % path)
             raise
 
-    def get_file_size(self, path, job_name=None, num_retries=0):
+    def get_file_size(self, path, job_name=None, **kwargs):
         # Return file size in gigabytes
         cmd_generator = StorageHelper.__get_storage_cmd_generator(path)
         cmd = cmd_generator.get_file_size(path)
 
         # Run command and return job name
         job_name = "get_size_%s" % Platform.generate_unique_id() if job_name is None else job_name
-        self.proc.run(job_name, cmd, num_retries=num_retries)
+        self.proc.run(job_name, cmd, **kwargs)
 
         # Wait for cmd to finish and get output
         try:
