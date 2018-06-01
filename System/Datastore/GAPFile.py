@@ -103,7 +103,12 @@ class GAPFile:
         self.size = file_size
 
     def flag(self, flag_type):
-        self.flags.append(flag_type)
+        if flag_type not in self.flags:
+            self.flags.append(flag_type)
+
+    def unflag(self, flag_type):
+        if self.is_flagged(flag_type):
+            self.flags.remove(flag_type)
 
     def is_flagged(self, flag_type):
         return flag_type in self.flags
