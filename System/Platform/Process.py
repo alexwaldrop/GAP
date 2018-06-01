@@ -6,6 +6,8 @@ class Process(sp.Popen):
         self.command        = kwargs.pop("cmd",     True)
         self.num_retries    = kwargs.pop("num_retries", 0)
         self.docker_image   = kwargs.pop("docker_image", None)
+        # Quiet failure means logger will not register command failure as error
+        self.quiet          = kwargs.pop("quiet_failure", False)
         super(Process, self).__init__(args,     **kwargs)
         self.complete = False
 
@@ -27,3 +29,6 @@ class Process(sp.Popen):
 
     def get_docker_image(self):
         return self.docker_image
+
+    def is_quiet(self):
+        return self.quiet
