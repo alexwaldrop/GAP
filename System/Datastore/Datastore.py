@@ -321,6 +321,9 @@ class TaskWorkspace(object):
     def get_final_log_dir(self):
         return self.workspace["final_log"]
 
+    def get_workspace(self):
+        return self.workspace
+
     def debug_string(self):
         to_return = "=============\n"
         to_return += "Wrk:\t%s\n" % self.get_wrk_dir()
