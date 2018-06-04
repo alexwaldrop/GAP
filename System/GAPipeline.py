@@ -81,10 +81,7 @@ class GAPipeline(object):
     def save(self):
         pass
 
-    def finalize(self):
-        # Generate report
-        # Publish report
-        # Delete platform, helper processor
+    def publish_report(self):
         pass
 
     def clean_up(self):
