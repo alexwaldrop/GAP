@@ -1,7 +1,7 @@
 import logging
 from System.Graph import Graph
 from System.Datastore import ResourceKit, SampleSet
-from System.Validators.GraphValidator2 import GraphValidator
+from System.Validators.GraphValidator import GraphValidator
 from System.Platform import StorageHelper, DockerHelper
 from System.Platform.Google import GoogleStandardProcessor
 from Main import configure_import_paths, configure_logging
@@ -11,6 +11,18 @@ import importlib
 configure_import_paths()
 configure_logging(3)
 
+######################### Test sample validator
+
+from System.Validators import SampleValidator
+
+ss_file = "/home/alex/Desktop/projects/gap/test/ss.bad.json"
+ss = SampleSet(ss_file)
+
+sv = SampleValidator(ss)
+
+sv.validate()
+
+exit(0)
 ######################### InputValidator Tests
 
 from System.Validators import InputValidator
