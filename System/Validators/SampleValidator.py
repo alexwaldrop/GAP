@@ -21,7 +21,6 @@ class SampleValidator(Validator):
         if isinstance(sample_data["sample_name"], list):
 
             sample_data["R2"] = sample_data["R2"] if "R2" in sample_data else [None]*len(sample_data["sample_name"])
-            print sample_data
 
             for sample_name, is_paired, R1_path, R2_path in zip(sample_data["sample_name"],
                                                                 [sample_data["is_paired"]],
