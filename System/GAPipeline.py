@@ -78,7 +78,7 @@ class GAPipeline(object):
         workspace = self.datastore.get_task_workspace()
         self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output", wait=True)
 
-    def save(self):
+    def save_progress(self):
         pass
 
     def publish_report(self):
