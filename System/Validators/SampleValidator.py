@@ -1,5 +1,5 @@
 
-from Validator2 import Validator
+from Validator import Validator
 
 class SampleValidator(Validator):
 

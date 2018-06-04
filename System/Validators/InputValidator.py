@@ -1,7 +1,6 @@
 import logging
-import threading
 
-from Validator2 import Validator
+from Validator import Validator
 from System.Workers import ThreadPool, PoolWorker
 from System.Datastore import GAPFile
 from System.Platform import StorageHelper, DockerHelper

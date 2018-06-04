@@ -2,17 +2,10 @@ import logging
 
 class Validator(object):
 
-    def __init__(self, pipeline_obj):
+    def __init__(self):
 
         # Initializing validator name
         self.name = self.__class__.__name__
-
-        # Obtaining the pipeline components
-        self.pipeline   = pipeline_obj
-        self.graph      = pipeline_obj.get_graph()
-        self.resources  = pipeline_obj.get_resource_kit()
-        self.samples    = pipeline_obj.get_sample_set()
-        self.platform   = pipeline_obj.get_platform()
 
         # Define responses
         self.warnings   = []

@@ -1,56 +1,142 @@
 
-from System.Validators import Validator
+from Validator import Validator
 
 class GraphValidator(Validator):
 
-    def __init__(self, pipeline_obj):
+    def __init__(self, graph, resource_kit, sample_data):
 
-        super(GraphValidator, self).__init__(pipeline_obj)
+        self.graph      = graph
+        self.resources  = resource_kit
+        self.samples    = sample_data
+        super(GraphValidator, self).__init__()
 
-    def __check_config_input(self, node):
+    def validate(self):
 
-        # Obtain the config input of the node
-        config_input = node.get_config_input()
+        # Make sure task graph not empty
+        if len(self.graph.get_tasks()) < 1:
+            self.report_error("No tasks could be parsed from Graph config. Please define at least one valid task!")
 
-        # Obtain the input args from the modules present in the node
-        node_args = {}
-        node_args.update( node.split_module.get_arguments() if node.is_split_mode() else {} )
-        node_args.update( node.main_module.get_arguments() )
-        node_args.update( node.merge_module.get_arguments() if node.is_split_mode() else {} )
+        returns_input = False
+
+        # Perform checking for each task in the graph
+        for task in self.graph.get_tasks().itervalues():
+
+            # Check to see if any input is returned
+            returns_input = returns_input or len(task.get_final_output_keys()) > 0
+
+            # Check that docker image declared by task actually exists
+            self.__check_docker_image(task)
+
+            # Check task config input
+            self.__check_graph_config_input(task)
+
+            # Check task input
+            self.__check_task_input(task)
+
+            # Check final output keys
+            self.__check_final_output_keys(task)
+
+            # Checking the module attributes
+            self.__check_module_attributes(task.module)
+
+            # Checking the module arguments
+            self.__check_module_arguments(task.module)
+
+        if not returns_input:
+            self.report_error("No final output keys declared for any tasks in graph! "
+                              "Please specify final_output keys for at least one module in task graph config.")
+
+        # Identify if there are errors before printing them
+        has_errors = self.has_errors()
+
+        # Print the available reports
+        self.print_reports()
+
+        return has_errors
+
+    def __check_docker_image(self, task):
+        # Check to make sure docker image declared in graph config actually exists in resource kit
+        docker_image = task.get_docker_image_id()
+        if docker_image is not None and not self.resources.has_docker_image(docker_image):
+            self.report_error("In task '%s', the docker image declared in the graph config '%s' does not"
+                              " exist in the 'Docker' section of the resource kit! This could be a possible typo." %(task.get_ID(), docker_image))
+
+    def __check_graph_config_input(self, task):
+
+        # Obtain task arguments set in graph config
+        config_input = task.get_graph_config_args()
+
+        # Get required arguments for task's module
+        task_args = task.module.get_arguments()
 
         # Check if each config key
         for config_arg, config_value in config_input.iteritems():
 
             # Check if key is an input key
-            if config_arg not in node_args:
-                self.report_warning("In node '%s', the key '%s' is set in the config input, however the key is not"
-                                    "an input key. This could be a possible typo." % (node.get_ID(), config_arg))
+            if config_arg not in task_args:
+                self.report_warning("In task '%s', the key '%s' is set in the graph config input, however the key is not"
+                                    "an input used by the module. This could be a possible typo." % (task.get_ID(), config_arg))
                 break
 
             # Obtain the argument
-            arg = node_args[config_arg]
+            arg = task_args[config_arg]
 
-            # Check if the key is a resource and it is valid
+            # Check that any resource arguments are set to an id of an actual resource of the correct type
             if arg.is_resource():
 
-                # Check any resource of type config_arg is defined
-                if not self.resources.has_resource_type(config_arg):
-                    self.report_error("In node '%s', the resource key '%s', no resources of this type are defined"
+                # Get ids of all resources that match the module argument type
+                possible_resources = []
+                if self.resources.has_resource_type(config_arg):
+                    possible_resources = self.resources.get_resources(resource_type=config_arg).keys()
+
+                # Add any resources declared on the docker image
+                docker_image_id = task.get_docker_image_id()
+                if docker_image_id is not None:
+                    docker_image = self.resources.get_docker_images(docker_image_id)
+                    if docker_image.has_resource_type(config_arg):
+                        possible_resources.extend(docker_image.get_resources(resource_type=config_arg).keys())
+
+                # Throw error if no resources match module argument type
+                if len(possible_resources) < 1:
+                    self.report_error("In task '%s', the resource key '%s', no resources of this type are defined"
                                       "in the resources config file. Please define at least one resource of type "
-                                      "'%s'" % (node.get_ID(), config_arg, config_arg))
-                    break
+                                      "'%s'" % (task.get_ID(), config_arg, config_arg))
 
-                # Check if the value present in the config is a valid resource name
-                possible_resources = self.resources.get_resources(resource_type=config_arg)
+                # Throw error if module argument type exists but there aren't any resources
                 if config_value not in possible_resources:
-                    self.report_error("In node '%s', no resource with name '%s' of type '%s' has been found. "
+                    self.report_error("In task '%s', no resource with name '%s' of type '%s' has been found. "
                                       "Please define a resource with this name in the resources config "
-                                      "file." % (node.get_ID(), config_value, config_arg))
+                                      "file." % (task.get_ID(), config_value, config_arg))
 
-    def __check_module_input(self, node_id, module, module_input_keys=None, node_input_keys=None, config_input=None):
+    def __check_task_input(self, task):
+        # Determine if all required arguments for task will be set at runtime
 
-        # Obtain the arguments that need to be set
-        args = module.get_arguments()
+        # Obtain the node ID
+        task_id = task.get_ID()
+
+        # Get task docker image
+        docker_image = task.get_docker_image_id()
+        docker_image = None if (docker_image is None or not self.resources.has_docker_image(docker_image)) else self.resources.get_docker_images(task.get_docker_image_id())
+
+        # Get task inputs specified in the graph config
+        config_input = task.get_graph_config_args()
+
+        # Get parent output types available to task at runtime
+        parent_tasks = [self.graph.get_tasks(parent_task) for parent_task in self.graph.get_parents(task_id)]
+        parent_output_types = []
+        for parent_task in parent_tasks:
+            # Check to make sure that only merge type modules receive the same input from multiple different parents
+            parent_outputs = parent_task.get_output_keys()
+            for parent_output in parent_outputs:
+                if parent_output in parent_output_types and not task.is_merger_task():
+                    self.report_error("In task '%s', the input argument '%s' is satisfied by two or more upstream tasks and is NOT a Merger module."
+                                      " Tasks can only receive one type of argument from each parent task to prevent runtime ambiguity! "
+                                      % (task_id, parent_output))
+                parent_output_types.append(parent_output)
+
+
+        # Get task arguments that will need to be set at runtime
+        args = task.module.get_arguments()
 
         # Check if each argument can be found in any of the sources
         for arg_key, arg_obj in args.iteritems():
@@ -61,28 +147,43 @@ class GraphValidator(Validator):
             if arg_obj.is_resource():
 
                 # Check if resource key is defined in the resource kit
-                resources = self.resources.get_resources()
-                if arg_key not in resources:
+                file_resources = self.resources.get_resources()
+                docker_resources = {} if docker_image is None else docker_image.get_resources()
+
+                # Throw error if no resources of the desired type are found in resource kit
+                if arg_key not in file_resources and arg_key not in docker_resources:
                     if arg_obj.is_mandatory():
-                        self.report_error("In module '%s', the resource argument '%s' has no definition "
-                                            "in the resource config file." % (module.get_ID(), arg_key))
+                        self.report_error("In task '%s', the resource argument '%s' has no definition "
+                                            "in the resource config file." % (task_id, arg_key))
                     else:
-                        self.report_warning("In module '%s', the resource argument '%s' has no definition. "
+                        self.report_warning("In task '%s', the resource argument '%s' has no definition. "
+                                            "Argument is not required and it will be set to its default value. "
+                                            "If desired, please specify in the graph config for task '%s' which resource '%s' "
+                                            "definition is needed." % (task_id, arg_key, task_id, arg_key))
+
+                # Throw error if required resource has multiple definitions in the same docker image
+                elif arg_key in docker_resources and len(docker_resources[arg_key]) > 1 and arg_key not in config_input:
+                    if arg_obj.is_mandatory():
+                        self.report_error("In module '%s', the resource argument '%s' has multiple definitions in the same docker image. "
+                                        "Please specify in the graph config, for task '%s', which resource '%s'"
+                                        "definition is needed." % (task_id, arg_key, task_id, arg_key))
+                    else:
+                        self.report_warning("In module '%s', the resource argument '%s' has multiple definitions in the same docker image. "
                                             "Argument is not required and it will be set to its default value. "
                                             "If desired, please specify in the graph config for node '%s' which resource '%s' "
-                                            "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
+                                            "definition is needed." % (task_id, arg_key, task_id, arg_key))
 
-                # Check if the resource type has more then one definitions, so the user has to select one
-                elif len(resources[arg_key]) > 1 and arg_key not in config_input:
+                # Throw error if required resource has multiple definitions in the resource kit file section
+                elif arg_key in file_resources and len(file_resources[arg_key]) > 1 and arg_key not in config_input and arg_key not in docker_resources:
                     if arg_obj.is_mandatory():
                         self.report_error("In module '%s', the resource argument '%s' has multiple definitions. "
                                         "Please specify in the graph config, for node '%s', which resource '%s'"
-                                        "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
+                                        "definition is needed." % (task_id, arg_key, task_id, arg_key))
                     else:
                         self.report_warning("In module '%s', the resource argument '%s' has multiple definitions. "
                                             "Argument is not required and it will be set to its default value. "
                                             "If desired, please specify in the graph config for node '%s' which resource '%s' "
-                                            "definition is needed." % (module.get_ID(), arg_key, node_id, arg_key))
+                                            "definition is needed." % (task_id, arg_key, task_id, arg_key))
                 # The resource was found
                 else:
                     found = True
@@ -90,8 +191,7 @@ class GraphValidator(Validator):
             else:
 
                 # Define the list of resources from where the input can come
-                input_sources = [module_input_keys,
-                                 node_input_keys,
+                input_sources = [parent_output_types,
                                  self.samples.get_data(),
                                  config_input]
 
@@ -113,69 +213,7 @@ class GraphValidator(Validator):
             if arg_obj.is_mandatory():
                 self.report_error("In module '%s', the defined argument '%s' will not be set during runtime. "
                                   "Please check the graph and resources definition and configuration files."
-                                  % (module.get_ID(), arg_key))
-
-    def __check_node_input(self, node):
-
-        # Obtain the node ID
-        node_id = node.get_ID()
-
-        # Obtain nodes
-        nodes = self.graph.get_nodes()
-
-        # Obtain the output keys from the parent nodes of the current node
-        input_nodes = self.graph.get_adjacency_list()[ node.get_ID() ]
-        keys_from_nodes = []
-        for node_id in input_nodes:
-            keys_from_nodes.extend(nodes[node_id].get_output_keys())
-
-        # Obtain the config input from the graph config
-        config_input = node.get_config_input()
-
-        # Check if all the arguments can be set in split mode
-        if node.is_split_mode():
-
-            # Obtain the splitter module
-            split_module = node.split_module
-
-            # Test the splitter module with the available input keys
-            self.__check_module_input(node_id, split_module,
-                                      node_input_keys=keys_from_nodes,
-                                      config_input=config_input)
-
-            # Obtain the output keys from the splitter
-            _, splitter_keys = split_module.get_keys()
-
-            # Obtain the main module
-            main_module = node.main_module
-
-            # Test the main module with the available input_keys
-            self.__check_module_input(node_id, main_module,
-                                      module_input_keys=splitter_keys,
-                                      node_input_keys=keys_from_nodes,
-                                      config_input=config_input)
-
-            # Obtain the output keys from the main module
-            _, main_keys = main_module.get_keys()
-
-            # Obtain the merger module
-            merge_module = node.merge_module
-
-            # Test the merger module with the available input keys
-            self.__check_module_input(node_id, merge_module,
-                                      module_input_keys=main_keys,
-                                      node_input_keys=keys_from_nodes,
-                                      config_input=config_input)
-
-        else:
-
-            # Obtain the main module
-            main_module = node.main_module
-
-            # Test the main module with the available input keys
-            self.__check_module_input(node_id, main_module,
-                                      node_input_keys=keys_from_nodes,
-                                      config_input=config_input)
+                                  % (task_id, arg_key))
 
     def __check_module_attributes(self, module):
 
@@ -183,7 +221,7 @@ class GraphValidator(Validator):
         module_ID = module.get_ID()
 
         # Define necessary attributes in the module
-        attrs = ["input_keys", "output_keys"]
+        attrs = ["output_keys"]
 
         # Check if the module has the necessary attributes
         for attr in attrs:
@@ -195,9 +233,6 @@ class GraphValidator(Validator):
 
         # Obtain the module ID
         module_ID = module.get_ID()
-
-        # Obtain module input keys
-        input_keys, _ = module.get_keys()
 
         # Obtain the list of arguments from the module
         args = module.get_arguments()
@@ -212,66 +247,18 @@ class GraphValidator(Validator):
                 self.report_error("Module '%s' has no argument '%s'. Please add an argument that defines the %s for"
                                   "the module" % (module_ID, arg_key, arg_keys[arg_key]))
 
-        # Check if all the input keys are specified in the arguments
-        for input_key in input_keys:
-            if input_key not in args:
-                self.report_warning("Module '%s' has defined '%s' as an input key. However, no argument with this key"
-                                    "was declared." % (module_ID, input_key))
-
-    def __check_final_output_keys(self, node):
+    def __check_final_output_keys(self, task):
 
         # Obtain the node ID
-        node_ID = node.get_ID()
+        task_ID = task.get_ID()
 
         # Obtain the final output keys
-        final_output_keys = node.get_final_output_keys()
+        final_output_keys = task.get_final_output_keys()
 
-        # Obtain the output keys
-        if node.is_split_mode():
-            out_keys = node.merge_module.get_keys()[1]
-            out_keys.extend(key for key in node.main_module.get_keys()[1] if key not in out_keys)
-            out_keys.extend(key for key in node.split_module.get_keys()[1] if key not in out_keys)
-        else:
-            out_keys = node.main_module.get_keys()[1]
+        # Obtain the module output keys
+        out_keys = task.module.get_output_types()
 
         # Check if all final output keys are present in the output keys
         for final_key in final_output_keys:
             if final_key not in out_keys:
-                self.report_error("In node '%s', the specified final output key '%s' is not part of the output keys "
-                                  "of the node." % (node_ID, final_key))
-
-    def validate(self):
-
-        # Perform checking for each node in the graph
-        for node in self.graph.get_nodes().itervalues():
-
-            # Check node config input
-            self.__check_config_input(node)
-
-            # Check the node input
-            self.__check_node_input(node)
-
-            # Check final output keys
-            self.__check_final_output_keys(node)
-
-            # Define the list of modules to check
-            if node.is_split_mode():
-                modules = [node.split_module, node.main_module, node.merge_module]
-            else:
-                modules = [node.main_module]
-
-            for module in modules:
-
-                # Checking the module attributes
-                self.__check_module_attributes(module)
-
-                # Checking the module arguments
-                self.__check_module_arguments(module)
-
-        # Identify if there are errors before printing them
-        has_errors = self.has_errors()
-
-        # Print the available reports
-        self.print_reports()
-
-        return has_errors
+                self.report_error("In task '%s', the specified final output type '%s' is not part of the module's output!" % (task_ID, final_key))
