@@ -151,7 +151,19 @@ class Platform(object):
         pass
 
     @abc.abstractmethod
-    def handle_report(self, report):
+    def publish_report(self, report):
+        pass
+
+    @abc.abstractmethod
+    def validate(self):
+        pass
+
+    @abc.abstractmethod
+    def get_helper_processor(self):
+        pass
+
+    @abc.abstractmethod
+    def clean_up(self):
         pass
 
     ####### PRIVATE UTILITY METHODS
