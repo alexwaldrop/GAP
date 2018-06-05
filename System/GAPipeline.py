@@ -1,6 +1,7 @@
 import logging
 import importlib
 import json
+import time
 from collections import OrderedDict
 
 from System.Graph import Graph
@@ -167,8 +168,10 @@ class GAPipeline(object):
 
         # Register helper runtime data
         if self.helper_processor is not None:
+            report.set_start_time(self.helper_processor.get_start_time())
             report.set_total_runtime(self.helper_processor.get_runtime())
             report.register_task(task_name="Helper",
+                                 start_time=self.helper_processor.get_start_time(),
                                  run_time=self.helper_processor.get_runtime(),
                                  cost=self.helper_processor.get_cost())
 
@@ -182,8 +185,9 @@ class GAPipeline(object):
                 task_name   = task.get_ID()
                 run_time    = task_worker.get_runtime()
                 cost        = task_worker.get_cost()
+                start_time  = task_worker.get_start_time()
                 task_data   = {"parent_task" : task_name.split(".")[0]}
-                report.register_task(task_name, run_time, cost, task_data=task_data)
+                report.register_task(task_name, start_time, run_time, cost, task_data=task_data)
 
                 # Register data about task output files
                 if task.is_complete():
@@ -213,6 +217,9 @@ class GAPReport:
 
         # Total runtime
         self.total_runtime = 0
+
+        # Time of pipeline start
+        self.start_time = None
 
         # Output files produced by successful modules
         self.output_files = []
@@ -249,13 +256,22 @@ class GAPReport:
         self.err = False
         self.err_msg = None
 
+    def set_start_time(self, start_time):
+        self.start_time = start_time
+
     def set_total_runtime(self, total_runtime):
         self.total_runtime = total_runtime
 
-    def register_task(self, task_name, run_time, cost, task_data=None):
+    def register_task(self, task_name, start_time, run_time, cost, task_data=None):
         # Register information about a specific processor in the report
+
+        # Make start time relative to pipeline start time
+        if self.start_time is not None and start_time is not None:
+            start_time = start_time - self.start_time
+
         proc_data = {
             "name" : task_name,
+            "start_time" : start_time,
             "runtime(sec)" : run_time,
             "cost" : cost
         }
@@ -278,6 +294,7 @@ class GAPReport:
         report["pipeline_id"] = self.pipeline_id
         report["status"] = "Complete" if not self.err else "Failed"
         report["error"] = "" if self.err_msg is None else self.err_msg
+        report["start_time"] = None if self.start_time is None else int(self.start_time)
         report["total_cost"] = self.total_cost
         report["total_runtime"] = self.total_runtime
         report["total_proc_time"] = self.total_processing_time
