@@ -188,7 +188,7 @@ def main():
                           final_output_dir=args.final_output_dir)
 
     # Initialize variables
-    err     = False
+    err     = True
     err_msg = None
 
     try:
@@ -201,10 +201,12 @@ def main():
         # Run the pipeline
         pipeline.run()
 
+        # Indicate that pipeline completed successfully
+        err = False
+
     except BaseException as e:
         logging.error("Pipeline failed!")
         err_msg = str(e)
-        err     = True
         pipeline.save_progress()
         raise
 
