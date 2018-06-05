@@ -179,3 +179,24 @@ class GoogleCloudHelper:
             if disk_image["name"] == disk_image_name:
                 return disk_image
         return None
+
+    @staticmethod
+    def get_field_from_key_file(key_file, field_name):
+        # Parse JSON service account key file and return email address associated with account
+        logging.info("Extracting %s from JSON key file." % field_name)
+
+        if not os.path.exists(key_file):
+            logging.error("Google authentication key file not found: %s!" % key_file)
+            raise IOError("Google authentication key file not found!")
+
+        # Parse json into dictionary
+        with open(key_file) as kf:
+            key_data = json.load(kf)
+
+        # Check to make sure correct key is present in dictionary
+        if field_name not in key_data:
+            logging.error(
+                "'%s' field missing from authentication key file: %s. Check to make sure key exists in file or that file is valid google key file!"
+                % (field_name, key_file))
+            raise IOError("Info field not found in Google key file!")
+        return key_data[field_name]
