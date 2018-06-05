@@ -25,8 +25,16 @@ print gr1
 gr1.set_fail(err_msg="YOU FUCKED UP")
 print gr1
 
-gr1.register_task("task1", 3.4, 154.4)
-gr1.register_task("task2.split1", 1, 2, task_data={"parent_task" : "task2"})
+import time
+t = (2018, 6, 5, 2, 53, 38, 1, 48, 0)
+print time.mktime(t)
+print time.time()
+gr1.set_start_time(time.mktime(t))
+
+time.sleep(5)
+gr1.register_task("task1", time.time(), 3.4, 154.4)
+time.sleep(5)
+gr1.register_task("task2.split1", time.time(), 1, 2, task_data={"parent_task" : "task2"})
 print gr1
 
 gr1.register_output_file("task1", "bam", "/path/to/bam", size=123)
