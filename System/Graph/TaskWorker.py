@@ -74,6 +74,12 @@ class TaskWorker(Thread):
         else:
             return self.proc.get_cost()
 
+    def get_start_time(self):
+        if self.proc is None:
+            return None
+        else:
+            return self.proc.get_start_time()
+
     def task(self):
         # Run task module command and save outputs
         try:

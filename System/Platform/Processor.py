@@ -171,6 +171,9 @@ class Processor(object):
         else:
             return self.stop_time - self.start_time
 
+    def get_start_time(self):
+        return self.start_time
+
     def get_nr_cpus(self):
         return self.nr_cpus
 
