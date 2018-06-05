@@ -1,5 +1,4 @@
+from GoogleCloudHelper import GoogleCloudHelper
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GooglePreemptibleProcessor import GooglePreemptibleProcessor
 from GooglePlatform import GooglePlatform
-from GoogleCloudHelper import GoogleCloudHelper
-from GoogleDisk import GoogleDisk
