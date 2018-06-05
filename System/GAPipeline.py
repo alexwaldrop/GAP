@@ -1,5 +1,11 @@
-import os
+import logging
+import importlib
+import json
+from collections import OrderedDict
 
+from System.Graph import Graph
+from System.Datastore import ResourceKit
+from System.Datastore import SampleSet
 from System.Validators import GraphValidator
 from System.Validators import InputValidator
 from System.Validators import SampleValidator
@@ -7,28 +13,68 @@ from System.Platform import StorageHelper, DockerHelper
 from System.Datastore import Datastore
 from System.Graph import Scheduler
 
-
 class GAPipeline(object):
 
-    def __init__(self, pipeline_id, graph, resource_kit, sample_data, platform):
+    def __init__(self, pipeline_id,
+                 graph_config,
+                 resource_kit_config,
+                 sample_data_config,
+                 platform_config,
+                 platform_module,
+                 final_output_dir):
 
-        # Components needed to run GAP
+        # GAP run id
         self.pipeline_id    = pipeline_id
-        self.graph          = graph
-        self.resource_kit   = resource_kit
-        self.sample_data    = sample_data
-        self.platform       = platform
+
+        # Paths to config files
+        self.__graph_config         = graph_config
+        self.__res_kit_config       = resource_kit_config
+        self.__sample_set_config    = sample_data_config
+        self.__platform_config      = platform_config
+
+        # Name of platform class where tasks will be executed
+        self.__plat_module          = platform_module
+
+        # Final output directory where output is saved
+        self.__final_output_dir     = final_output_dir
+
+        # Obtain pipeline name and append to final output dir
+
+        self.graph          = None
+        self.resource_kit   = None
+        self.sample_data    = None
+        self.platform       = None
 
         # Create datastore from pipeline components
-        self.datastore      = Datastore(self.graph, self.resource_kit, self.sample_data, self.platform)
+        self.datastore      = None
 
         # Task scheduler for running jobs
-        self.scheduler = Scheduler(self.graph, self.datastore, self.platform)
+        self.scheduler = None
 
         # Helper processor for handling platform operations
         self.helper_processor   = None
         self.storage_helper     = None
         self.docker_helper      = None
+
+    def load(self):
+
+        # Load resource kit
+        self.resource_kit = ResourceKit(self.__res_kit_config)
+
+        # Load the sample data
+        self.sample_data = SampleSet(self.__sample_set_config)
+
+        # Load the graph
+        self.graph = Graph(self.__graph_config)
+
+        # Load platform
+        plat_module     = importlib.import_module(self.__plat_module)
+        plat_class      = plat_module.__dict__[self.__plat_module]
+        self.platform   = plat_class(self.pipeline_id, self.__platform_config, self.__final_output_dir)
+
+        # Create datastore and scheduler
+        self.datastore = Datastore(self.graph, self.resource_kit, self.sample_data, self.platform)
+        self.scheduler = Scheduler(self.graph, self.datastore, self.platform)
 
     def validate(self):
 
@@ -65,7 +111,7 @@ class GAPipeline(object):
             raise SystemError("One or more errors have been encountered during validation. "
                               "See the above logs for more information")
 
-        # Validate that workspace can be created
+        # Validate that pipeline workspace can be created
         workspace = self.datastore.get_task_workspace()
         for dir_type, dir_path in workspace.get_workspace():
             self.storage_helper.mkdir(dir_path=str(dir_path), job_name="mkdir_%s" % dir_type, wait=True)
@@ -74,18 +120,172 @@ class GAPipeline(object):
         # Run until all tasks are complete
         self.scheduler.run()
 
-        # Delete temporary workspace
-        workspace = self.datastore.get_task_workspace()
-        self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output", wait=True)
-
     def save_progress(self):
         pass
 
-    def publish_report(self):
-        pass
+    def publish_report(self, err=False, err_msg=None):
+        # Create and publish GAP pipeline report
+        try:
+            report = self.__make_pipeline_report(err, err_msg)
+            if self.platform is not None:
+                self.platform.publish_report(report)
+        except BaseException, e:
+            logging.error("Unable to publish report!")
+            if e.message != "":
+                logging.error("Received the following message:\n%s" % e.message)
 
-    def clean_up(self):
+    def clean_up(self, rm_tmp_output):
 
-        # Cleaning up the platform
-        if self.__platform is not None:
-            self.__platform.finalize()
+        # Remove temporary output directory if desired and possible
+        if rm_tmp_output and self.storage_helper is not None:
+            workspace = self.datastore.get_task_workspace()
+            try:
+                self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
+            except BaseException, e:
+                logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
+                if e.message != "":
+                    logging.error("Received the following err message:\n%s" % e.message)
+
+        # Destroy the helper processor if it exists
+        if self.helper_processor is not None:
+            try:
+                logging.debug("Destroying helper processor...")
+                self.helper_processor.destroy(wait=False)
+            except BaseException, e:
+                logging.error("Unable to destroy helper processor '%s'!" % self.helper_processor.get_name())
+                if e.message != "":
+                    logging.error("Received the follwoing err message:\n%s" % e.message)
+
+        # Cleaning up the platform (let the platform decide what that means)
+        if self.platform is not None:
+            self.platform.finalize()
+
+    def __make_pipeline_report(self, err, err_msg):
+
+        # Create a pipeline report that summarizes features of pipeline
+        report = GAPReport(self.pipeline_id, err, err_msg)
+
+        # Register helper runtime data
+        if self.helper_processor is not None:
+            report.set_total_runtime(self.helper_processor.get_runtime())
+            report.register_task(task_name="Helper",
+                                 run_time=self.helper_processor.get_runtime(),
+                                 cost=self.helper_processor.get_cost())
+
+        # Register runtime data for pipeline tasks
+        if self.scheduler is not None:
+            task_workers = self.scheduler.get_task_workers()
+            for task_worker in task_workers:
+
+                # Register data about task runtime
+                task = task_worker.get_task()
+                task_name   = task.get_ID()
+                run_time    = task_worker.get_runtime()
+                cost        = task_worker.get_cost()
+                task_data   = {"parent_task" : task_name.split(".")[0]}
+                report.register_task(task_name, run_time, cost, task_data=task_data)
+
+                # Register data about task output files
+                if task.is_complete():
+                    output_files = self.datastore.get_task_output_files(task_id=task_name)
+                    for output_file in output_files:
+                        file_type       = output_file.get_file_type()
+                        file_path       = output_file.get_path()
+                        is_final_output = file_type in task.get_final_output_keys()
+                        file_size       = output_file.get_size()
+                        report.register_output_file(task_name, file_type, file_path, file_size, is_final_output)
+
+        return report
+
+
+class GAPReport:
+    # Object for holding metadata related to a GAP pipeline run
+    def __init__(self, pipeline_id, err=False, err_msg=None):
+
+        # Id of pipeline being reports
+        self.pipeline_id = pipeline_id
+
+        # Whether pipeline was halted due to error
+        self.err = err
+
+        # Error msg that halted pipelines
+        self.err_msg = err_msg
+
+        # Total runtime
+        self.total_runtime = 0
+
+        # Output files produced by successful modules
+        self.output_files = []
+
+        # Processors used by modules
+        self.tasks = []
+
+    @property
+    def total_processing_time(self):
+        proc_time = 0
+        for task in self.tasks:
+            proc_time += float(task["runtime(sec)"])
+        return proc_time
+
+    @property
+    def total_cost(self):
+        cost = 0
+        for task in self.tasks:
+            cost += float(task["cost"])
+        return cost
+
+    @property
+    def total_output_size(self):
+        size = 0
+        for output_file in self.output_files:
+            size += float(output_file["size"])
+        return size
+
+    def set_fail(self, err_msg=None):
+        self.err = True
+        self.err_msg = err_msg
+
+    def set_success(self):
+        self.err = False
+        self.err_msg = None
+
+    def set_total_runtime(self, total_runtime):
+        self.total_runtime = total_runtime
+
+    def register_task(self, task_name, run_time, cost, task_data=None):
+        # Register information about a specific processor in the report
+        proc_data = {
+            "name" : task_name,
+            "runtime(sec)" : run_time,
+            "cost" : cost
+        }
+        if task_data is not None:
+            for key, val in task_data.iteritems():
+                if key not in proc_data:
+                    proc_data[key] = val
+        self.tasks.append(proc_data)
+
+    def register_output_file(self, task_name, file_type, path, size=0, is_final_output=False):
+        file_data = {"task_id" : task_name,
+                     "file_type" : file_type,
+                     "path" : path,
+                     "size" : size,
+                     "is_final_output" : is_final_output}
+        self.output_files.append(file_data)
+
+    def to_dict(self):
+        report = OrderedDict()
+        report["pipeline_id"] = self.pipeline_id
+        report["status"] = "Complete" if not self.err else "Failed"
+        report["error"] = "" if self.err_msg is None else self.err_msg
+        report["total_cost"] = self.total_cost
+        report["total_runtime"] = self.total_runtime
+        report["total_proc_time"] = self.total_processing_time
+        report["total_output_size"] = self.total_output_size
+        report["files"] = self.output_files
+        report["tasks"] = self.tasks
+        return report
+
+    def __str__(self):
+        return json.dumps(self.to_dict(), indent=4)
+
