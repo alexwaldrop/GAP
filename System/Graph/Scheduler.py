@@ -15,6 +15,9 @@ class Scheduler(object):
         # Initialize set of task workers
         self.task_workers = {}
 
+    def get_task_workers(self):
+        return self.task_workers
+
     def run(self):
         try:
             self.__run_tasks()
@@ -108,3 +111,5 @@ class Scheduler(object):
             if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.FINALIZED]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
                 task_worker.cancel()
+
+
