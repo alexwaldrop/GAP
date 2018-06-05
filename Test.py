@@ -11,6 +11,32 @@ import importlib
 configure_import_paths()
 configure_logging(3)
 
+######################### Test GAPReport
+
+from System import GAPReport
+gr1 = GAPReport(pipeline_id="Dis_a_test")
+print gr1
+print
+print
+
+gr1.set_total_runtime(24.3)
+print gr1
+
+gr1.set_fail(err_msg="YOU FUCKED UP")
+print gr1
+
+gr1.register_task("task1", 3.4, 154.4)
+gr1.register_task("task2.split1", 1, 2, task_data={"parent_task" : "task2"})
+print gr1
+
+gr1.register_output_file("task1", "bam", "/path/to/bam", size=123)
+gr1.register_output_file("task1", "bam", "/path/to/bam", size=12)
+gr1.register_output_file("task2", "fastq", "/path/to/fastq", size=1235)
+
+print gr1
+
+
+exit(0)
 ######################### Test sample validator
 
 from System.Validators import SampleValidator
