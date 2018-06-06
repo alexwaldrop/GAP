@@ -3,7 +3,7 @@ from System.Graph import Graph
 from System.Datastore import ResourceKit, SampleSet
 from System.Validators.GraphValidator import GraphValidator
 from System.Platform import StorageHelper, DockerHelper
-from System.Platform.Google import GoogleStandardProcessor
+from System.Platform.Google import GoogleStandardProcessor, GoogleCloudHelper
 from Main import configure_import_paths, configure_logging
 import time
 import importlib
@@ -11,6 +11,29 @@ import importlib
 configure_import_paths()
 configure_logging(3)
 
+######################### Test GoogleCloud helper
+
+nr_cpus, mem, instance_type = GoogleCloudHelper.get_optimal_instance_type(1,1,"us-east1-b")
+print nr_cpus, mem, instance_type
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b")
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True)
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True, nr_local_ssd=5)
+print
+
+nr_cpus, mem, instance_type = GoogleCloudHelper.get_optimal_instance_type(2,12,"us-east1-b")
+print nr_cpus, mem, instance_type
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b")
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True)
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True, nr_local_ssd=5)
+print
+
+nr_cpus, mem, instance_type = GoogleCloudHelper.get_optimal_instance_type(48,205,"us-east1-b")
+print nr_cpus, mem, instance_type
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b")
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True)
+print GoogleCloudHelper.get_instance_price(nr_cpus, mem, 500, instance_type, "us-east1-b", is_preemptible=True, nr_local_ssd=5)
+
+exit(0)
 ######################### Test GAPReport
 
 from System import GAPReport
