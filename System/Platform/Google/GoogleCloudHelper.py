@@ -9,6 +9,7 @@ import os
 class GoogleCloudHelperError(Exception):
     pass
 
+
 class GoogleCloudHelper:
 
     prices = None
@@ -178,7 +179,10 @@ class GoogleCloudHelper:
         for disk_image in disk_images:
             if disk_image["name"] == disk_image_name:
                 return disk_image
-        return None
+
+        # Throw error because disk image can't be found
+        logging.error("Unable to find disk image '%s'" % disk_image_name)
+        raise GoogleCloudHelperError("Invalid disk image provided in GooglePlatform config!")
 
     @staticmethod
     def get_field_from_key_file(key_file, field_name):
@@ -200,3 +204,41 @@ class GoogleCloudHelper:
                 % (field_name, key_file))
             raise IOError("Info field not found in Google key file!")
         return key_data[field_name]
+
+    @staticmethod
+    def pubsub_topic_exists(topic_id):
+
+        # Check to see if the reporting Pub/Sub topic exists
+        cmd = "gcloud beta pubsub topics list --format=json"
+        out, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
+
+        if len(err):
+            logging.error("Cannot verify if the pubsub topic '%s' exists. The following error appeared: %s" % (topic_id, err))
+            raise GoogleCloudHelperError("Cannot verify if pubsub topic exists. Please check the above error message.")
+
+        topics = json.loads(out)
+        for topic in topics:
+            if topic["topicId"] == topic:
+                return True
+
+        return False
+
+    @staticmethod
+    def get_bucket_from_path(path):
+        if not path.startwith("gs://"):
+            logging.error("Cannot extract bucket from path '%s'. Invalid GoogleStorage path!")
+            raise GoogleCloudHelperError("Attempt to get bucket from invalid GoogleStorage path. GS paths must begin with 'gs://'")
+        return "/".join(path.split("/")[0:3]) + "/"
+
+    @staticmethod
+    def gs_path_exists(gs_path):
+        # Check if path exists on google bucket storage
+        cmd = "gsutil ls %s" % gs_path
+        proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        out, err = proc.communicate()
+        return len(err) == 0
+
+    @staticmethod
+    def mb(gs_bucket, project, region):
+        cmd = "gsutil mb -p %s -c regional -l %s %s" % (project, region, gs_bucket)
+        GoogleCloudHelper.run_cmd(cmd, "Unable to make bucket '%s'!" % gs_bucket)
