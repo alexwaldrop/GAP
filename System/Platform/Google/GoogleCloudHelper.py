@@ -5,6 +5,8 @@ import random
 import requests
 import base64
 import os
+import sys
+import math
 
 class GoogleCloudHelperError(Exception):
     pass
@@ -242,3 +244,139 @@ class GoogleCloudHelper:
     def mb(gs_bucket, project, region):
         cmd = "gsutil mb -p %s -c regional -l %s %s" % (project, region, gs_bucket)
         GoogleCloudHelper.run_cmd(cmd, "Unable to make bucket '%s'!" % gs_bucket)
+
+    @staticmethod
+    def get_optimal_instance_type(nr_cpus, mem, zone, is_preemptible=False):
+
+        # Obtaining prices from Google Cloud Platform
+        prices = GoogleCloudHelper.get_prices()
+
+        # Defining instance types to mem/cpu ratios
+        ratio = dict()
+        ratio["highcpu"] = 1.80 / 2
+        ratio["standard"] = 7.50 / 2
+        ratio["highmem"] = 13.00 / 2
+
+        # Identifying needed predefined instance type
+        if nr_cpus == 1:
+            instance_type = "standard"
+        else:
+            ratio_mem_cpu = mem * 1.0 / nr_cpus
+            if ratio_mem_cpu <= ratio["highcpu"]:
+                instance_type = "highcpu"
+            elif ratio_mem_cpu <= ratio["standard"]:
+                instance_type = "standard"
+            else:
+                instance_type = "highmem"
+
+        # Obtain available machine type in the current zone
+        machine_types = GoogleCloudHelper.get_machine_types(zone)
+
+        # Initializing predefined instance data
+        predef_inst = {}
+
+        # Obtain the machine type that has the closes number of CPUs
+        predef_inst["nr_cpus"] = sys.maxsize
+        for machine_type in machine_types:
+
+            # Skip instances that are not of the same type
+            if instance_type not in machine_type["name"]:
+                continue
+
+            # Select the instance if its number of vCPUs is closer to the required nr_cpus
+            if machine_type["guestCpus"] >= nr_cpus and machine_type["guestCpus"] < predef_inst["nr_cpus"]:
+                predef_inst["nr_cpus"] = machine_type["guestCpus"]
+                predef_inst["mem"] = machine_type["memoryMb"] / 1024
+                predef_inst["type_name"] = machine_type["name"]
+
+        # Obtaining the price of the predefined instance
+        region = GoogleCloudHelper.get_region(zone)
+        if is_preemptible:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()][region]
+        else:
+            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()][region]
+
+        # Initializing custom instance data
+        custom_inst = {}
+
+        # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
+        custom_inst["nr_cpus"] = 1 if nr_cpus == 1 else nr_cpus + nr_cpus%2
+
+        # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
+        if nr_cpus != 1:
+            mem = max(ratio["highcpu"] * custom_inst["nr_cpus"], mem)
+            mem = min(ratio["highmem"] * custom_inst["nr_cpus"], mem)
+        else:
+            mem = max(1, mem)
+            mem = min(6, mem)
+
+        # Computing the ceil of the current memory
+        custom_inst["mem"] = int(math.ceil(mem))
+
+        # Generating custom instance name
+        custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
+
+        # Computing the price of a custom instance
+        if is_preemptible:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"][region]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"][region]
+        else:
+            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"][region]
+            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"][region]
+        custom_inst["price"] = custom_price_cpu * custom_inst["nr_cpus"] + custom_price_mem * custom_inst["mem"]
+
+        # Determine which is cheapest and return
+        if predef_inst["price"] <= custom_inst["price"]:
+            nr_cpus = predef_inst["nr_cpus"]
+            mem = predef_inst["mem"]
+            instance_type = predef_inst["type_name"]
+
+        else:
+            nr_cpus = custom_inst["nr_cpus"]
+            mem = custom_inst["mem"]
+            instance_type = custom_inst["type_name"]
+
+        return nr_cpus, mem, instance_type
+
+    @staticmethod
+    def get_instance_price(nr_cpus, mem, disk_space, instance_type, zone, is_preemptible=False, is_boot_disk_ssd=False, nr_local_ssd=0):
+
+        prices = GoogleCloudHelper.get_prices()
+        region = GoogleCloudHelper.get_region(zone)
+        is_custom = instance_type.startswith('custom')
+        price = 0
+
+        # Get price of CPUs, mem for custom instance
+        if is_custom:
+            cpu_price_key = "CP-COMPUTEENGINE-CUSTOM-VM-CORE"
+            mem_price_key = "CP-COMPUTEENGINE-CUSTOM-VM-RAM"
+            if is_preemptible:
+                cpu_price_key += "-PREEMPTIBLE"
+                mem_price_key += "-PREEMPTIBLE"
+            price += prices[cpu_price_key][region]*nr_cpus + prices[mem_price_key][region]*mem
+
+        # Get price of CPUs, mem for standard instance
+        else:
+            price_key = "CP-COMPUTEENGINE-VMIMAGE-%s" % instance_type.upper()
+            if is_preemptible:
+                price_key = "CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % instance_type.upper()
+            price += prices[price_key][region]
+
+        # Get price of the instance's disk
+        if is_boot_disk_ssd:
+            price += prices["CP-COMPUTEENGINE-STORAGE-PD-SSD"][region] * disk_space / 730.0
+        else:
+            price += prices["CP-COMPUTEENGINE-STORAGE-PD-CAPACITY"][region] * disk_space / 730.0
+
+        # Get price of local SSDs (if present)
+        if nr_local_ssd:
+            if is_preemptible:
+                price += nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD-PREEMPTIBLE"][region] * 375
+            else:
+                price += nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD"][region] * 375
+
+        return price
+
+
+
+
