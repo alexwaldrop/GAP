@@ -38,6 +38,7 @@ class Platform(object):
         self.MAX_NR_CPUS        = self.config["PROC_MAX_NR_CPUS"]
         self.MAX_MEM            = self.config["PROC_MAX_MEM"]
         self.MAX_DISK_SPACE     = self.config["PROC_MAX_DISK_SPACE"]
+        self.MIN_DISK_SPACE     = self.config.get("PROC_MAX_DISK_SPACE", 0)
 
         # Check to make sure resource limits are fine
         self.__check_resources()
@@ -54,49 +55,6 @@ class Platform(object):
 
         # Boolean flag to lock processor creation upon cleanup
         self.__locked = False
-
-    def __check_resources(self):
-        err = False
-        if self.MAX_NR_CPUS > self.TOTAL_NR_CPUS:
-            logging.error("Platform config error! Max task cpus (%s) cannot exceed platform cpus (%s)!" % (self.MAX_NR_CPUS, self.TOTAL_NR_CPUS))
-            err = True
-        elif self.MAX_MEM > self.TOTAL_MEM:
-            logging.error("Platform config error! Max task mem (%sGB) cannot exceed platform mem (%sGB)!" % (self.MAX_MEM, self.TOTAL_MEM))
-            err = True
-        elif self.MAX_DISK_SPACE > self.TOTAL_DISK_SPACE:
-            logging.error("Platform config error! Max task disk space (%sGB) cannot exceed platform disk space (%sGB)!" % (self.MAX_DISK_SPACE, self.TOTAL_DISK_SPACE))
-            err = True
-
-        if err:
-            raise TaskPlatformResourceLimitError("Task resource limit (CPU/Mem/Disk space) cannot exceed platform resource limit!")
-
-    def __get_curr_usage(self):
-        # Return total cpus, mem, disk space currently in use on platform
-        with self.platform_lock:
-            cpu = 0
-            mem = 0
-            disk_space = 0
-            for processor_id, processor in self.processors.iteritems():
-                if processor.get_status() > Processor.OFF:
-                    cpu += processor.get_cpu()
-                    mem += processor.get_mem()
-                    disk_space += processor.get_disk_space()
-        return cpu, mem, disk_space
-
-    def prepare(self):
-        # Perform any platform-specific tasks prior to running pipeline
-        pass
-
-    def clean_up(self):
-        # Perform any platform-specific tasks after pipeline has run
-        pass
-
-    def can_make_processor(self, req_cpus, req_mem, req_disk_space):
-        cpu, mem, disk_space = self.__get_curr_usage()
-        cpu_overload    = cpu + req_cpus > self.MAX_NR_CPUS
-        mem_overload    = mem + req_mem > self.MAX_MEM
-        disk_overload   = disk_space + req_disk_space > self.MAX_DISK_SPACE
-        return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
 
     def get_processor(self, task_id, nr_cpus, mem, disk_space):
         # Initialize new processor and register with platform
@@ -121,14 +79,44 @@ class Platform(object):
 
         return self.processors[task_id]
 
-    def get_config(self):
-        return self.config
+    def get_helper_processor(self):
+        # Initialize helper processor
+
+        if self.__locked:
+            logging.error("Platform failed to initialize helper processor! Platform is currently locked!")
+            raise TaskPlatformLockError("Cannot get processor while platform is locked!")
+
+        # Ensure unique name for processor
+        name        = "helper-%s" % self.name
+        logging.info("Creating helper processor '%s'..." % name)
+
+        # Initialize new processor with enough CPU/mem/disk space to complete task
+        processor   = self.init_helper_processor(name, nr_cpus=1, mem=2, disk_space=self.MIN_DISK_SPACE+50)
+
+        # Add to list of processors if not already there
+        if "helper" not in self.processors:
+            self.processors["helper"] = processor
+        else:
+            logging.error("Platform cannot create duplicate helper processor!")
+            raise RuntimeError("Platform attempted to create duplicate helper processor!")
+
+        return self.processors["helper"]
+
+    def can_make_processor(self, req_cpus, req_mem, req_disk_space):
+        cpu, mem, disk_space = self.__get_curr_usage()
+        cpu_overload    = cpu + req_cpus > self.MAX_NR_CPUS
+        mem_overload    = mem + req_mem > self.MAX_MEM
+        disk_overload   = disk_space + req_disk_space > self.MAX_DISK_SPACE
+        return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
 
     def get_max_nr_cpus(self):
         return self.MAX_NR_CPUS
 
     def get_max_mem(self):
         return self.MAX_MEM
+
+    def get_max_disk_space(self):
+        return self.MAX_DISK_SPACE
 
     def get_final_output_dir(self):
         return self.final_output_dir
@@ -144,10 +132,46 @@ class Platform(object):
         with self.platform_lock:
             self.__locked = False
 
+    def __check_resources(self):
+        err = False
+        if self.MAX_NR_CPUS > self.TOTAL_NR_CPUS:
+            logging.error("Platform config error! Max task cpus (%s) cannot exceed platform cpus (%s)!" %
+                          (self.MAX_NR_CPUS, self.TOTAL_NR_CPUS))
+            err = True
+        elif self.MAX_MEM > self.TOTAL_MEM:
+            logging.error("Platform config error! Max task mem (%sGB) cannot exceed platform mem (%sGB)!" %
+                          (self.MAX_MEM, self.TOTAL_MEM))
+            err = True
+        elif self.MAX_DISK_SPACE > self.TOTAL_DISK_SPACE:
+            logging.error("Platform config error! Max task disk space (%sGB) cannot exceed platform disk space (%sGB)!" % (
+                    self.MAX_DISK_SPACE, self.TOTAL_DISK_SPACE))
+            err = True
+
+        if err:
+            raise TaskPlatformResourceLimitError(
+                "Task resource limit (CPU/Mem/Disk space) cannot exceed platform resource limit!")
+
+    def __get_curr_usage(self):
+        # Return total cpus, mem, disk space currently in use on platform
+        with self.platform_lock:
+            cpu = 0
+            mem = 0
+            disk_space = 0
+            for processor_id, processor in self.processors.iteritems():
+                if processor.get_status() > Processor.OFF:
+                    cpu += processor.get_cpu()
+                    mem += processor.get_mem()
+                    disk_space += processor.get_disk_space()
+        return cpu, mem, disk_space
+
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
     @abc.abstractmethod
     def init_task_processor(self, name, nr_cpus, mem, disk_space):
         # Return a processor object with given resource requirements
+        pass
+
+    @abc.abstractmethod
+    def init_helper_processor(self, name, nr_cpus, mem, disk_space):
         pass
 
     @abc.abstractmethod
@@ -156,10 +180,6 @@ class Platform(object):
 
     @abc.abstractmethod
     def validate(self):
-        pass
-
-    @abc.abstractmethod
-    def get_helper_processor(self):
         pass
 
     @abc.abstractmethod
