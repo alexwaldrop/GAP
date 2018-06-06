@@ -34,11 +34,15 @@ class Platform(object):
         self.TOTAL_MEM          = self.config["PLAT_MAX_MEM"]
         self.TOTAL_DISK_SPACE   = self.config["PLAT_MAX_DISK_SPACE"]
 
-        # Single process resource limit
+        # Single process max resource limit
         self.MAX_NR_CPUS        = self.config["PROC_MAX_NR_CPUS"]
         self.MAX_MEM            = self.config["PROC_MAX_MEM"]
         self.MAX_DISK_SPACE     = self.config["PROC_MAX_DISK_SPACE"]
-        self.MIN_DISK_SPACE     = self.config.get("PROC_MAX_DISK_SPACE", 0)
+
+        # Single process min resource limits
+        self.MIN_NR_CPUS        = 1
+        self.MIN_MEM            = 1
+        self.MIN_DISK_SPACE     = 1
 
         # Check to make sure resource limits are fine
         self.__check_resources()
@@ -62,6 +66,9 @@ class Platform(object):
         if self.__locked:
             logging.error("Platform failed to initialize processor with id '%s'! Platform is currently locked!" % task_id)
             raise TaskPlatformLockError("Cannot get processor while platform is locked!")
+
+        # Check to see if processor is asking for too many resources
+        self.__check_processor(task_id, nr_cpus, mem, disk_space)
 
         # Ensure unique name for processor
         name        = "proc-%s-%s-%s" % (self.name[:20], task_id[:25], self.generate_unique_id())
@@ -91,7 +98,7 @@ class Platform(object):
         logging.info("Creating helper processor '%s'..." % name)
 
         # Initialize new processor with enough CPU/mem/disk space to complete task
-        processor   = self.init_helper_processor(name, nr_cpus=1, mem=2, disk_space=self.MIN_DISK_SPACE+50)
+        processor   = self.init_helper_processor(name, nr_cpus=self.MIN_NR_CPUS, mem=self.MIN_MEM, disk_space=self.MIN_DISK_SPACE+25)
 
         # Add to list of processors if not already there
         if "helper" not in self.processors:
@@ -131,6 +138,24 @@ class Platform(object):
     def unlock(self):
         with self.platform_lock:
             self.__locked = False
+
+    def __check_processor(self, task_id, nr_cpus, mem, disk_space):
+        # Check that nr_cpus, mem, disk space are under max
+        err = False
+        if nr_cpus > self.MAX_NR_CPUS:
+            logging.error("Platform cannot provision processor for task '%s' with %d vCPUs. Maximum is %d vCPUs." %
+                          (task_id, nr_cpus, self.MAX_NR_CPUS))
+            err = True
+        elif mem > self.MAX_MEM:
+            logging.error("Platform cannot provision processor for task '%s' with %d GB RAM. Maximum is %d GB RAM." %
+                          (task_id, mem, self.MAX_MEM))
+            err = True
+        elif disk_space > self.MAX_DISK_SPACE:
+            logging.error("Platform cannot provision processor for task '%s' with %d GB disk space. Maximum is %d GB." %
+                          (task_id, mem, self.MAX_MEM))
+            err = True
+        if err:
+            raise InvalidProcessorError("Processor resource requirements exceed platform capacity for single processor!")
 
     def __check_resources(self):
         err = False
