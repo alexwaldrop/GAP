@@ -1,0 +1,18 @@
+PLAT_MAX_NR_CPUS            = integer(1,100000, default=16000)
+PLAT_MAX_MEM                = integer(1,416, default=312)
+PLAT_MAX_DISK_SPACE         = integer(1,64000, default=75)
+PROC_MAX_NR_CPUS            = integer(1,64, default=48)
+PROC_MAX_MEM                = integer(1,416, default=312)
+PROC_MAX_DISK_SPACE         = integer(1,64000, default=75)
+workspace_dir               = string(default="/data/")
+report_topic                = string(default="pipeline_reports")
+zone                        = string(default="us-east1-b")
+service_account_key_file    = string
+randomize_zone              = boolean(default=False)
+
+[task_processor]
+disk_image                  = string(default="davelab-image-latest")
+max_reset                   = integer(default=5)
+is_preemptible              = boolean(default=True)
+apt_packages                = force_list
+cmd_retries                 = integer(0,5,default=1)
