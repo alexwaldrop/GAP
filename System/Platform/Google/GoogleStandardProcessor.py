@@ -28,6 +28,7 @@ class GoogleStandardProcessor(Processor):
         self.zone               = kwargs.pop("zone")
         self.service_acct       = kwargs.pop("service_acct")
         self.disk_image         = kwargs.pop("disk_image")
+        self.instance_type      = kwargs.pop("instance_type")
 
         # Get optional arguments
         self.is_boot_disk_ssd   = kwargs.pop("is_boot_disk_ssd",    False)
@@ -126,6 +127,12 @@ class GoogleStandardProcessor(Processor):
         # Wait for ssh to initialize and startup script to complete after instance is live
         self.wait_until_ready()
         logging.info("(%s) Instance startup complete! %s is now live and ready to run commands!" % (self.name, self.name))
+
+        # Increase number of ssh connections
+        self.configure_SSH()
+
+        # Configure CRCMOD for fast transfer
+        self.configure_CRCMOD()
 
         # Update status to available and exit
         self.set_status(GoogleStandardProcessor.AVAILABLE)
@@ -334,130 +341,6 @@ class GoogleStandardProcessor(Processor):
                          "The instance will be reset!" % self.name)
             self.destroy()
             self.create()
-
-    def get_instance_type(self):
-
-        # Making sure the values are not higher than possibly available
-        if self.nr_cpus > self.MAX_NR_CPUS:
-            logging.error("(%s) Cannot provision an instance with %d vCPUs. Maximum is %d vCPUs." % (self.name, self.nr_cpus, self.MAX_NR_CPUS))
-            raise RuntimeError("Instance %s has failed!" % self.name)
-        if self.mem > self.MAX_MEM:
-            logging.error("(%s) Cannot provision an instance with %d GB RAM. Maximum is %d GB RAM." % (self.name, self.mem, self.MAX_MEM))
-            raise RuntimeError("Instance %s has failed!" % self.name)
-
-        # Obtaining prices from Google Cloud Platform
-        prices = GoogleCloudHelper.get_prices()
-
-        # Defining instance types to mem/cpu ratios
-        ratio = dict()
-        ratio["highcpu"] = 1.80 / 2
-        ratio["standard"] = 7.50 / 2
-        ratio["highmem"] = 13.00 / 2
-
-        # Identifying needed predefined instance type
-        if self.nr_cpus == 1:
-            instance_type = "standard"
-        else:
-            ratio_mem_cpu = self.mem * 1.0 / self.nr_cpus
-            if ratio_mem_cpu <= ratio["highcpu"]:
-                instance_type = "highcpu"
-            elif ratio_mem_cpu <= ratio["standard"]:
-                instance_type = "standard"
-            else:
-                instance_type = "highmem"
-
-        # Obtain available machine type in the current zone
-        machine_types = GoogleCloudHelper.get_machine_types(self.zone)
-
-        # Initializing predefined instance data
-        predef_inst = {}
-
-        # Obtain the machine type that has the closes number of CPUs
-        predef_inst["nr_cpus"] = sys.maxsize
-        for machine_type in machine_types:
-
-            # Skip instances that are not of the same type
-            if instance_type not in machine_type["name"]:
-                continue
-
-            # Select the instance if its number of vCPUs is closer to the required nr_cpus
-            if machine_type["guestCpus"] >= self.nr_cpus and machine_type["guestCpus"] < predef_inst["nr_cpus"]:
-                predef_inst["nr_cpus"] = machine_type["guestCpus"]
-                predef_inst["mem"] = machine_type["memoryMb"] / 1024
-                predef_inst["type_name"] = machine_type["name"]
-
-        # Obtaining the price of the predefined instance
-        if self.is_preemptible:
-            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s-PREEMPTIBLE" % predef_inst["type_name"].upper()][self.region]
-        else:
-            predef_inst["price"] = prices["CP-COMPUTEENGINE-VMIMAGE-%s" % predef_inst["type_name"].upper()][self.region]
-
-        # Initializing custom instance data
-        custom_inst = {}
-
-        # Computing the number of cpus for a possible custom machine and making sure it's an even number or 1.
-        custom_inst["nr_cpus"] = 1 if self.nr_cpus == 1 else self.nr_cpus + self.nr_cpus%2
-
-        # Making sure the memory value is not under HIGHCPU and not over HIGHMEM
-        if self.nr_cpus != 1:
-            mem = max(ratio["highcpu"] * custom_inst["nr_cpus"], self.mem)
-            mem = min(ratio["highmem"] * custom_inst["nr_cpus"], mem)
-        else:
-            mem = max(1, self.mem)
-            mem = min(6, mem)
-
-        # Computing the ceil of the current memory
-        custom_inst["mem"] = int(math.ceil(mem))
-
-        # Generating custom instance name
-        custom_inst["type_name"] = "custom-%d-%d" % (custom_inst["nr_cpus"], custom_inst["mem"])
-
-        # Computing the price of a custom instance
-        if self.is_preemptible:
-            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE-PREEMPTIBLE"][self.region]
-            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM-PREEMPTIBLE"][self.region]
-        else:
-            custom_price_cpu = prices["CP-COMPUTEENGINE-CUSTOM-VM-CORE"][self.region]
-            custom_price_mem = prices["CP-COMPUTEENGINE-CUSTOM-VM-RAM"][self.region]
-        custom_inst["price"] = custom_price_cpu * custom_inst["nr_cpus"] + custom_price_mem * custom_inst["mem"]
-
-        if predef_inst["price"] <= custom_inst["price"]:
-            self.nr_cpus = predef_inst["nr_cpus"]
-            self.mem = predef_inst["mem"]
-            instance_type = predef_inst["type_name"]
-            self.price += predef_inst["price"]
-
-        else:
-            self.nr_cpus = custom_inst["nr_cpus"]
-            self.mem = custom_inst["mem"]
-            instance_type = custom_inst["type_name"]
-            self.price += custom_inst["price"]
-
-        # Identify the price of the instance's disk
-        if self.is_boot_disk_ssd:
-            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-SSD"][self.region] * self.boot_disk_size / 730.0
-        else:
-            pd_price = prices["CP-COMPUTEENGINE-STORAGE-PD-CAPACITY"][self.region] * self.boot_disk_size / 730.0
-        self.price += pd_price
-
-        # Identify the price of the local SSDs if present
-        ssd_price = 0
-        if self.nr_local_ssd:
-            if self.is_preemptible:
-                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD-PREEMPTIBLE"][self.region] * 375
-            else:
-                ssd_price = self.nr_local_ssd * prices["CP-COMPUTEENGINE-LOCAL-SSD"][self.region] * 375
-        self.price += ssd_price
-
-        return instance_type
-
-    def get_runtime_and_cost(self):
-
-        runtime = self.get_runtime()
-
-        self.cost = self.price * runtime / 3600
-
-        return runtime, self.cost
 
     def exists(self):
 

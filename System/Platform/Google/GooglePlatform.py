@@ -69,20 +69,14 @@ class GooglePlatform(Platform):
 
     def init_task_processor(self, name, nr_cpus, mem, disk_space):
         # Return a processor object with given resource requirements
-
-        # Get parameters for creating instance
         instance_config = self.__get_instance_config()
-
-        # Re-format name to meet Google conventions
         name = self.__format_instance_name(name)
 
         # Create and return processor
         if self.is_preemptible:
-            instance = GooglePreemptibleProcessor(name, nr_cpus, mem, disk_space, **instance_config)
+            return GooglePreemptibleProcessor(name, nr_cpus, mem, disk_space, **instance_config)
         else:
-            instance = GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
-
-        return instance
+            return GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
 
     def publish_report(self, report=None):
 
