@@ -12,22 +12,22 @@ from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
 
-    CONFIG_SPEC = "Config/Schema/Platform/GooglePlatform.validate"
+    CONFIG_SPEC = "System/Platform/GooglePlatform.validate"
 
     def __init__(self, name, platform_config_file, final_output_dir):
         # Call super constructor from Platform
         super(GooglePlatform, self).__init__(name, platform_config_file, final_output_dir)
 
         # Get google access fields from JSON file
-        self.key_file       = self.config["global"]["service_account_key_file"]
+        self.key_file       = self.config["service_account_key_file"]
         self.service_acct   = GoogleCloudHelper.get_field_from_key_file(self.key_file, field_name="client_email")
         self.google_project = GoogleCloudHelper.get_field_from_key_file(self.key_file, field_name="project_id")
 
         # Get Google compute zone from config
-        self.zone = self.config["global"]["zone"]
+        self.zone = self.config["zone"]
 
         # Determine whether to distribute processors across zones randomly
-        self.randomize_zone = self.config["global"]["randomize_zone"]
+        self.randomize_zone = self.config["randomize_zone"]
 
         # Obtain the reporting topic
         self.report_topic   = self.config["report_topic"]
@@ -45,32 +45,27 @@ class GooglePlatform(Platform):
                           % self.final_output_dir)
             raise IOError("Invalid final output directory!")
 
-        # Get disk image info
-        disk_image = self.config["disk_image"]
+        # Make gs bucket if it doesn't exists already
+        gs_bucket = GoogleCloudHelper.get_bucket_from_path(self.final_output_dir)
+        if not GoogleCloudHelper.gs_path_exists(gs_bucket):
+            region = GoogleCloudHelper.get_region(self.zone)
+            GoogleCloudHelper.mb(gs_bucket, project=self.google_project, region=region)
+
+        # Set the minimum disk size based on size of disk image
+        disk_image = self.config["task_processor"]["disk_image"]
         disk_image_info = GoogleCloudHelper.get_disk_image_info(disk_image)
-        # Throw error if not found
-        if disk_image_info is None:
-            logging.error("Unable to find disk image '%s'" % disk_image)
-            raise IOError("Invalid disk image provided in GooglePlatform config!")
+        self.MIN_DISK_SPACE = int(disk_image_info["diskSizeGb"])
 
         # Check to see if the reporting Pub/Sub topic exists
-        cmd = "gcloud beta pubsub topics list --format=json"
-        out, err = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True).communicate()
-
-        if len(err):
-            logging.error("Cannot verify if the reporting topic exists. The following error appeared: %s" % err)
-            raise IOError("Cannot verify if the reporting topic exists. Please check the above error message.")
-
-        topics = json.loads(out)
-        for topic in topics:
-            if topic["topicId"] == self.report_topic:
-                break
-        else:
+        if not GoogleCloudHelper.pubsub_topic_exists(self.report_topic):
             logging.error("Reporting topic '%s' was not found!")
             raise IOError("Reporting topic '%s' not found!")
 
-    def get_helper_processor(self):
-        pass
+    def init_helper_processor(self, name, nr_cpus, mem, disk_space):
+        # Return processor object that will be used
+        instance_config = self.__get_instance_config()
+        name = self.__format_instance_name(name)
+        return GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
 
     def init_task_processor(self, name, nr_cpus, mem, disk_space):
         # Return a processor object with given resource requirements
@@ -88,7 +83,6 @@ class GooglePlatform(Platform):
             instance = GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
 
         return instance
-
 
     def publish_report(self, report=None):
 
@@ -141,25 +135,21 @@ class GooglePlatform(Platform):
 
     ####### PRIVATE UTILITY METHODS
 
-    def __get_instance_config(self, is_main_instance=True):
-        # Returns complete config for main-instance processor
+    def __get_instance_config(self):
+        # Returns complete config for a task processor
         params = {}
-
-        # Add global parameters
-        for param, value in self.config["global"].iteritems():
-            params[param] = value
-
-        # Add parameters specific to the instance type
-        inst_params = self.config["main_instance"] if is_main_instance else self.config["worker_instance"]
+        inst_params = self.config["task_processor"]
         for param, value in inst_params.iteritems():
             params[param] = value
 
-        # Add Max CPU/MEM platform values
-        params["PROC_MAX_NR_CPUS"]  = self.get_max_nr_cpus()
-        params["PROC_MAX_MEM"]      = self.get_max_mem()
+        # Add platform-specific options
+        params["zone"]                  = self.zone
+        params["PROC_MAX_NR_CPUS"]      = self.get_max_nr_cpus()
+        params["PROC_MAX_MEM"]          = self.get_max_mem()
+        params["PROC_MAX_DISK_SPACE"]   = self.get_max_disk_space()
 
         # Add name of service account
-        params["service_acct"]      = self.service_acct
+        params["service_acct"]          = self.service_acct
 
         # Randomize the zone within the region if specified
         if self.randomize_zone:
