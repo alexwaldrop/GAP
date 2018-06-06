@@ -34,6 +34,12 @@ class Processor(object):
         # Get name of working directory
         self.wrk_dir    = kwargs.pop("wrk_dir", None)
 
+        # Per hour price of processor
+        self.price      = kwargs.pop("price",   0)
+
+        # Default number of times to retry commands if none specified at command runtime
+        self.default_num_cmd_retries = kwargs.pop("cmd_retries", 1)
+
         # Ordered dictionary of processing being run by processor
         self.processes  = OrderedDict()
 
@@ -50,12 +56,15 @@ class Processor(object):
     def destroy(self):
         self.set_status(Processor.OFF)
 
-    def run(self, job_name, cmd, num_retries=0, docker_image=None, quiet_failure=False):
+    def run(self, job_name, cmd, num_retries=None, docker_image=None, quiet_failure=False):
 
         # Throw error if attempting to run command on stopped processor
         if self.locked:
             logging.error("(%s) Attempt to run process '%s' on stopped processor!" % (self.name, job_name))
             raise RuntimeError("Attempt to run process of stopped processor!")
+
+        if num_retries is None:
+            num_retries = self.default_num_cmd_retries
 
         # Checking if logging is required
         if "!LOG" in cmd:
@@ -185,7 +194,8 @@ class Processor(object):
 
     def compute_cost(self):
         # Compute running cost of current task processor
-        return 0
+        runtime = self.get_runtime()
+        return self.price * runtime / 3600
 
     ############ Abstract methods
     @abc.abstractmethod
