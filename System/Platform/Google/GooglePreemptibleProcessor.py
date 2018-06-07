@@ -2,7 +2,6 @@ import logging
 import subprocess as sp
 import time
 import json
-import copy
 
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GoogleCloudHelper import GoogleCloudHelper
