@@ -28,15 +28,10 @@ class GoogleStandardProcessor(Processor):
         self.zone               = kwargs.pop("zone")
         self.service_acct       = kwargs.pop("service_acct")
         self.disk_image         = kwargs.pop("disk_image")
-        self.instance_type      = kwargs.pop("instance_type")
 
         # Get optional arguments
         self.is_boot_disk_ssd   = kwargs.pop("is_boot_disk_ssd",    False)
         self.nr_local_ssd       = kwargs.pop("nr_local_ssd",        0)
-
-        # Get maximum resource settings
-        self.MAX_NR_CPUS        = kwargs.get("PROC_MAX_NR_CPUS",    16)
-        self.MAX_MEM            = kwargs.get("PROC_MAX_MEM",        208)
 
         # Initialize the region of the instance
         self.region             = GoogleCloudHelper.get_region(self.zone)
@@ -46,6 +41,9 @@ class GoogleStandardProcessor(Processor):
 
         # Indicates that instance is not resettable
         self.is_preemptible = False
+
+        # Google instance type. Will be set at creation time based on google price scheme
+        self.instance_type = None
 
         # Initialize the price of the run and the total cost of the run
         self.price = 0
@@ -57,11 +55,24 @@ class GoogleStandardProcessor(Processor):
         # Set status to indicate that commands can't be run on processor because it's busy
         self.set_status(GoogleStandardProcessor.BUSY)
 
-        # Get Google instance type
-        instance_type = self.get_instance_type()
-
         logging.info("(%s) Process 'create' started!" % self.name)
-        logging.debug("(%s) Instance type is %s." % (self.name, instance_type))
+        # Determine instance type and actual resource usage based on current Google prices in instance zone
+        self.nr_cpus, self.mem, self.instance_type = GoogleCloudHelper.get_optimal_instance_type(self.nr_cpus,
+                                                                                                 self.mem,
+                                                                                                 self.zone,
+                                                                                                 self.is_preemptible)
+
+        # Determine instance price at time of creation
+        self.price = GoogleCloudHelper.get_instance_price(self.nr_cpus,
+                                                          self.mem,
+                                                          self.disk_space,
+                                                          self.instance_type,
+                                                          self.zone,
+                                                          self.is_preemptible,
+                                                          self.is_boot_disk_ssd,
+                                                          self.nr_local_ssd)
+
+        logging.debug("(%s) Instance type is %s. Price per hour: %s cents" % (self.name, self.instance_type, self.price))
 
         # Create base command
         args = list()
@@ -105,7 +116,7 @@ class GoogleStandardProcessor(Processor):
         args.append(str(self.service_acct))
 
         # Determine Google Instance type and insert into gcloud command
-        if "custom" in instance_type:
+        if "custom" in self.instance_type:
             args.append("--custom-cpu")
             args.append(str(self.nr_cpus))
 
@@ -113,7 +124,7 @@ class GoogleStandardProcessor(Processor):
             args.append("%sGB" % str(int(self.mem)))
         else:
             args.append("--machine-type")
-            args.append(instance_type)
+            args.append(self.instance_type)
 
         # Add metadata to run base Google startup-script
         startup_script_location = "System/Platform/Google/GoogleStartupScript.sh"
@@ -131,7 +142,7 @@ class GoogleStandardProcessor(Processor):
         # Increase number of ssh connections
         self.configure_SSH()
 
-        # Configure CRCMOD for fast transfer
+        # Configure CRCMOD for fast file transfer
         self.configure_CRCMOD()
 
         # Update status to available and exit
