@@ -62,21 +62,34 @@ class GooglePlatform(Platform):
             raise IOError("Reporting topic '%s' not found!")
 
     def init_helper_processor(self, name, nr_cpus, mem, disk_space):
+        # Googlefy instance name
+        name = self.__format_instance_name(name)
         # Return processor object that will be used
         instance_config = self.__get_instance_config()
-        name = self.__format_instance_name(name)
-        return GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
+        return GoogleStandardProcessor(name,
+                                       nr_cpus,
+                                       mem,
+                                       disk_space,
+                                       **instance_config)
 
     def init_task_processor(self, name, nr_cpus, mem, disk_space):
+        # Googlefy instance name
+        name = self.__format_instance_name(name)
         # Return a processor object with given resource requirements
         instance_config = self.__get_instance_config()
-        name = self.__format_instance_name(name)
-
         # Create and return processor
         if self.is_preemptible:
-            return GooglePreemptibleProcessor(name, nr_cpus, mem, disk_space, **instance_config)
+            return GooglePreemptibleProcessor(name,
+                                              nr_cpus,
+                                              mem,
+                                              disk_space,
+                                              **instance_config)
         else:
-            return GoogleStandardProcessor(name, nr_cpus, mem, disk_space, **instance_config)
+            return GoogleStandardProcessor(name,
+                                           nr_cpus,
+                                           mem,
+                                           disk_space,
+                                           **instance_config)
 
     def publish_report(self, report=None):
 
@@ -138,11 +151,6 @@ class GooglePlatform(Platform):
 
         # Add platform-specific options
         params["zone"]                  = self.zone
-        params["PROC_MAX_NR_CPUS"]      = self.get_max_nr_cpus()
-        params["PROC_MAX_MEM"]          = self.get_max_mem()
-        params["PROC_MAX_DISK_SPACE"]   = self.get_max_disk_space()
-
-        # Add name of service account
         params["service_acct"]          = self.service_acct
 
         # Randomize the zone within the region if specified
@@ -150,6 +158,7 @@ class GooglePlatform(Platform):
             region          = GoogleCloudHelper.get_region(self.zone)
             params["zone"]  = GoogleCloudHelper.select_random_zone(region)
 
+        # Get instance type
         return params
 
     @staticmethod
