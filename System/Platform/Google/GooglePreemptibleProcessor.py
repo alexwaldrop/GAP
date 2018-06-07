@@ -2,6 +2,7 @@ import logging
 import subprocess as sp
 import time
 import json
+import copy
 
 from GoogleStandardProcessor import GoogleStandardProcessor
 from GoogleCloudHelper import GoogleCloudHelper
@@ -15,9 +16,9 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
     DEAD        = 3     # Instance is shutting down, as a DEAD signal was received
     MAX_STATUS  = 3     # Maximum status value possible
 
-    def __init__(self, name, nr_cpus, mem, **kwargs):
+    def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         # Call super constructor
-        super(GooglePreemptibleProcessor,self).__init__(name, nr_cpus, mem, **kwargs)
+        super(GooglePreemptibleProcessor,self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
 
         # Indicates that instance is resettable
         self.is_preemptible = True
@@ -26,6 +27,9 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         self.max_resets     = kwargs.pop("max_resets", 6)
         self.is_resetting   = False
         self.reset_count    = 0
+
+        # Stack for determining costs across resets
+        self.cost_history = []
 
     def reset(self):
         # Resetting takes place just for preemptible instances
@@ -45,8 +49,15 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         self.is_resetting = True
         self.set_status(GooglePreemptibleProcessor.BUSY)
 
+        # Create cost history record
+        prev_price = self.price
+        prev_start = self.start_time
+
         # Destroying the instance
         self.destroy()
+
+        # Add record to cost history of last run
+        self.cost_history.append((prev_price, prev_start, self.stop_time))
 
         # Removing old process(es)
         self.processes.pop("create", None)
@@ -56,8 +67,8 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         commands_to_run = list()
         while len(self.processes):
             process_tuple = self.processes.popitem(last=False)
-            commands_to_run.append( (process_tuple[0], process_tuple[1].get_command()) )
-
+            #commands_to_run.append( (process_tuple[0], process_tuple[1].get_command()) )
+            commands_to_run.append((process_tuple[0], process_tuple[1]))
         # Recreating the instance
         self.create()
 
@@ -67,9 +78,13 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         # Rerunning all the commands
         if len(commands_to_run):
             while len(commands_to_run) != 0:
-                proc_name, proc_cmd = commands_to_run.pop(0)
-
-                self.run(proc_name, proc_cmd)
+                #proc_name, proc_cmd = commands_to_run.pop(0)
+                proc_name, proc_obj = commands_to_run.pop(0)
+                self.run(job_name=proc_name,
+                         cmd=proc_obj.get_command(),
+                         num_retries=proc_obj.get_num_retries(),
+                         docker_image=proc_obj.get_docker_image(),
+                         quiet_failure=proc_obj.is_quiet())
                 self.wait_process(proc_name)
 
         # Set as done resetting
@@ -177,3 +192,39 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
             logging.info("(%s) Instance failed! 'Create' Process took more than 20 minutes! "
                          "The instance will be reset!" % self.name)
             self.reset()
+
+    def get_runtime(self):
+        # Compute total runtime across all resets
+        # Return 0 if instance hasn't started yet
+        if self.start_time is None:
+            return 0
+
+        # Instance is still running so register runtime since last start/restart
+        elif self.stop_time is None or self.stop_time < self.start_time:
+            runtime = time.time() - self.start_time
+
+        # Instance has been stopped
+        else:
+            runtime = self.stop_time - self.start_time
+
+        # Add previous runtimes from restart history
+        for record in self.cost_history:
+            runtime += record[2] - record[1]
+        return runtime
+
+    def compute_cost(self):
+        # Compute total cost across all resets
+        cost = 0
+        if self.start_time is None:
+            return 0
+
+        elif self.stop_time is None or self.stop_time < self.start_time:
+            cost = (time.time() - self.start_time) * self.price
+
+        else:
+            cost = (self.stop_time - self.start_time) * self.price
+
+        for record in self.cost_history:
+            cost += (record[2]-record[1]) * record[0]
+
+        return cost/3600
