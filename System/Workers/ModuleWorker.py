@@ -109,7 +109,7 @@ class ModuleWorker(Thread):
         # Make sure mem is an integer
         mem.set(int(mem.get_value()))
 
-    def task(self):
+    def work(self):
 
         # Set the input arguments
         self.__set_arguments()

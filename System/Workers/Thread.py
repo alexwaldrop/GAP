@@ -26,7 +26,7 @@ class Thread(threading.Thread):
 
     def run(self):
         try:
-            self.task()
+            self.work()
         except BaseException as e:
             if e.message != "":
                 logging.error("%s: %s." % (self.err_msg, e.message))
@@ -40,7 +40,7 @@ class Thread(threading.Thread):
                 self.finished = True
 
     @abc.abstractmethod
-    def task(self):
+    def work(self):
         pass
 
     def is_done(self):

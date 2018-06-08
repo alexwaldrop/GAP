@@ -138,7 +138,7 @@ class NodeWorker(Thread):
         # Save the main worker output
         self.main_output = main_worker.get_output()
 
-    def task(self):
+    def work(self):
         if self.split_mode:
             self.__run_split()
         else:
