@@ -1,9 +1,8 @@
 import os
 import logging
-import json
 import subprocess as sp
 import tempfile
-import math
+import json
 
 from System.Platform import Platform, Processor
 from GoogleStandardProcessor import GoogleStandardProcessor
@@ -12,7 +11,7 @@ from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
 
-    CONFIG_SPEC = "System/Platform/GooglePlatform.validate"
+    CONFIG_SPEC = "System/Platform/Google/GooglePlatform.validate"
 
     def __init__(self, name, platform_config_file, final_output_dir):
         # Call super constructor from Platform
@@ -31,9 +30,10 @@ class GooglePlatform(Platform):
 
         # Obtain the reporting topic
         self.report_topic   = self.config["report_topic"]
+        self.report_topic_validated = False
 
         # Boolean for whether worker instance create by platform will be preemptible
-        self.is_preemptible = self.config["is_preemptible"]
+        self.is_preemptible = self.config["task_processor"]["is_preemptible"]
 
         # Use authentication key file to gain access to google cloud project using Oauth2 authentication
         GoogleCloudHelper.authenticate(self.key_file)
@@ -58,8 +58,11 @@ class GooglePlatform(Platform):
 
         # Check to see if the reporting Pub/Sub topic exists
         if not GoogleCloudHelper.pubsub_topic_exists(self.report_topic):
-            logging.error("Reporting topic '%s' was not found!")
-            raise IOError("Reporting topic '%s' not found!")
+            logging.error("Reporting topic '%s' was not found!" % self.report_topic)
+            raise IOError("Reporting topic '%s' not found!" % self.report_topic)
+
+        # Indicate that report topic exists and has been validated
+        self.report_topic_validated = True
 
     def init_helper_processor(self, name, nr_cpus, mem, disk_space):
         # Googlefy instance name
@@ -97,12 +100,9 @@ class GooglePlatform(Platform):
         if report is None:
             return
 
-        # Send report to the Pub/Sub report topic
-        GoogleCloudHelper.send_pubsub_message(self.report_topic, message=report)
-
         # Generate report file for transfer
         with tempfile.NamedTemporaryFile(delete=False) as report_file:
-            report_file.write(report)
+            report_file.write(str(report))
             report_filepath = report_file.name
 
         # Transfer report file to bucket
@@ -111,6 +111,10 @@ class GooglePlatform(Platform):
             dest_path = os.path.join(self.final_output_dir, "%s_final_report.json" % self.name)
             cmd = "gsutil %s cp -r %s %s 1>/dev/null 2>&1 " % (options_fast, report_filepath, dest_path)
             GoogleCloudHelper.run_cmd(cmd, err_msg="Could not transfer final report to the final output directory!")
+
+        # Send report to the Pub/Sub report topic if it's known to exist
+        if self.report_topic_validated:
+            GoogleCloudHelper.send_pubsub_message(self.report_topic, message=str(report))
 
     def clean_up(self):
 
