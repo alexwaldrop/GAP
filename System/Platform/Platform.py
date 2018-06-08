@@ -187,7 +187,7 @@ class Platform(object):
             disk_space = 0
             for processor_id, processor in self.processors.iteritems():
                 if processor.get_status() > Processor.OFF:
-                    cpu += processor.get_cpu()
+                    cpu += processor.get_nr_cpus()
                     mem += processor.get_mem()
                     disk_space += processor.get_disk_space()
         return cpu, mem, disk_space
