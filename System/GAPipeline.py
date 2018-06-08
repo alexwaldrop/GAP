@@ -85,10 +85,14 @@ class GAPipeline(object):
         # Validate the sample set
         sample_validator = SampleValidator(self.sample_data)
         has_errors = sample_validator.validate() or has_errors
+        if not has_errors:
+            logging.debug("Sample sheet validated!")
 
         # Validate the graph
-        graph_validator = GraphValidator(self, self.resource_kit, self.sample_data)
+        graph_validator = GraphValidator(self.graph, self.resource_kit, self.sample_data)
         has_errors = graph_validator.validate() or has_errors
+        if not has_errors:
+            logging.debug("Graph validated!")
 
         # Validate the platform
         self.platform.validate()
@@ -116,12 +120,23 @@ class GAPipeline(object):
 
         # Validate that pipeline workspace can be created
         workspace = self.datastore.get_task_workspace()
-        for dir_type, dir_path in workspace.get_workspace():
+        for dir_type, dir_path in workspace.get_workspace().iteritems():
             self.storage_helper.mkdir(dir_path=str(dir_path), job_name="mkdir_%s" % dir_type, wait=True)
+        logging.info("GAP run validated! Beginning pipeline execution.")
 
-    def run(self):
+    def run(self, rm_tmp_output_on_success=True):
         # Run until all tasks are complete
         self.scheduler.run()
+
+        # Remove temporary output on success
+        if rm_tmp_output_on_success:
+            workspace = self.datastore.get_task_workspace()
+            try:
+                self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
+            except BaseException, e:
+                logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
+                if e.message != "":
+                    logging.error("Received the following err message:\n%s" % e.message)
 
     def save_progress(self):
         pass
@@ -137,18 +152,7 @@ class GAPipeline(object):
             if e.message != "":
                 logging.error("Received the following message:\n%s" % e.message)
 
-    def clean_up(self, rm_tmp_output):
-
-        # Remove temporary output directory if desired and possible
-        if rm_tmp_output and self.storage_helper is not None:
-            workspace = self.datastore.get_task_workspace()
-            try:
-                self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
-            except BaseException, e:
-                logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
-                if e.message != "":
-                    logging.error("Received the following err message:\n%s" % e.message)
-
+    def clean_up(self):
         # Destroy the helper processor if it exists
         if self.helper_processor is not None:
             try:
@@ -161,7 +165,7 @@ class GAPipeline(object):
 
         # Cleaning up the platform (let the platform decide what that means)
         if self.platform is not None:
-            self.platform.finalize()
+            self.platform.clean_up()
 
     def __make_pipeline_report(self, err, err_msg):
 
@@ -175,16 +179,15 @@ class GAPipeline(object):
             report.register_task(task_name="Helper",
                                  start_time=self.helper_processor.get_start_time(),
                                  run_time=self.helper_processor.get_runtime(),
-                                 cost=self.helper_processor.get_cost())
+                                 cost=self.helper_processor.compute_cost())
 
         # Register runtime data for pipeline tasks
         if self.scheduler is not None:
             task_workers = self.scheduler.get_task_workers()
-            for task_worker in task_workers:
+            for task_name, task_worker in task_workers.iteritems():
 
                 # Register data about task runtime
-                task = task_worker.get_task()
-                task_name   = task.get_ID()
+                task        = task_worker.get_task()
                 run_time    = task_worker.get_runtime()
                 cost        = task_worker.get_cost()
                 start_time  = task_worker.get_start_time()
@@ -296,7 +299,6 @@ class GAPReport:
         report["pipeline_id"] = self.pipeline_id
         report["status"] = "Complete" if not self.err else "Failed"
         report["error"] = "" if self.err_msg is None else self.err_msg
-        report["start_time"] = None if self.start_time is None else int(self.start_time)
         report["total_cost"] = self.total_cost
         report["total_runtime"] = self.total_runtime
         report["total_proc_time"] = self.total_processing_time

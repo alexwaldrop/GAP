@@ -206,7 +206,8 @@ def main():
 
     except BaseException as e:
         logging.error("Pipeline failed!")
-        err_msg = str(e)
+        logging.error("Pipeline failure error:\n%s" % e.message)
+        err_msg = e.message
         pipeline.save_progress()
         raise
 
@@ -215,7 +216,7 @@ def main():
         pipeline.publish_report(err=err, err_msg=err_msg)
 
         # Clean up the pipeline. Only remove temporary output if pipeline completed successfully.
-        pipeline.clean_up(rm_tmp_output=not err)
+        pipeline.clean_up()
 
 if __name__ == "__main__":
     main()
