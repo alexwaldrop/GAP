@@ -41,7 +41,7 @@ class Task(object):
         self.__split_id = None
 
         # Sample partition visible to task
-        self.__visible_samples = "All"
+        self.__visible_samples = None
 
         # Flag for whether task has been split/replaced and shouldn't be executed
         self.__deprecated = False
