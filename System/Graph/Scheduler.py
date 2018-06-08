@@ -22,6 +22,7 @@ class Scheduler(object):
         try:
             self.__run_tasks()
         finally:
+            logging.debug("WE FINALIZING de schedule!")
             self.__finalize()
 
     def __run_tasks(self):
@@ -38,20 +39,20 @@ class Scheduler(object):
                 # Check if task worker has been created for task
                 task_worker = None if task_id not in self.task_workers else self.task_workers[task_id]
 
+                if task_worker is not None:
+                    logging.debug("(%s) Status: %s" % (task_id, task_worker.get_status()))
+
                 # Finalize completed tasks
-                if task_worker is not None and task_worker.get_status() is TaskWorker.COMPLETE:
+                if task_worker is not None and task_worker.get_status() == TaskWorker.COMPLETE:
                     logging.info("Task '%s' has finished!" % task_id)
                     self.__finalize_task_worker(task_worker)
                     continue
 
-                # Case: At least one of node's requirements is not complete, so this node cannot be processed yet
-                if not self.task_graph.parents_complete(task_id):
-                    continue
-
-                # Case: Task with no task worker has dependencies met. Start running new task!
-                logging.info("Launching task: '%s'" % task_id)
-                self.task_workers[task_id] = TaskWorker(task, self.datastore, self.platform)
-                self.task_workers[task_id].start()
+                # Start running tasks that are ready to run but aren't currently
+                if task_worker is None and self.task_graph.parents_complete(task_id):
+                    logging.info("Launching task: '%s'" % task_id)
+                    self.task_workers[task_id] = TaskWorker(task, self.datastore, self.platform)
+                    self.task_workers[task_id].start()
 
             # Sleeping for 5 seconds before checking again
             time.sleep(5)
@@ -60,15 +61,17 @@ class Scheduler(object):
 
         # Get task being executed by worker
         task = task_worker.get_task()
+        logging.debug("We finalizing '%s'!" % task.get_ID())
 
         # Add to list of finalized task workers
         task_worker.set_status(TaskWorker.FINALIZED)
 
         # Checks for and raises any runtime errors that occurred while running task
         task_worker.finalize()
+        logging.debug("Task '%s' finished successfully!" % task.get_ID())
 
         # Split subgraph if task is a splitter
-        if task.get_type() == "Splitter":
+        if task.is_splitter_task():
             self.task_graph.split_graph(task.get_ID())
 
         # Set task to complete
@@ -87,13 +90,15 @@ class Scheduler(object):
         while not done:
             # Wait for all task workers to finish up cancelling
             done = True
-            for task_id, task_worker in self.task_workers:
+            for task_id, task_worker in self.task_workers.iteritems():
                 if not task_worker.get_status() is TaskWorker.FINALIZED:
                     # Indicate that not all tasks have been finalized
                     done = False
-                elif task_worker.get_status() is TaskWorker.COMPLETE:
-                    # Finalize task if it hasn't already been finalized
+
+                # Finalize tasks that have finished running/cancelling
+                if task_worker.get_status() is TaskWorker.COMPLETE:
                     try:
+                        logging.debug("WE TRYNA FINZLIZE: %s, Status: %s" % (task_id, task_worker.get_status()))
                         self.__finalize_task_worker(task_worker)
 
                     except BaseException, e:
@@ -107,9 +112,9 @@ class Scheduler(object):
 
     def __cancel_unfinished_tasks(self):
         # Cancel any still-running jobs
-        for task_id, task_worker in self.task_workers:
+        logging.debug("We cancelling scheduled jobs!")
+        for task_id, task_worker in self.task_workers.iteritems():
             if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.FINALIZED]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
+                logging.debug("Just cancelled: %s" % task_id)
                 task_worker.cancel()
-
-
