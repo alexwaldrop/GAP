@@ -33,14 +33,16 @@ class Datastore(object):
         for input_type, input_arg in task_module.get_arguments().iteritems():
             logging.debug("(%s) Setting arg: %s" % (task_id, input_type))
             val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
+            if val is None:
+                val = input_arg.get_default_value()
             task_module.set_argument(input_type, val)
             logging.debug("(%s) Arg type: %s, val: %s" % (task_id, input_type, val))
 
         # Re-format nr_cpus, mem
         nr_cpus     = self.__reformat_nr_cpus(task_module.get_argument("nr_cpus"))
         mem         = self.__reformat_mem(task_module.get_argument("mem"), nr_cpus)
-        logging.debug("(%s) Reformatted arg type: nr_cpus, val: %s" % task_id, nr_cpus)
-        logging.debug("(%s) Reformatted arg type: mem, val: %s" % task_id, mem)
+        logging.debug("(%s) Reformatted arg type: nr_cpus, val: %s" % (task_id, nr_cpus))
+        logging.debug("(%s) Reformatted arg type: mem, val: %s" % (task_id, mem))
 
         # Reset nr_cpus, mem
         task_module.set_argument("nr_cpus", nr_cpus)
@@ -82,7 +84,7 @@ class Datastore(object):
         return TaskWorkspace(wrk_dir, tmp_output_dir, final_output_dir)
 
     def get_docker_image(self, docker_id):
-        return self.resource_kit.get_docker_image(docker_id)
+        return self.resource_kit.get_docker_images(docker_id)
 
     def get_task_input_files(self, task_id):
         # Return list of input files that need to be loaded for in order for task to run
