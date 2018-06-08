@@ -65,7 +65,7 @@ class Graph(object):
         return self.tasks[task_id]
 
     def get_unfinished_tasks(self):
-        return [task for task in self.tasks if not task.is_complete()]
+        return [task for task in self.tasks.values() if not task.is_complete()]
 
     def get_children(self, task_id):
         if task_id not in self.tasks:
@@ -84,10 +84,7 @@ class Graph(object):
         return [x for x in self.adj_list[task_id]]
 
     def is_complete(self):
-        for task in self.tasks:
-            if not task.is_complete():
-                return False
-        return True
+        return len(self.get_unfinished_tasks()) < 1
 
     def parents_complete(self, task_id):
         # Determine if all task parents have completed
