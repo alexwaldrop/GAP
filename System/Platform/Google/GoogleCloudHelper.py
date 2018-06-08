@@ -220,14 +220,14 @@ class GoogleCloudHelper:
 
         topics = json.loads(out)
         for topic in topics:
-            if topic["topicId"] == topic:
+            if topic["topicId"] == topic_id:
                 return True
 
         return False
 
     @staticmethod
     def get_bucket_from_path(path):
-        if not path.startwith("gs://"):
+        if not path.startswith("gs://"):
             logging.error("Cannot extract bucket from path '%s'. Invalid GoogleStorage path!")
             raise GoogleCloudHelperError("Attempt to get bucket from invalid GoogleStorage path. GS paths must begin with 'gs://'")
         return "/".join(path.split("/")[0:3]) + "/"
