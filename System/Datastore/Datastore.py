@@ -31,9 +31,10 @@ class Datastore(object):
 
         task_module = self.graph.get_tasks(task_id).module
         for input_type, input_arg in task_module.get_arguments().iteritems():
+            logging.debug("(%s) Setting arg: %s" % (task_id, input_type))
             val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
             task_module.set_argument(input_type, val)
-            logging.debug("(%s) Arg type: %s, val: %s" % task_id, input_type, val)
+            logging.debug("(%s) Arg type: %s, val: %s" % (task_id, input_type, val))
 
         # Re-format nr_cpus, mem
         nr_cpus     = self.__reformat_nr_cpus(task_module.get_argument("nr_cpus"))
@@ -206,6 +207,10 @@ class Datastore(object):
             # Return variables from all samples
             else:
                 args = self.sample_data.get_data(arg_type)
+
+        # Coerce to list if not one already
+        if not isinstance(args, list):
+            args = [args]
 
         return args
 
