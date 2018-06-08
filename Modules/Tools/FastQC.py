@@ -16,12 +16,12 @@ class FastQC(Module):
     def define_output(self):
 
         # Declare R1 fastqc output filename
-        r1 = self.get_argument("R1").get_path()
+        r1 = self.get_argument("R1")
         r1_out = "%s_fastqc" % r1.replace(".fastq.gz","").replace(".fastq","")
         self.add_output("R1_fastqc", r1_out)
 
         # Conditionally declare R2 fastqc output filename
-        r2 = self.get_argument("R2").get_path()
+        r2 = self.get_argument("R2")
         if r2 is not None:
             r2_out = "%s_fastqc" % r2.replace(".fastq.gz","").replace(".fastq","")
             self.add_output("R2_fastqc", r2_out)
