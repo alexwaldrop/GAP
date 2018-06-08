@@ -109,7 +109,7 @@ class ModuleExecutor(object):
 
         # Wait for all the above commands to complete
         self.processor.wait()
-        logging.info("(%s) Successfully created workspace for task '%s'!" % self.processor.name, self.task_id)
+        logging.info("(%s) Successfully created workspace for task '%s'!" % (self.processor.name, self.task_id))
 
     def __grant_workspace_perms(self, job_name):
         cmd = "sudo chmod -R 777 %s" % self.workspace.get_wrk_dir()
