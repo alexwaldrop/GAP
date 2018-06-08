@@ -5,13 +5,12 @@ from Modules import Module
 class Trimmomatic (Module):
     def __init__(self, module_id):
         super(Trimmomatic, self).__init__(module_id)
-
-        self.input_keys = ["R1", "R2", "trimmomatic", "java", "adapters", "nr_cpus", "mem"]
         self.output_keys = ["R1", "R2", "R1_unpair", "R2_unpair", "trim_report"]
 
     def define_input(self):
         self.add_argument("R1",             is_required=True)
         self.add_argument("R2")
+        self.add_argument("phred_encoding", is_required=True, default_value="Phred+33")
         self.add_argument("trimmomatic",    is_required=True, is_resource=True)
         self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("adapters",       is_required=True, is_resource=True)
@@ -30,60 +29,47 @@ class Trimmomatic (Module):
         self.add_argument("SIMPLE_CLIP_THRESHOLD",     is_required=True, default_value=7)
         self.add_argument("MIN_ADAPTER_LEN",           is_required=True, default_value=1)
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
 
         # Declare trimmed R1 output filename
-        r1_trimmed_ext  = ".R1.trimmed.fastq"
-        r1_trimmed_out  = self.generate_unique_file_name(split_name=split_name, extension=r1_trimmed_ext)
-        self.add_output(platform, "R1", r1_trimmed_out)
+        r1_trimmed_out  = self.generate_unique_file_name(extension=".R1.trimmed.fastq")
+        self.add_output("R1", r1_trimmed_out)
 
         # Declare discarded R1 output filename
-        r1_unpair_ext  = ".R1.unpair.fastq"
-        r1_unpair_out  = self.generate_unique_file_name(split_name=split_name, extension=r1_unpair_ext)
-        self.add_output(platform, "R1_unpair", r1_unpair_out)
+        r1_unpair_out  = self.generate_unique_file_name(extension=".R1.unpair.fastq")
+        self.add_output("R1_unpair", r1_unpair_out)
 
         # Conditionally R2 output filenames
-        r2 = self.get_arguments("R2").get_value()
-        if r2 is not None:
+        if self.get_argument("R2") is not None:
             # Declare trimmed R2 output filename
-            r2_trimmed_ext = ".R2.trimmed.fastq"
-            r2_trimmed_out = self.generate_unique_file_name(split_name=split_name, extension=r2_trimmed_ext)
-            self.add_output(platform, "R2", r2_trimmed_out)
+            r2_trimmed_out = self.generate_unique_file_name(extension=".R2.trimmed.fastq")
+            self.add_output("R2", r2_trimmed_out)
 
             # Declare unpaired R2 output filename
-            r2_unpair_ext = ".R2.unpair.fastq"
-            r2_unpair_out = self.generate_unique_file_name(split_name=split_name, extension=r2_unpair_ext)
-            self.add_output(platform, "R2_unpair", r2_unpair_out)
+            r2_unpair_out = self.generate_unique_file_name(extension=".R2.unpair.fastq")
+            self.add_output("R2_unpair", r2_unpair_out)
 
         # Declare trim report filename
-        trim_report = self.generate_unique_file_name(split_name=split_name, extension=".trim_report.txt")
-        self.add_output(platform, "trim_report", trim_report)
+        trim_report = self.generate_unique_file_name(extension=".trim_report.txt")
+        self.add_output("trim_report", trim_report)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Generate command for running Trimmomatic
 
         # Get program options
-        R1          = self.get_arguments("R1").get_value()
-        R2          = self.get_arguments("R2").get_value()
-        trimmomatic = self.get_arguments("trimmomatic").get_value()
-        java        = self.get_arguments("java").get_value()
-        adapters    = self.get_arguments("adapters").get_value()
-        nr_cpus     = self.get_arguments("nr_cpus").get_value()
-        mem         = self.get_arguments("mem").get_value()
+        R1              = self.get_argument("R1")
+        R2              = self.get_argument("R2")
+        trimmomatic     = self.get_argument("trimmomatic")
+        phred_encoding  = self.get_argument("phred_encoding")
+        java            = self.get_argument("java")
+        adapters        = self.get_argument("adapters")
+        nr_cpus         = self.get_argument("nr_cpus")
+        mem             = self.get_argument("mem")
 
         # Get output filenames
         R1_out          = self.get_output("R1")
         R1_unpair_out   = self.get_output("R1_unpair")
         trim_report     = self.get_output("trim_report")
-
-        # Try to determine PHRED encoding from Fastq quality scores
-        try:
-            logging.info("Trimmomatic module determining PHRED encoding for fastq: %s" % R1)
-            phred_encoding = Trimmomatic.__get_fastq_encoding(platform, R1, nr_cpus)
-
-        except:
-            logging.error("Unable to determine PHRED encoding for Trimmomatic module!")
-            raise
 
         # Throw error if Phred is not Phred33 or Phred64
         if phred_encoding == "Solexa+64" or phred_encoding == "Unknown":
@@ -95,19 +81,19 @@ class Trimmomatic (Module):
         phred_option = "-phred33" if phred_encoding == "Phred+33" else "-phred64"
 
         # Set JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
+        jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, "/tmp/")
 
         # Set other Trimmomatic options
-        leading             = self.get_arguments("LEADING").get_value()
-        trailing            = self.get_arguments("TRAILING").get_value()
-        minlen              = self.get_arguments("MINLEN").get_value()
-        window_size         = self.get_arguments("SLIDINGWINDOW_SIZE").get_value()
-        window_qual         = self.get_arguments("SLIDINGWINDOW_QUAL").get_value()
-        keep_pair           = self.get_arguments("keepBothReads").get_value()
-        mismatches          = self.get_arguments("seed_mismatches").get_value()
-        pal_clip_thresh     = self.get_arguments("PALINDROME_CLIP_THRESHOLD").get_value()
-        simple_clip_thresh  = self.get_arguments("SIMPLE_CLIP_THRESHOLD").get_value()
-        min_adapt_len       = self.get_arguments("MIN_ADAPTER_LEN").get_value()
+        leading             = self.get_argument("LEADING")
+        trailing            = self.get_argument("TRAILING")
+        minlen              = self.get_argument("MINLEN")
+        window_size         = self.get_argument("SLIDINGWINDOW_SIZE")
+        window_qual         = self.get_argument("SLIDINGWINDOW_QUAL")
+        keep_pair           = self.get_argument("keepBothReads")
+        mismatches          = self.get_argument("seed_mismatches")
+        pal_clip_thresh     = self.get_argument("PALINDROME_CLIP_THRESHOLD")
+        simple_clip_thresh  = self.get_argument("SIMPLE_CLIP_THRESHOLD")
+        min_adapt_len       = self.get_argument("MIN_ADAPTER_LEN")
 
         steps = ["ILLUMINACLIP:%s:%s:%s:%s:%s:%s" % (adapters, mismatches, pal_clip_thresh,
                                                      simple_clip_thresh, min_adapt_len, keep_pair),
