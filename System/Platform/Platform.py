@@ -4,7 +4,7 @@ import uuid
 import threading
 
 from Config import ConfigParser
-from System.Platform import Processor
+from Processor import Processor
 
 class TaskPlatformResourceLimitError(Exception):
     pass
