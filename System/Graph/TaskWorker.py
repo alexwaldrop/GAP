@@ -80,30 +80,34 @@ class TaskWorker(Thread):
         else:
             return self.proc.get_start_time()
 
-    def task(self):
+    def work(self):
         # Run task module command and save outputs
         try:
             # Set the input arguments that will be passed to the task module
             self.datastore.set_task_input_args(self.task.get_ID())
 
             # Compute task resource requirements
-            cpus    = self.module.get_arguments("nr_cpus")
-            mem     = self.module.get_arguments("mem")
+            cpus    = self.module.get_argument("nr_cpus")
+            mem     = self.module.get_argument("mem")
 
             # Compute disk space requirements
+            docker_image    = None
             input_files     = self.datastore.get_task_input_files(self.task.get_ID())
-            docker_image    = self.datastore.get_docker_image(docker_id=self.task.get_docker_image_id())
+            if self.task.get_docker_image_id() is not None:
+                docker_image    = self.datastore.get_docker_image(docker_id=self.task.get_docker_image_id())
             disk_space      = self.__compute_disk_requirements(input_files, docker_image)
+            logging.debug("(%s) CPU: %s, Mem: %s, Disk space: %s" % (self.task.get_ID(), cpus, mem, disk_space))
 
             # Wait for platform to have enough resources to run task
-            while not self.platform.can_run_task(cpus, mem, disk_space) and not self.get_status() is self.CANCELLING:
+            while not self.platform.can_make_processor(cpus, mem, disk_space) and not self.get_status() is self.CANCELLING:
                 time.sleep(5)
 
             # Define unique workspace for task input/output
             task_workspace = self.datastore.get_task_workspace(task_id=self.task.get_ID())
+            logging.debug("(%s) Task workspace:\n%s" % (self.task.get_ID(), task_workspace.debug_string()))
 
-            # Specify that module output files should be placed in task workspace output dir
-            self.module.set_output_dir(task_workspace.get_wrk_output_dir())
+            # Specify that module output files should be placed in task's working directory
+            self.module.set_output_dir(task_workspace.get_wrk_dir())
 
             # Get module command to be run
             task_cmd = self.module.get_command()
@@ -146,10 +150,11 @@ class TaskWorker(Thread):
         except BaseException, e:
             # Handle but do not raise exception if job was externally cancelled
             if self.__cancelled:
-                logging.warning("Task with id '%s' failed due to cancellation!")
+                logging.warning("Task '%s' failed due to cancellation!" % self.task.get_ID())
 
             else:
                 # Raise exception if job failed for any reason other than cancellation
+                logging.error("Task '%s' failed!" % self.task.get_ID())
                 raise
         finally:
             # Return logs and destroy processor if they exist
@@ -161,7 +166,7 @@ class TaskWorker(Thread):
         # Cancel pipeline during runtime
 
         # Don't do anything if task has already finished or is finishing
-        if self.get_status() in [self.FINALIZING, self.COMPLETE, self.CANCELLING]:
+        if self.get_status() in [self.FINALIZING, self.COMPLETE, self.CANCELLING, self.FINALIZED]:
             return
 
         # Set pipeline to cancelling and stop any currently running jobs
@@ -213,14 +218,14 @@ class TaskWorker(Thread):
 
         # Add sizes of each input file
         for input_file in input_files:
-            input_size += input_file.get_file_size()
+            input_size += input_file.get_size()
 
         # Set size of desired disk
         disk_size = int(math.ceil(input_multiplier * input_size))
 
         # Make sure platform can create a disk that size
-        min_disk_size = self.platform.get_min_disk_size()
-        max_disk_size = self.platform.get_max_disk_size()
+        min_disk_size = self.platform.get_min_disk_space()
+        max_disk_size = self.platform.get_max_disk_space()
 
         # Must be at least as big as minimum disk size
         disk_size = max(disk_size, min_disk_size)
