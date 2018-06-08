@@ -125,6 +125,9 @@ class Platform(object):
     def get_max_disk_space(self):
         return self.MAX_DISK_SPACE
 
+    def get_min_disk_space(self):
+        return self.MIN_DISK_SPACE
+
     def get_final_output_dir(self):
         return self.final_output_dir
 
