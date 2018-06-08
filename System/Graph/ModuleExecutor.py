@@ -96,11 +96,8 @@ class ModuleExecutor(object):
         # Create all directories specified in task workspace
 
         logging.info("(%s) Creating workspace for task '%s'..." % (self.processor.name, self.task_id))
-        self.storage_helper.mkdir(self.workspace.get_wrk_dir(),             wait=True)
-        self.storage_helper.mkdir(self.workspace.get_log_dir(),             wait=True)
-        self.storage_helper.mkdir(self.workspace.get_tmp_output_dir(),      wait=True)
-        self.storage_helper.mkdir(self.workspace.get_final_output_dir(),    wait=True)
-        self.storage_helper.mkdir(self.workspace.get_final_log_dir(),       wait=True)
+        for dir_type, dir_obj in  self.workspace.get_workspace().iteritems():
+            self.storage_helper.mkdir(dir_obj.get_path(), job_name="mkdir_%s" % dir_type, wait=True)
 
         # Set processor wrk, log directories
         self.processor.set_wrk_dir(self.workspace.get_wrk_dir())
