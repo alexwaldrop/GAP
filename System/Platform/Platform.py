@@ -111,9 +111,9 @@ class Platform(object):
 
     def can_make_processor(self, req_cpus, req_mem, req_disk_space):
         cpu, mem, disk_space = self.__get_curr_usage()
-        cpu_overload    = cpu + req_cpus > self.MAX_NR_CPUS
-        mem_overload    = mem + req_mem > self.MAX_MEM
-        disk_overload   = disk_space + req_disk_space > self.MAX_DISK_SPACE
+        cpu_overload    = cpu + req_cpus > self.TOTAL_NR_CPUS
+        mem_overload    = mem + req_mem > self.TOTAL_MEM
+        disk_overload   = disk_space + req_disk_space > self.TOTAL_DISK_SPACE
         return (not cpu_overload) and (not mem_overload) and (not disk_overload) and (not self.__locked)
 
     def get_max_nr_cpus(self):
