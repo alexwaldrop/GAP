@@ -4,10 +4,7 @@ import sys
 import os
 import argparse
 import logging
-import importlib
 
-from System import Pipeline
-from System.Workers import PipelineWorker
 from System import GAPipeline
 
 # Define the available platform modules
