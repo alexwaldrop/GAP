@@ -25,18 +25,21 @@ class Datastore(object):
         # Set input arguments for a task module
 
         # Throw error if task inputs aren't ready to be set
-        if not self.graph.tasks[task_id].parents_complete():
-            logging.error("Cannot set arguments for task '%s' before upstream tasks have completed!")
+        if not self.graph.parents_complete(task_id):
+            logging.error("Cannot set arguments for task '%s' before upstream tasks have completed!" % task_id)
             raise PrematureTaskInputSetError("Cannot set task arguments before a task dependencies have completed!")
 
-        task_module = self.graph.get_task(task_id).module
+        task_module = self.graph.get_tasks(task_id).module
         for input_type, input_arg in task_module.get_arguments().iteritems():
             val = self.__get_task_arg(task_id, input_type, is_resource=input_arg.is_resource())
             task_module.set_argument(input_type, val)
+            logging.debug("(%s) Arg type: %s, val: %s" % task_id, input_type, val)
 
         # Re-format nr_cpus, mem
         nr_cpus     = self.__reformat_nr_cpus(task_module.get_argument("nr_cpus"))
         mem         = self.__reformat_mem(task_module.get_argument("mem"), nr_cpus)
+        logging.debug("(%s) Reformatted arg type: nr_cpus, val: %s" % task_id, nr_cpus)
+        logging.debug("(%s) Reformatted arg type: mem, val: %s" % task_id, mem)
 
         # Reset nr_cpus, mem
         task_module.set_argument("nr_cpus", nr_cpus)
@@ -51,7 +54,7 @@ class Datastore(object):
             final_output_dir = self.__base_output_dir
 
         else:
-            task = self.graph.get_task(task_id)
+            task = self.graph.get_tasks(task_id)
             visible_samples = task.get_visible_samples()
 
             # Create subfolders for split tasks
@@ -75,7 +78,7 @@ class Datastore(object):
         final_output_dir    = self.platform.standardize_dir(final_output_dir)
 
         # Create and return TaskWorkspace
-        return TaskWorkspace(wrk_dir, tmp_output_dir, final_output_dir, task_id)
+        return TaskWorkspace(wrk_dir, tmp_output_dir, final_output_dir)
 
     def get_docker_image(self, docker_id):
         return self.resource_kit.get_docker_image(docker_id)
@@ -175,7 +178,7 @@ class Datastore(object):
     def __gather_parent_args(self, task_id, arg_type):
         # Get args of specified type inherited from parent tasks
         args = []
-        curr_task = self.graph.get_task(task_id)
+        curr_task = self.graph.get_tasks(task_id)
         for parent_id in self.graph.get_parents(task_id):
             parent = self.graph.get_tasks(parent_id)
             if parent.is_splitter_task():
@@ -192,7 +195,7 @@ class Datastore(object):
         # Get args of specified type from sample data
         args = []
         # Get list of samples visible to current task
-        curr_task = self.graph.get_task(task_id)
+        curr_task = self.graph.get_tasks(task_id)
         visible_samples = curr_task.get_visible_samples()
         if self.sample_data.has_data_type(arg_type):
 
