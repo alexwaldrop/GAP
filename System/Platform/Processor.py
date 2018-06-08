@@ -32,7 +32,7 @@ class Processor(object):
         self.log_dir    = kwargs.pop("log_dir", None)
 
         # Get name of working directory
-        self.wrk_dir    = kwargs.pop("wrk_dir", None)
+        self.wrk_dir    = kwargs.pop("wrk_dir", "/data/")
 
         # Per hour price of processor
         self.price      = kwargs.pop("price",   0)
