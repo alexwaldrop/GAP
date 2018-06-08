@@ -72,7 +72,7 @@ class TaskWorker(Thread):
         if self.proc is None:
             return 0
         else:
-            return self.proc.get_cost()
+            return self.proc.compute_cost()
 
     def get_start_time(self):
         if self.proc is None:
@@ -101,6 +101,10 @@ class TaskWorker(Thread):
             # Wait for platform to have enough resources to run task
             while not self.platform.can_make_processor(cpus, mem, disk_space) and not self.get_status() is self.CANCELLING:
                 time.sleep(5)
+
+            # Quit if pipeline is cancelled
+            if self.get_status() is self.CANCELLING:
+                return
 
             # Define unique workspace for task input/output
             task_workspace = self.datastore.get_task_workspace(task_id=self.task.get_ID())
