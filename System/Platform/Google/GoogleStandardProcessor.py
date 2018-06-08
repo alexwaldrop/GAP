@@ -220,10 +220,6 @@ class GoogleStandardProcessor(Processor):
                         logging.error("(%s) The following error was received: \n  %s\n%s" % (self.name, out, err))
                     raise RuntimeError("Instance %s has failed!" % self.name)
 
-        # Set the start time
-        if proc_name == "create":
-            self.set_start_time()
-
         # Set status to 'OFF' if destroy is True
         if proc_name == "destroy":
             self.set_status(GoogleStandardProcessor.OFF)
@@ -352,6 +348,9 @@ class GoogleStandardProcessor(Processor):
                          "The instance will be reset!" % self.name)
             self.destroy()
             self.create()
+
+        # Set start time
+        self.set_start_time()
 
     def exists(self):
 
