@@ -159,6 +159,7 @@ class TaskWorker(Thread):
 
             else:
                 # Raise exception if job failed for any reason other than cancellation
+                self.set_status(self.FINALIZING)
                 logging.error("Task '%s' failed!" % self.task.get_ID())
                 raise
         finally:
@@ -182,6 +183,7 @@ class TaskWorker(Thread):
         if self.proc is not None:
             # Stop any processes currently running on processor
             self.proc.stop()
+            logging.debug("Task '%s' successfully stopped on processor!" % self.task.get_ID())
 
     def is_success(self):
         return not self.__err
@@ -198,7 +200,7 @@ class TaskWorker(Thread):
         # Try to return task log
         try:
             # Unlock processor if it's been locked so logs can be returned
-            if self.module_executor is not None:
+            if self.module_executor is not None and not self.__cancelled:
                 self.module_executor.save_logs()
         except BaseException, e:
             logging.error("Unable to return logs for task '%s'!" % self.task.get_ID())
