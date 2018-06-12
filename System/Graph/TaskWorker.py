@@ -132,8 +132,9 @@ class TaskWorker(Thread):
                 # Load task inputs onto module executor
                 self.module_executor.load_input(input_files)
 
-                # Run module's command
+                # Update module's command to reflect changes to input paths
                 self.set_status(self.RUNNING)
+                task_cmd = self.module.update_command()
                 out, err = self.module_executor.run(task_cmd)
 
                 # Post-process command output if necessary
