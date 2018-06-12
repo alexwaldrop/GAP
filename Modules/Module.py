@@ -86,6 +86,11 @@ class Module(object):
         # Define the command
         return self.define_command()
 
+    def update_command(self):
+        # Re-generate command and output files to reflect current inputs
+        self.output = {}
+        return self.get_command()
+
     def process_cmd_output(self, out, err):
         # Function to be overriden by inheriting classes that process output from their command to set one of their outputs
         # Example: Module that determines how many lines are in a file
