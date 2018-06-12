@@ -208,5 +208,5 @@ class GoogleStorageCmdGenerator(StorageCmdGenerator):
 
     @staticmethod
     def rm(path):
-        return "gsutil rm %s" % path
+        return "gsutil rm -r %s" % path
 
