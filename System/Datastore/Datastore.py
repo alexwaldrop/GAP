@@ -311,10 +311,10 @@ class TaskWorkspace(object):
         self.workspace["wrk_log"] = os.path.join(wrk_dir, "log/")
         self.workspace["final_log"] = os.path.join(final_output_dir, "log/")
 
-        # Convert directories to GAPFiles
+        # Standardize directory paths
         for dir_type, dir_path in self.workspace.iteritems():
             dir_path = Platform.standardize_dir(dir_path)
-            self.workspace[dir_type] = GAPFile(file_id=dir_type, file_type=dir_type, path=dir_path)
+            self.workspace[dir_type] = dir_path
 
     def get_wrk_dir(self):
         return self.workspace["wrk"]
