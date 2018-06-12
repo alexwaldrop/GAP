@@ -74,8 +74,9 @@ class Scheduler(object):
         if task.is_splitter_task():
             self.task_graph.split_graph(task.get_ID())
 
-        # Set task to complete
-        task.set_complete(True)
+        # Set task to complete if task worker completed successfully
+        if task_worker.is_success():
+            task.set_complete(True)
 
     def __finalize(self):
 
