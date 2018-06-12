@@ -37,22 +37,24 @@ class ModuleExecutor(object):
 
                 # Transfer file to workspace directory
                 src_path = task_input.get_transferrable_path()
-                dest_path = os.path.join(self.workspace.get_wrk_dir(), StorageHelper.get_base_filename(src_path))
-
-                self.storage_helper.mv(src_path, dest_path)
+                logging.debug("Input path: %s, transfer path: %s" %(task_input.get_path(), src_path))
+                self.storage_helper.mv(src_path=src_path,
+                                       dest_path=self.workspace.get_wrk_dir())
 
                 # Add transfer path to list of remote paths that have been transferred to local workspace
                 seen.append(src_path)
 
             # Update path after transferring to wrk directory
             task_input.update_path(new_dir=self.workspace.get_wrk_dir())
-
-        # Recursively give every permission to all files we just added
-        logging.info("(%s) Final workspace perm. update for task '%s'..." % self.processor.name, self.task_id)
-        self.__grant_workspace_perms(job_name="grant_final_wrkspace_perms")
+            logging.debug("Updated path: %s" % task_input.get_path())
 
         # Wait for all processes to finish
         self.processor.wait()
+
+        # Recursively give every permission to all files we just added
+        logging.info("(%s) Final workspace perm. update for task '%s'..." % (self.processor.name, self.task_id))
+        self.__grant_workspace_perms(job_name="grant_final_wrkspace_perms")
+        self.processor.wait_process("grant_final_wrkspace_perms")
 
     def run(self, cmd):
         # Job name
@@ -67,7 +69,7 @@ class ModuleExecutor(object):
         # Return output files to workspace output dir
 
         # Get workspace places for output files
-        final_output_dir = self.workspace.get_final_output_dir()
+        final_output_dir = self.workspace.get_output_dir()
         tmp_output_dir = self.workspace.get_tmp_output_dir()
 
         for output_file in outputs:
@@ -77,27 +79,32 @@ class ModuleExecutor(object):
                 dest_dir = tmp_output_dir
 
             # Calculate output file size
-            file_size = self.storage_helper.get_file_size(output_file)
+            file_size = self.storage_helper.get_file_size(output_file.get_path())
             output_file.set_size(file_size)
 
             # Transfer to correct output directory
-            self.storage_helper.mv(output_file, dest_dir)
+            curr_path = output_file.get_transferrable_path()
+            self.storage_helper.mv(curr_path, dest_dir)
 
             # Update path of output file to reflect new location
             output_file.update_path(new_dir=dest_dir)
 
+        # Wait for output files to finish transferring
+        self.processor.wait()
+
     def save_logs(self):
-        # Move log directory to final output log directory
-        tmp_log_dir = self.workspace.get_wrk_log_dir()
+        # Move log files to final output log directory
+        log_files = os.path.join(self.workspace.get_wrk_log_dir(), "*")
         final_log_dir = self.workspace.get_final_log_dir()
-        self.storage_helper.mv(tmp_log_dir, final_log_dir)
+        self.storage_helper.mv(log_files, final_log_dir)
+        self.processor.wait()
 
     def __create_workspace(self):
         # Create all directories specified in task workspace
 
         logging.info("(%s) Creating workspace for task '%s'..." % (self.processor.name, self.task_id))
         for dir_type, dir_obj in  self.workspace.get_workspace().iteritems():
-            self.storage_helper.mkdir(dir_obj.get_path(), job_name="mkdir_%s" % dir_type, wait=True)
+            self.storage_helper.mkdir(dir_obj, job_name="mkdir_%s" % dir_type, wait=True)
 
         # Set processor wrk, log directories
         self.processor.set_wrk_dir(self.workspace.get_wrk_dir())
@@ -114,6 +121,3 @@ class ModuleExecutor(object):
     def __grant_workspace_perms(self, job_name):
         cmd = "sudo chmod -R 777 %s" % self.workspace.get_wrk_dir()
         self.processor.run(job_name=job_name, cmd=cmd)
-
-
-
