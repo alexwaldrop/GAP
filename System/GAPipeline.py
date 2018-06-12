@@ -132,7 +132,7 @@ class GAPipeline(object):
         if rm_tmp_output_on_success:
             workspace = self.datastore.get_task_workspace()
             try:
-                self.storage_helper.rm(path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
+                self.storage_helper.rm(path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output", wait=True)
             except BaseException, e:
                 logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
                 if e.message != "":
@@ -292,6 +292,7 @@ class GAPReport:
         self.tasks.append(proc_data)
 
     def register_output_file(self, task_name, file_type, path, size=0, is_final_output=False):
+        logging.debug("Task report(%s). file_type: %s, path: %s, size: %s" % (task_name, file_type, path, size))
         file_data = {"task_id" : task_name,
                      "file_type" : file_type,
                      "path" : path,
