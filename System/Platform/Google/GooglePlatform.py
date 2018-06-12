@@ -119,13 +119,16 @@ class GooglePlatform(Platform):
     def clean_up(self):
 
         logging.info("Cleaning up Google Cloud Platform.")
-        # Remove dummy.txt from final output bucket
+        # Remove dummy files from output directory
         try:
-            cmd         = "gsutil rm %s" % os.path.join(self.final_output_dir,"dummy.txt")
-            proc        = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
-            proc.communicate()
+            dummy_search_string = os.path.join(self.final_output_dir,"**dummy.txt")
+            dummy_outputs = GoogleCloudHelper.ls(dummy_search_string)
+            for dummy_output in dummy_outputs:
+                cmd         = "gsutil rm %s" % dummy_output
+                proc        = sp.Popen(cmd, stderr=sp.PIPE, stdout=sp.PIPE, shell=True)
+                proc.communicate()
         except:
-            logging.warning("(%s) Could not remove dummy input file on google cloud!")
+            logging.warning("(%s) Could not remove dummy input files on google cloud!")
 
         # Initiate destroy process on all the instances that haven't been destroyed
         for instance_name, instance_obj in self.processors.iteritems():
