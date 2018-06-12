@@ -377,6 +377,16 @@ class GoogleCloudHelper:
 
         return price
 
+    @staticmethod
+    def ls(gs_path):
+        # List files that match a directory
+        cmd = "gsutil ls %s" % gs_path
+        out = GoogleCloudHelper.run_cmd(cmd, "Unable to list files on google storage path: %s" % gs_path)
+        out_files = out.split("\n")
+        if "" in out_files:
+            out_files.remove("")
+        return out_files
+
 
 
 
