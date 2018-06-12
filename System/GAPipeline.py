@@ -132,7 +132,7 @@ class GAPipeline(object):
         if rm_tmp_output_on_success:
             workspace = self.datastore.get_task_workspace()
             try:
-                self.storage_helper.rm(src_path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
+                self.storage_helper.rm(path=workspace.get_tmp_output_dir(), job_name="rm_tmp_output")
             except BaseException, e:
                 logging.error("Unable to remove tmp output directory: %s" % workspace.get_tmp_output_dir())
                 if e.message != "":
