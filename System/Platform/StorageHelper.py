@@ -88,6 +88,24 @@ class StorageHelper(object):
                 logging.error("Received the following msg:\n%s" % e.message)
             raise
 
+    def rm(self, path, job_name=None, log=True, wait=False, **kwargs):
+        # Delete file from file system
+        # Log the transfer unless otherwise specified
+        cmd_generator = StorageHelper.__get_storage_cmd_generator(path)
+        cmd = cmd_generator.rm(path)
+
+        job_name = "rm_%s" % Platform.generate_unique_id() if job_name is None else job_name
+
+        # Optionally add logging
+        cmd = "%s !LOG3!" % cmd if log else cmd
+        print cmd
+
+        # Run command and return job name
+        self.proc.run(job_name, cmd, **kwargs)
+        if wait:
+            self.proc.wait_process(job_name)
+        return job_name
+
     @staticmethod
     def __get_storage_cmd_generator(src_path, dest_path=None):
         # Determine the class of file handler to use base on input file protocol types
@@ -158,6 +176,11 @@ class LocalStorageCmdGenerator(StorageCmdGenerator):
     def ls(path):
         return "sudo ls %s" % path
 
+    @staticmethod
+    def rm(path):
+        # Dear god do not give sudo privileges to this command
+        return "rm -rf %s" % path
+
 
 class GoogleStorageCmdGenerator(StorageCmdGenerator):
 
@@ -182,4 +205,8 @@ class GoogleStorageCmdGenerator(StorageCmdGenerator):
     @staticmethod
     def ls(path):
         return "gsutil ls %s" % path
+
+    @staticmethod
+    def rm(path):
+        return "gsutil rm %s" % path
 
