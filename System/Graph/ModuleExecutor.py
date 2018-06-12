@@ -96,7 +96,7 @@ class ModuleExecutor(object):
         # Move log files to final output log directory
         log_files = os.path.join(self.workspace.get_wrk_log_dir(), "*")
         final_log_dir = self.workspace.get_final_log_dir()
-        self.storage_helper.mv(log_files, final_log_dir)
+        self.storage_helper.mv(log_files, final_log_dir, log=False)
         self.processor.wait()
 
     def __create_workspace(self):
