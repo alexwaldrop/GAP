@@ -135,6 +135,9 @@ class GoogleStandardProcessor(Processor):
         self.processes["create"] = Process(" ".join(args), stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         self.wait_process("create")
 
+        # Set start time
+        self.set_start_time()
+
         # Wait for ssh to initialize and startup script to complete after instance is live
         self.wait_until_ready()
         logging.info("(%s) Instance startup complete! %s is now live and ready to run commands!" % (self.name, self.name))
@@ -348,9 +351,6 @@ class GoogleStandardProcessor(Processor):
                          "The instance will be reset!" % self.name)
             self.destroy()
             self.create()
-
-        # Set start time
-        self.set_start_time()
 
     def exists(self):
 
