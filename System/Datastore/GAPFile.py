@@ -135,13 +135,13 @@ class GAPFile:
             self.__update_containing_dir(new_dir)
         else:
             self.path = os.path.join(new_dir, self.filename)
+        self.__standardize()
 
     def __update_containing_dir(self, dest_dir):
         # Updates path assuming entire containing directory has been moved to a new directory
         new_path = os.path.join(dest_dir, self.containing_dir_name)
         self.path = self.path.replace(self.containing_dir, "")
         self.containing_dir = new_path
-        self.__standardize()
 
     def __standardize(self):
         if self.containing_dir is not None:
