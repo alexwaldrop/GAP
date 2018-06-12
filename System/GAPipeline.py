@@ -192,13 +192,17 @@ class GAPipeline(object):
                 cost        = task_worker.get_cost()
                 start_time  = task_worker.get_start_time()
                 task_data   = {"parent_task" : task_name.split(".")[0]}
-                report.register_task(task_name, start_time, run_time, cost, task_data=task_data)
+                report.register_task(task_name=task_name,
+                                     start_time=start_time,
+                                     run_time=run_time,
+                                     cost=cost,
+                                     task_data=task_data)
 
                 # Register data about task output files
                 if task.is_complete():
                     output_files = self.datastore.get_task_output_files(task_id=task_name)
                     for output_file in output_files:
-                        file_type       = output_file.get_file_type()
+                        file_type       = output_file.get_type()
                         file_path       = output_file.get_path()
                         is_final_output = file_type in task.get_final_output_keys()
                         file_size       = output_file.get_size()
@@ -280,6 +284,7 @@ class GAPReport:
             "runtime(sec)" : run_time,
             "cost" : cost
         }
+        logging.debug("Task report(%s). Start: %s, Runtime: %s, Cost: %s" % (task_name, start_time, run_time, cost))
         if task_data is not None:
             for key, val in task_data.iteritems():
                 if key not in proc_data:
