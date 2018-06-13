@@ -23,13 +23,19 @@ class ModuleExecutor(object):
         # Create workspace directory structure
         self.__create_workspace()
 
+        # List of jobs that have been started in process of loading input
+        job_names = []
+
         # Pull docker image if necessary
         if self.docker_image is not None:
-            self.docker_helper.pull(self.docker_image.get_image_name())
+            job_name = "docker_pull_%s" % self.docker_image.get_image_name()
+            self.docker_helper.pull(self.docker_image.get_image_name(), job_name=job_name)
+            job_names.append(job_name)
 
         # Load input files
         # Inputs: list containing remote files, local files, and docker images
         seen = []
+        count = 1
         for task_input in inputs:
 
             # Case: Transfer file into wrk directory if its not already there
@@ -37,24 +43,28 @@ class ModuleExecutor(object):
 
                 # Transfer file to workspace directory
                 src_path = task_input.get_transferrable_path()
+                job_name = "load_input_%s_%s_%s" % (self.task_id, task_input.get_type(), count)
                 logging.debug("Input path: %s, transfer path: %s" %(task_input.get_path(), src_path))
                 self.storage_helper.mv(src_path=src_path,
-                                       dest_path=self.workspace.get_wrk_dir())
+                                       dest_path=self.workspace.get_wrk_dir(),
+                                       job_name=job_name)
 
                 # Add transfer path to list of remote paths that have been transferred to local workspace
                 seen.append(src_path)
+                count += 1
+                job_names.append(job_name)
 
             # Update path after transferring to wrk directory
             task_input.update_path(new_dir=self.workspace.get_wrk_dir())
             logging.debug("Updated path: %s" % task_input.get_path())
 
         # Wait for all processes to finish
-        self.processor.wait()
+        for job_name in job_names:
+            self.processor.wait_process(job_name)
 
         # Recursively give every permission to all files we just added
         logging.info("(%s) Final workspace perm. update for task '%s'..." % (self.processor.name, self.task_id))
         self.__grant_workspace_perms(job_name="grant_final_wrkspace_perms")
-        self.processor.wait_process("grant_final_wrkspace_perms")
 
     def run(self, cmd):
         # Job name
@@ -71,6 +81,8 @@ class ModuleExecutor(object):
         # Get workspace places for output files
         final_output_dir = self.workspace.get_output_dir()
         tmp_output_dir = self.workspace.get_tmp_output_dir()
+        count = 1
+        job_names = []
 
         for output_file in outputs:
             if output_file.get_type() in final_output_types:
@@ -83,11 +95,18 @@ class ModuleExecutor(object):
             output_file.set_size(file_size)
 
             # Transfer to correct output directory
+            job_name = "save_output_%s_%s_%s" % (self.task_id, output_file.get_type(), count)
             curr_path = output_file.get_transferrable_path()
-            self.storage_helper.mv(curr_path, dest_dir)
+            self.storage_helper.mv(curr_path, dest_dir, job_name=job_name)
 
             # Update path of output file to reflect new location
+            job_names.append(job_name)
             output_file.update_path(new_dir=dest_dir)
+            count += 1
+
+        # Wait for transfers to complete
+        for job_name in job_names:
+            self.processor.wait_process(job_name)
 
         # Wait for output files to finish transferring
         self.processor.wait()
@@ -96,8 +115,7 @@ class ModuleExecutor(object):
         # Move log files to final output log directory
         log_files = os.path.join(self.workspace.get_wrk_log_dir(), "*")
         final_log_dir = self.workspace.get_final_log_dir()
-        self.storage_helper.mv(log_files, final_log_dir, log=False)
-        self.processor.wait()
+        self.storage_helper.mv(log_files, final_log_dir, job_name="return_logs", log=False, wait=True)
 
     def __create_workspace(self):
         # Create all directories specified in task workspace
@@ -115,9 +133,9 @@ class ModuleExecutor(object):
         self.__grant_workspace_perms(job_name="grant_initial_wrkspace_perms")
 
         # Wait for all the above commands to complete
-        self.processor.wait()
         logging.info("(%s) Successfully created workspace for task '%s'!" % (self.processor.name, self.task_id))
 
     def __grant_workspace_perms(self, job_name):
         cmd = "sudo chmod -R 777 %s" % self.workspace.get_wrk_dir()
         self.processor.run(job_name=job_name, cmd=cmd)
+        self.processor.wait_process(job_name)
