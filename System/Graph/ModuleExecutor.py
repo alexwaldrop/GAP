@@ -91,7 +91,8 @@ class ModuleExecutor(object):
                 dest_dir = tmp_output_dir
 
             # Calculate output file size
-            file_size = self.storage_helper.get_file_size(output_file.get_path())
+            job_name = "get_size_%s_%s_%s" % (self.task_id, output_file.get_type(), count)
+            file_size = self.storage_helper.get_file_size(output_file.get_path(), job_name=job_name)
             output_file.set_size(file_size)
 
             # Transfer to correct output directory
