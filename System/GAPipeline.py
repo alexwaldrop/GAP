@@ -191,11 +191,13 @@ class GAPipeline(object):
                 run_time    = task_worker.get_runtime()
                 cost        = task_worker.get_cost()
                 start_time  = task_worker.get_start_time()
+                cmd         = task_worker.get_cmd()
                 task_data   = {"parent_task" : task_name.split(".")[0]}
                 report.register_task(task_name=task_name,
                                      start_time=start_time,
                                      run_time=run_time,
                                      cost=cost,
+                                     cmd=cmd,
                                      task_data=task_data)
 
                 # Register data about task output files
@@ -271,7 +273,7 @@ class GAPReport:
     def set_total_runtime(self, total_runtime):
         self.total_runtime = total_runtime
 
-    def register_task(self, task_name, start_time, run_time, cost, task_data=None):
+    def register_task(self, task_name, start_time, run_time, cost, cmd=None, task_data=None):
         # Register information about a specific processor in the report
 
         # Make start time relative to pipeline start time
@@ -282,7 +284,8 @@ class GAPReport:
             "name" : task_name,
             "start_time" : start_time,
             "runtime(sec)" : run_time,
-            "cost" : cost
+            "cost" : cost,
+            "cmd"   : cmd
         }
         logging.debug("Task report(%s). Start: %s, Runtime: %s, Cost: %s" % (task_name, start_time, run_time, cost))
         if task_data is not None:
