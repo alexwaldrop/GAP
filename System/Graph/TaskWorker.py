@@ -49,6 +49,9 @@ class TaskWorker(Thread):
         # Flag for whether TaskWorker was cancelled
         self.__cancelled = False
 
+        # Command that was run to carry out task
+        self.cmd = None
+
     def set_status(self, new_status):
         # Updates instance status with threading.lock() to prevent race conditions
         with self.status_lock:
@@ -79,6 +82,9 @@ class TaskWorker(Thread):
             return None
         else:
             return self.proc.get_start_time()
+
+    def get_cmd(self):
+        return self.cmd
 
     def work(self):
         # Run task module command and save outputs
@@ -113,10 +119,8 @@ class TaskWorker(Thread):
             # Specify that module output files should be placed in task's working directory
             self.module.set_output_dir(task_workspace.get_wrk_dir())
 
-            # Get module command to be run
-            task_cmd = self.module.get_command()
-
-            if task_cmd is not None:
+            # Run command on processor if there's one to run
+            if self.module.get_command() is not None and not self.get_status() is self.CANCELLING:
 
                 # Execute command if one exists
                 self.set_status(self.LOADING)
@@ -134,8 +138,8 @@ class TaskWorker(Thread):
 
                 # Update module's command to reflect changes to input paths
                 self.set_status(self.RUNNING)
-                task_cmd = self.module.update_command()
-                out, err = self.module_executor.run(task_cmd)
+                self.cmd = self.module.update_command()
+                out, err = self.module_executor.run(self.cmd)
 
                 # Post-process command output if necessary
                 self.module.process_cmd_output(out, err)
@@ -149,8 +153,9 @@ class TaskWorker(Thread):
                 self.module_executor.save_output(output_files, final_output_types)
 
             # Indicate that task finished without any errors
-            with self.status_lock:
-                self.__err = False
+            if not self.__cancelled:
+                with self.status_lock:
+                    self.__err = False
 
         except BaseException, e:
             # Handle but do not raise exception if job was externally cancelled
@@ -181,21 +186,23 @@ class TaskWorker(Thread):
         self.__cancelled = True
 
         if self.proc is not None:
-            # Stop any processes currently running on processor
+            # Prevent further commands from being run on processor
             self.proc.stop()
-            logging.debug("Task '%s' successfully stopped on processor!" % self.task.get_ID())
+            # Destroy processor if it exists
+            self.proc.destroy(wait=False)
 
     def is_success(self):
         return not self.__err
+
+    def is_cancelled(self):
+        with self.status_lock:
+            return self.__cancelled
 
     def __clean_up(self):
 
         # Do nothing if errors occurred before processor was even created
         if self.proc is None:
             return
-
-        # Unlock processor in case task was cancelled and processor was locked
-        self.proc.unlock()
 
         # Try to return task log
         try:
@@ -207,9 +214,13 @@ class TaskWorker(Thread):
             if e.message != "":
                 logging.error("Received following error:\n%s" % e.message)
 
-        # Try to destroy platform
+        # Try to destroy platform if it's not off
         try:
-            self.proc.destroy()
+            # Destroy processor if it hasn't already been destroyed
+            if not self.__cancelled:
+                self.proc.destroy(wait=False)
+            # Wait until processor is destroyed
+            self.proc.wait_process("destroy")
         except BaseException, e:
             logging.error("Unable to destroy processor '%s' for task '%s'" % (self.proc.get_name(), self.task.get_ID()))
             if e.message != "":
