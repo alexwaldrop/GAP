@@ -43,7 +43,6 @@ class Scheduler(object):
 
                 # Finalize completed tasks
                 if task_worker is not None and task_worker.get_status() == TaskWorker.COMPLETE:
-                    logging.info("Task '%s' has finished!" % task_id)
                     self.__finalize_task_worker(task_worker)
                     continue
 
@@ -60,21 +59,26 @@ class Scheduler(object):
 
         # Get task being executed by worker
         task = task_worker.get_task()
-        logging.debug("We finalizing '%s'!" % task.get_ID())
+        logging.debug("Finalizing task '%s'..." % task.get_ID())
 
         # Add to list of finalized task workers
         task_worker.set_status(TaskWorker.FINALIZED)
 
         # Checks for and raises any runtime errors that occurred while running task
         task_worker.finalize()
-        logging.debug("Task '%s' finished successfully!" % task.get_ID())
 
-        # Split subgraph if task is a splitter
-        if task.is_splitter_task():
-            self.task_graph.split_graph(task.get_ID())
+        # Action on task cancellation
+        if task_worker.is_cancelled():
+            logging.info("Task '%s' failed due to cancellation!" % task.get_ID())
 
-        # Set task to complete if task worker completed successfully
-        if task_worker.is_success():
+        # Actions on successful task completion
+        elif task_worker.is_success():
+            logging.info("Task '%s' finished successfully!" % task.get_ID())
+            # Split subgraph if task is a splitter
+            if task.is_splitter_task():
+                self.task_graph.split_graph(task.get_ID())
+
+            # Set task to complete if task worker completed successfully
             task.set_complete(True)
 
     def __finalize(self):
@@ -102,9 +106,10 @@ class Scheduler(object):
 
                     except BaseException, e:
                         # Log error but don't raise exception as we want to finish finalizing all task workers
-                        logging.error("Task '%s' failed!" % task_id)
-                        if e.message != "":
-                            logging.error("Received the following message:\n%s" % e.message)
+                        if not task_worker.is_cancelled():
+                            logging.error("Task '%s' failed due to runtime error!" % task_id)
+                            if e.message != "":
+                                logging.error("Received the following message:\n%s" % e.message)
 
             # Wait for a bit before checking again
             time.sleep(5)
