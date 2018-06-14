@@ -132,7 +132,7 @@ class GooglePlatform(Platform):
         # Initiate destroy process on all the instances that haven't been destroyed
         for instance_name, instance_obj in self.processors.iteritems():
             try:
-                if instance_obj.get_status() not in [Processor.DEAD, Processor.OFF]:
+                if instance_obj.get_status() != Processor.OFF:
                     instance_obj.destroy(wait=False)
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
