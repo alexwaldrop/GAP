@@ -22,7 +22,6 @@ class Scheduler(object):
         try:
             self.__run_tasks()
         finally:
-            logging.debug("WE FINALIZING de schedule!")
             self.__finalize()
 
     def __run_tasks(self):
@@ -99,7 +98,6 @@ class Scheduler(object):
                 # Finalize tasks that have finished running/cancelling
                 if task_worker.get_status() is TaskWorker.COMPLETE:
                     try:
-                        logging.debug("WE TRYNA FINZLIZE: %s, Status: %s" % (task_id, task_worker.get_status()))
                         self.__finalize_task_worker(task_worker)
 
                     except BaseException, e:
@@ -113,9 +111,9 @@ class Scheduler(object):
 
     def __cancel_unfinished_tasks(self):
         # Cancel any still-running jobs
-        logging.debug("We cancelling scheduled jobs!")
+        # Start destroying processors for still-running jobs
         for task_id, task_worker in self.task_workers.iteritems():
             if not task_worker.get_status() in [TaskWorker.COMPLETE, TaskWorker.FINALIZING, TaskWorker.FINALIZED]:
                 # Cancel pipeline if it isn't finalizing or already cancelled
-                logging.debug("Just cancelled: %s" % task_id)
+                logging.debug("Initiated cancellation of '%s'" % task_id)
                 task_worker.cancel()
