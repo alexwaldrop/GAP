@@ -4,8 +4,10 @@ import subprocess as sp
 import tempfile
 
 from System.Platform import Platform, Processor
-from GoogleStandardProcessor import GoogleStandardProcessor
-from GooglePreemptibleProcessor import GooglePreemptibleProcessor
+#from GoogleStandardProcessor import GoogleStandardProcessor
+#from GooglePreemptibleProcessor import GooglePreemptibleProcessor
+from Instance import GoogleStandardProcessor
+from PreemptibleInstance import GooglePreemptibleProcessor
 from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
@@ -132,15 +134,15 @@ class GooglePlatform(Platform):
         # Initiate destroy process on all the instances that haven't been destroyed
         for instance_name, instance_obj in self.processors.iteritems():
             try:
-                if instance_obj.get_status() not in [Processor.OFF, Processor.DESTROYING] and instance_obj.exists():
-                    instance_obj.destroy(wait=False)
+                instance_obj.destroy(wait=False)
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
 
         # Now wait for all destroy processes to finish
         for instance_name, instance_obj in self.processors.iteritems():
             try:
-                instance_obj.wait_process("destroy")
+                if instance_obj.get_status() != Processor.OFF:
+                    instance_obj.wait_process("destroy")
             except RuntimeError:
                 logging.warning("(%s) Could not destroy instance!" % instance_name)
 
