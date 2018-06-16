@@ -387,6 +387,21 @@ class GoogleCloudHelper:
             out_files.remove("")
         return out_files
 
+    @staticmethod
+    def describe(ins_name, zone):
+        cmd = 'gcloud compute instances describe %s --format json --zone %s' % (ins_name, zone)
+        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to describe instance '%s'!" % ins_name)
+        return json.loads(out)
+
+    @staticmethod
+    def instance_exists(ins_name):
+        # Check if the current instance still exists on the platform
+        cmd = 'gcloud compute instances list | grep "%s"' % ins_name
+        out = GoogleCloudHelper.run_cmd(cmd, err_msg="Unable to determine whether instance '%s' exists!" % ins_name)
+        return len(out) != 0
+
+
+
 
 
 
