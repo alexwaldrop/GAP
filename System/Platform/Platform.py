@@ -79,7 +79,8 @@ class Platform(object):
 
         # Add to list of processors if not already there
         if task_id not in self.processors:
-            self.processors[task_id] = processor
+            with self.platform_lock:
+                self.processors[task_id] = processor
         else:
             logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
             raise RuntimeError("Platform attempted to create duplicate task processor!")
