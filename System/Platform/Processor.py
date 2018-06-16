@@ -13,9 +13,9 @@ class Processor(object):
 
     # Instance status values available between threads
     OFF         = 0  # Destroyed or not allocated on the cloud
-    AVAILABLE   = 1  # Available for running processes
-    BUSY        = 2  # Instance actions, such as create and destroy are running
-    DEAD        = 3  # Instance is shutting down, as a DEAD signal was received
+    CREATING    = 1  # Instance is being created
+    DESTROYING  = 2  # Instance is destroyed
+    AVAILABLE   = 3  # Available for running processes
     MAX_STATUS  = 3  # Maximum status value possible
 
     def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
@@ -49,19 +49,20 @@ class Processor(object):
 
         # Lock for preventing further commands from being run on processor
         self.locked = False
+        self.stopped = False
 
     def create(self):
         self.set_status(Processor.AVAILABLE)
 
-    def destroy(self):
+    def destroy(self, wait=True):
         self.set_status(Processor.OFF)
 
     def run(self, job_name, cmd, num_retries=None, docker_image=None, quiet_failure=False):
 
         # Throw error if attempting to run command on stopped processor
-        if self.locked:
-            logging.error("(%s) Attempt to run process '%s' on stopped processor!" % (self.name, job_name))
-            raise RuntimeError("Attempt to run process of stopped processor!")
+        if self.is_locked():
+            logging.error("(%s) Attempt to run process'%s' on locked processor!" % (self.name, job_name))
+            raise RuntimeError("Attempt to run command on locked processor!")
 
         if num_retries is None:
             num_retries = self.default_num_cmd_retries
@@ -139,8 +140,8 @@ class Processor(object):
         # Kill all currently executing processes on processor
         for proc_name, proc_obj in self.processes.iteritems():
             if not proc_obj.is_complete() and proc_name.lower() != "destroy":
-                logging.debug("(%s) Killing process: %s" % (self.name, proc_name))
-                proc_obj.terminate()
+                logging.debug("Killing process: %s" % proc_name)
+                proc_obj.stop()
 
     ############ Getters and Setters
     def set_status(self, new_status):
@@ -168,6 +169,10 @@ class Processor(object):
 
     def set_stop_time(self):
         self.stop_time = time.time()
+
+    def is_locked(self):
+        with self.status_lock:
+            return self.locked
 
     def get_name(self):
         return self.name
