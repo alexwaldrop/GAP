@@ -12,12 +12,18 @@ class Process(sp.Popen):
         super(Process, self).__init__(args,     **kwargs)
         self.complete       = False
         self.stopped        = False
+        self.out            = ""
+        self.err            = ""
 
     def is_complete(self):
         return self.complete
 
     def set_complete(self):
         self.complete = True
+
+    def set_output(self, out, err):
+        self.out = out
+        self.err = err
 
     def has_failed(self):
         ret_code = self.poll()
@@ -31,6 +37,9 @@ class Process(sp.Popen):
 
     def get_docker_image(self):
         return self.docker_image
+
+    def get_output(self):
+        return self.out, self.err
 
     def is_quiet(self):
         return self.quiet
