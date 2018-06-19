@@ -54,6 +54,11 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         self.processes.pop("create", None)
         self.processes.pop("destroy", None)
 
+        # Remove commands that get run during configure_instance()
+        for proc in ["configCRCMOD", "install_packages", "configureSSH", "restartSSH"]:
+            if proc in self.processes:
+                self.processes.pop(proc)
+
         # Identifying which process(es) need to be recalled
         commands_to_run = list()
         while len(self.processes):
@@ -115,6 +120,8 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
         # Determine if command can be retried
         can_retry   = False
         needs_reset = False
+
+        logging.debug("(%s) Handling failure for proc '%s'. Curr status: %s" % (self.name, proc_name, self.get_status()))
 
         # Raise error if processor is locked
         if self.is_locked() and proc_name != "destroy":
@@ -179,7 +186,8 @@ class GooglePreemptibleProcessor(GoogleStandardProcessor):
                      quiet_failure=proc_obj.is_quiet())
 
         # Raise error if command failed, has no retries, and wasn't caused by preemption
-        self.raise_error(proc_name, proc_obj)
+        else:
+            self.raise_error(proc_name, proc_obj)
 
     def wait_until_ready(self):
         # Wait until startup-script has completed on instance
