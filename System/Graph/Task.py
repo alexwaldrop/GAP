@@ -98,9 +98,6 @@ class Task(object):
     def get_input_args(self):
         return self.module.get_arguments()
 
-    def get_output(self):
-        return self.module.get_output()
-
     def get_input_keys(self):
         # Return input keys. get_keys() returns input_keys and output_keys.
         return self.module.get_input_types()
