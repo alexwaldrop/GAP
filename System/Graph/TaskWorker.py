@@ -105,12 +105,11 @@ class TaskWorker(Thread):
             logging.debug("(%s) CPU: %s, Mem: %s, Disk space: %s" % (self.task.get_ID(), cpus, mem, disk_space))
 
             # Wait for platform to have enough resources to run task
-            while not self.platform.can_make_processor(cpus, mem, disk_space) and not self.get_status() is self.CANCELLING:
+            while not self.platform.can_make_processor(cpus, mem, disk_space) and not self.is_cancelled():
                 time.sleep(5)
 
             # Quit if pipeline is cancelled
-            if self.get_status() is self.CANCELLING:
-                return
+            self.__check_cancelled()
 
             # Define unique workspace for task input/output
             task_workspace = self.datastore.get_task_workspace(task_id=self.task.get_ID())
@@ -120,7 +119,7 @@ class TaskWorker(Thread):
             self.module.set_output_dir(task_workspace.get_wrk_dir())
 
             # Run command on processor if there's one to run
-            if self.module.get_command() is not None and not self.get_status() is self.CANCELLING:
+            if self.module.get_command() is not None:
 
                 # Execute command if one exists
                 self.set_status(self.LOADING)
@@ -141,9 +140,11 @@ class TaskWorker(Thread):
                 self.cmd = self.module.update_command()
                 out, err = self.module_executor.run(self.cmd)
 
+                # Check to see if pipeline has been cancelled
+                self.__check_cancelled()
+
                 # Post-process command output if necessary
                 self.module.process_cmd_output(out, err)
-
 
             # Save output files in workspace output dirs (if any)
             self.set_status(self.FINALIZING)
@@ -169,6 +170,7 @@ class TaskWorker(Thread):
                 raise
         finally:
             # Return logs and destroy processor if they exist
+            logging.debug("TaskWorker '%s' cleaning up..." % self.task.get_ID())
             self.__clean_up()
             # Notify that task worker has completed regardless of success
             self.set_status(TaskWorker.COMPLETE)
@@ -188,8 +190,6 @@ class TaskWorker(Thread):
         if self.proc is not None:
             # Prevent further commands from being run on processor
             self.proc.stop()
-            # Destroy processor if it exists
-            self.proc.destroy(wait=False)
 
     def is_success(self):
         return not self.__err
@@ -217,7 +217,7 @@ class TaskWorker(Thread):
         # Try to destroy platform if it's not off
         try:
             # Destroy processor if it hasn't already been destroyed
-            if not self.__cancelled:
+            if not "destroy" in self.proc.processes:
                 self.proc.destroy(wait=False)
             # Wait until processor is destroyed
             self.proc.wait_process("destroy")
@@ -252,4 +252,6 @@ class TaskWorker(Thread):
         disk_size = min(disk_size, max_disk_size)
         return disk_size
 
-
+    def __check_cancelled(self):
+        if self.__cancelled:
+            raise RuntimeError("(%s) Task failed due to cancellation!")
