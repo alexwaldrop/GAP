@@ -95,7 +95,7 @@ class Graph(object):
         # Recursively split tasks downstream of 'head_task' until a closing merge is reached
         child_tasks = self.get_children(splitter_task_id)
         splitter_task = self.tasks[splitter_task_id]
-        for split_id in splitter_task.get_output():
+        for split_id in splitter_task.module.get_output():
             # Create new graph partition for each new split
             split = splitter_task.module.get_output(split_id=split_id)
             # Get visible samples for new graph partition
@@ -118,7 +118,8 @@ class Graph(object):
                             self.add_dependency(clone_task_id, parent)
 
             # Remove deprecated task from graph completely
-            self.remove_task(task)
+            #self.remove_task(task)
+            self.tasks[task].set_complete(is_complete=True)
 
     @property
     def __deprecated_tasks(self):
