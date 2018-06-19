@@ -187,9 +187,9 @@ class Datastore(object):
             if parent.is_splitter_task():
                 # Limit output to partition visible to task
                 split_id = curr_task.get_split_id()
-                output = parent.get_output(split_id=split_id)
+                output = parent.module.get_output(split_id=split_id)
             else:
-                output = parent.get_output()
+                output = parent.module.get_output()
             if arg_type in output:
                 args.append(output[arg_type])
         return args
