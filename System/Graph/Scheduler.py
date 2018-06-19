@@ -47,7 +47,7 @@ class Scheduler(object):
                     continue
 
                 # Start running tasks that are ready to run but aren't currently
-                if task_worker is None and self.task_graph.parents_complete(task_id):
+                if task_worker is None and self.task_graph.parents_complete(task_id) and not task.is_deprecated():
                     logging.info("Launching task: '%s'" % task_id)
                     self.task_workers[task_id] = TaskWorker(task, self.datastore, self.platform)
                     self.task_workers[task_id].start()
