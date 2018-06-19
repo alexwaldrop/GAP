@@ -4,10 +4,8 @@ import subprocess as sp
 import tempfile
 
 from System.Platform import Platform, Processor
-#from GoogleStandardProcessor import GoogleStandardProcessor
-#from GooglePreemptibleProcessor import GooglePreemptibleProcessor
-from Instance import GoogleStandardProcessor
-from PreemptibleInstance import GooglePreemptibleProcessor
+from Instance import Instance
+from PreemptibleInstance import PreemptibleInstance
 from GoogleCloudHelper import GoogleCloudHelper
 
 class GooglePlatform(Platform):
@@ -70,11 +68,11 @@ class GooglePlatform(Platform):
         name = self.__format_instance_name(name)
         # Return processor object that will be used
         instance_config = self.__get_instance_config()
-        return GoogleStandardProcessor(name,
-                                       nr_cpus,
-                                       mem,
-                                       disk_space,
-                                       **instance_config)
+        return Instance(name,
+                        nr_cpus,
+                        mem,
+                        disk_space,
+                        **instance_config)
 
     def init_task_processor(self, name, nr_cpus, mem, disk_space):
         # Googlefy instance name
@@ -83,17 +81,17 @@ class GooglePlatform(Platform):
         instance_config = self.__get_instance_config()
         # Create and return processor
         if self.is_preemptible:
-            return GooglePreemptibleProcessor(name,
-                                              nr_cpus,
-                                              mem,
-                                              disk_space,
-                                              **instance_config)
+            return PreemptibleInstance(name,
+                                       nr_cpus,
+                                       mem,
+                                       disk_space,
+                                       **instance_config)
         else:
-            return GoogleStandardProcessor(name,
-                                           nr_cpus,
-                                           mem,
-                                           disk_space,
-                                           **instance_config)
+            return Instance(name,
+                            nr_cpus,
+                            mem,
+                            disk_space,
+                            **instance_config)
 
     def publish_report(self, report=None):
 

@@ -7,11 +7,11 @@ from System.Platform import Process
 from System.Platform import Processor
 from System.Platform.Google import GoogleCloudHelper
 
-class GoogleStandardProcessor(Processor):
+class Instance(Processor):
 
     def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         # Call super constructor
-        super(GoogleStandardProcessor,self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
+        super(Instance, self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
 
         # Get required arguments
         self.zone               = kwargs.pop("zone")

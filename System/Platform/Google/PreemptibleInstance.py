@@ -4,13 +4,13 @@ import time
 
 from System.Platform import Process
 from System.Platform import Processor
-from Instance import GoogleStandardProcessor
+from Instance import Instance
 
-class GooglePreemptibleProcessor(GoogleStandardProcessor):
+class PreemptibleInstance(Instance):
 
     def __init__(self, name, nr_cpus, mem, disk_space, **kwargs):
         # Call super constructor
-        super(GooglePreemptibleProcessor,self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
+        super(PreemptibleInstance, self).__init__(name, nr_cpus, mem, disk_space, **kwargs)
 
         # Indicates that instance is resettable
         self.is_preemptible = True

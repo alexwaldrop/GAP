@@ -1,4 +1,4 @@
 from GoogleCloudHelper import GoogleCloudHelper
-from GoogleStandardProcessor import GoogleStandardProcessor
-from GooglePreemptibleProcessor import GooglePreemptibleProcessor
+from Instance import Instance
+from PreemptibleInstance import PreemptibleInstance
 from GooglePlatform import GooglePlatform
