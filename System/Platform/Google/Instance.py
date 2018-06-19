@@ -1,6 +1,5 @@
 import logging
 import subprocess as sp
-import random
 import time
 import math
 
@@ -320,8 +319,8 @@ class GoogleStandardProcessor(Processor):
             cmd = "python -c 'import crcmod' || (sudo easy_install -U pip !LOG3! && sudo pip uninstall -y crcmod !LOG3! && sudo pip install -U crcmod !LOG3!)"
         else:
             cmd = "python -c 'import crcmod' || (sudo easy_install -U pip && sudo pip uninstall -y crcmod && sudo pip install -U crcmod)"
-        self.run("configCRCMOD_%s" % self.rand_instance_id, cmd)
-        self.wait_process("configCRCMOD_%s" % self.rand_instance_id)
+        self.run("configCRCMOD", cmd)
+        self.wait_process("configCRCMOD")
 
     def __install_packages(self, packages, log=False):
         # If no packages are provided to install
@@ -340,7 +339,7 @@ class GoogleStandardProcessor(Processor):
         else:
             cmd         = "yes | sudo aptdcon --hide-terminal -i \"%s\" " % " ".join(packages)
         # Create random id for job
-        job_name    = "install_packages_%d_%s" % (random.randint(1,100000), self.rand_instance_id)
+        job_name = "install_packages"
         self.run(job_name, cmd)
         self.wait_process(job_name)
 
@@ -352,8 +351,8 @@ class GoogleStandardProcessor(Processor):
             cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' !LOG2! " % max_connections
         else:
             cmd = "sudo bash -c 'echo \"MaxStartups %s\" >> /etc/ssh/sshd_config' " % max_connections
-        self.run("configureSSH_%s" % self.rand_instance_id, cmd)
-        self.wait_process("configureSSH_%s" % self.rand_instance_id)
+        self.run("configureSSH", cmd)
+        self.wait_process("configureSSH")
 
         # Restart SSH daemon to load the settings
         logging.info("(%s) Restarting SSH daemon to load the new settings." % self.name)
@@ -361,8 +360,8 @@ class GoogleStandardProcessor(Processor):
             cmd = "sudo service sshd restart !LOG3!"
         else:
             cmd = "sudo service sshd restart"
-        self.run("restartSSH_%s" % self.rand_instance_id, cmd)
-        self.wait_process("restartSSH_%s" % self.rand_instance_id)
+        self.run("restartSSH", cmd)
+        self.wait_process("restartSSH")
 
     def __get_gcloud_create_cmd(self):
         # Create base command
@@ -434,7 +433,3 @@ class GoogleStandardProcessor(Processor):
         # Provide input to the command
         args[0:0] = ["yes", "2>/dev/null", "|"]
         return " ".join(args)
-
-
-
-
