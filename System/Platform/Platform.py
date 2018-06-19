@@ -99,7 +99,7 @@ class Platform(object):
         logging.info("Creating helper processor '%s'..." % name)
 
         # Initialize new processor with enough CPU/mem/disk space to complete task
-        processor   = self.init_helper_processor(name, nr_cpus=self.MIN_NR_CPUS, mem=self.MIN_MEM, disk_space=self.MIN_DISK_SPACE+25)
+        processor   = self.init_helper_processor(name, nr_cpus=self.MIN_NR_CPUS+1, mem=self.MIN_MEM+5, disk_space=self.MIN_DISK_SPACE+25)
 
         # Add to list of processors if not already there
         if "helper" not in self.processors:
