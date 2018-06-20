@@ -123,6 +123,10 @@ class Graph(object):
             # Set deprecated task to complete so it doesn't get run
             self.tasks[task].set_complete(is_complete=True)
 
+            # Make sure graph structure is still valid
+            self.__check_adjacency_list()
+            self.__check_cycles()
+
     @property
     def __deprecated_tasks(self):
         return [task.get_ID() for task in self.tasks.values() if task.is_deprecated()]
