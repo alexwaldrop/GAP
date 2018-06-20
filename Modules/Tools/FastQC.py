@@ -1,17 +1,20 @@
 from Modules import Module
 
 class FastQC(Module):
-    def __init__(self, module_id):
-        super(FastQC, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(FastQC, self).__init__(module_id, is_docker)
         self.output_keys = ["R1_fastqc", "R2_fastqc"]
 
     def define_input(self):
         self.add_argument("R1",         is_required=True)
         self.add_argument("R2")
         self.add_argument("fastqc",     is_required=True, is_resource=True)
-        self.add_argument("java",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=2)
         self.add_argument("mem",        is_required=True, default_value=5)
+
+        # Require java if not being run in docker
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
 
@@ -31,15 +34,25 @@ class FastQC(Module):
     def define_command(self):
         # Generate command for running Fastqc
         fastqc  = self.get_argument("fastqc")
-        java    = self.get_argument("java")
         r1      = self.get_argument("R1")
         r2      = self.get_argument("R2")
         nr_cpus = self.get_argument("nr_cpus")
 
+        if not self.is_docker:
+            java = self.get_argument("java")
+
+            # Base cmd if java is available
+            basecmd = "%s -t %d --java %s --nogroup --extract %s" % (fastqc, nr_cpus, java, r1)
+
+        # Base cmd if running in docker and java not needed
+        else:
+            basecmd = "%s -t %d --nogroup --extract %s" % (fastqc, nr_cpus, r1)
+
+        # Optionally analyze R2 if available
         if r2 is not None:
             # Run Fastqc on R1 and R2
-            cmd = "%s -t %d --java %s --nogroup --extract %s %s !LOG3!" % (fastqc, nr_cpus, java, r1, r2)
-        else:
-            # Run Fastqc on a single R1
-            cmd = "%s -t %d --java %s --nogroup --extract %s !LOG3!" % (fastqc, nr_cpus, java, r1)
+            basecmd = "%s %s" % (basecmd, r2)
+
+        # Capture stdout, stderr
+        cmd = "%s !LOG3!" % basecmd
         return cmd
