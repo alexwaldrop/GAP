@@ -246,7 +246,7 @@ class Datastore(object):
         docker_image_id = self.graph.get_tasks(task_id).get_docker_image_id()
 
         if docker_image_id is not None and self.resource_kit.has_docker_image(docker_image_id):
-            docker_image = self.resource_kit.get_docker_image(docker_image_id)
+            docker_image = self.resource_kit.get_docker_images(docker_image_id)
             if docker_image.has_resource_type(arg_type):
 
                 # Search to see if the argument key appears in the config input
@@ -261,7 +261,7 @@ class Datastore(object):
 
                 # If not in config input, should only be one resource of type "arg_key" in docker
                 else:
-                    args = [self.resource_kit.get_resources(arg_type).values()[0]]
+                    args = [docker_image.get_resources(arg_type).values()[0]]
 
         return args
 
