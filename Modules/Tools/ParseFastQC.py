@@ -4,35 +4,30 @@ from Modules import Module
 
 class ParseFastQC(Module):
 
-    def __init__(self, module_id):
-        super(ParseFastQC, self).__init__(module_id)
-
-        self.input_keys     = ["R1_fastqc", "R2_fastqc", "qc_parser", "note", "nr_cpus", "mem"]
+    def __init__(self, module_id, is_docker=False):
+        super(ParseFastQC, self).__init__(module_id, is_docker)
         self.output_keys    = ["qc_report"]
-
-        # Command should be run on main processor
-        self.quick_command = True
 
     def define_input(self):
         self.add_argument("R1_fastqc",      is_required=True)
         self.add_argument("R2_fastqc",      is_required=False)
         self.add_argument("sample_name",    is_required=True)
-        self.add_argument("note",           is_required=False, default_value=None)
-        self.add_argument("qc_parser",      is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=1)
-        self.add_argument("mem",            is_required=True, default_value=1)
+        self.add_argument("note",           is_required=False,  default_value=None)
+        self.add_argument("qc_parser",      is_required=True,   is_resource=True)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=1)
+        self.add_argument("mem",            is_required=True,   default_value=1)
 
-    def define_output(self, platform, split_name=None):
-        summary_file = self.generate_unique_file_name(split_name=split_name, extension=".fastqc.qc_report.json")
-        self.add_output(platform, "qc_report", summary_file)
+    def define_output(self):
+        summary_file = self.generate_unique_file_name(extension=".fastqc.qc_report.json")
+        self.add_output("qc_report", summary_file)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Get options from kwargs
-        r1_fastqc_dir   = self.get_arguments("R1_fastqc").get_value()
-        r2_fastqc_dir   = self.get_arguments("R2_fastqc").get_value()
-        qc_parser       = self.get_arguments("qc_parser").get_value()
-        sample_name     = self.get_arguments("sample_name").get_value()
-        parser_note     = self.get_arguments("note").get_value()
+        r1_fastqc_dir   = self.get_argument("R1_fastqc")
+        r2_fastqc_dir   = self.get_argument("R2_fastqc")
+        qc_parser       = self.get_argument("qc_parser")
+        sample_name     = self.get_argument("sample_name")
+        parser_note     = self.get_argument("note")
         qc_report       = self.get_output("qc_report")
 
         # Get command for parsing R1 fastqc output
