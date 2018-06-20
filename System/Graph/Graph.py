@@ -119,6 +119,8 @@ class Graph(object):
 
             # Remove deprecated task from graph completely
             #self.remove_task(task)
+
+            # Set deprecated task to complete so it doesn't get run
             self.tasks[task].set_complete(is_complete=True)
 
     @property
