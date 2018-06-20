@@ -2,8 +2,8 @@ from Modules import Splitter
 
 class SampleSplitter(Splitter):
 
-    def __init__(self, module_id):
-        super(SampleSplitter, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(SampleSplitter, self).__init__(module_id, is_docker)
 
         self.output_keys = ["sample_name"]
 
