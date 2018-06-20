@@ -3,8 +3,8 @@ import logging
 from Modules import Module
 
 class Trimmomatic (Module):
-    def __init__(self, module_id):
-        super(Trimmomatic, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(Trimmomatic, self).__init__(module_id, is_docker)
         self.output_keys = ["R1", "R2", "R1_unpair", "R2_unpair", "trim_report"]
 
     def define_input(self):
@@ -12,10 +12,13 @@ class Trimmomatic (Module):
         self.add_argument("R2")
         self.add_argument("phred_encoding", is_required=True, default_value="Phred+33")
         self.add_argument("trimmomatic",    is_required=True, is_resource=True)
-        self.add_argument("java",           is_required=True, is_resource=True)
         self.add_argument("adapters",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value="MAX")
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 1")
+
+        # Require java if not being run on docker
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
 
         # Optional trimmomatic arguments
         self.add_argument("LEADING",                   is_required=True, default_value=5)
@@ -61,7 +64,6 @@ class Trimmomatic (Module):
         R2              = self.get_argument("R2")
         trimmomatic     = self.get_argument("trimmomatic")
         phred_encoding  = self.get_argument("phred_encoding")
-        java            = self.get_argument("java")
         adapters        = self.get_argument("adapters")
         nr_cpus         = self.get_argument("nr_cpus")
         mem             = self.get_argument("mem")
@@ -72,16 +74,12 @@ class Trimmomatic (Module):
         trim_report     = self.get_output("trim_report")
 
         # Throw error if Phred is not Phred33 or Phred64
-        if phred_encoding == "Solexa+64" or phred_encoding == "Unknown":
+        if phred_encoding not in ["Phred+33", "Phred+64", "phred33", "phred64", "phred+33", "phred+64"]:
             logging.error("Unsupported phred encoding (%s) detected for fastq: %s" % (phred_encoding, R1))
             raise RuntimeError("Trimmomatic module: Unsupported PHRED encoding for FASTQ file!")
 
         # Set Trimmomatic Phred flag
-        logging.info("PHRED encoding detected: %s" % phred_encoding)
         phred_option = "-phred33" if phred_encoding == "Phred+33" else "-phred64"
-
-        # Set JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, "/tmp/")
 
         # Set other Trimmomatic options
         leading             = self.get_argument("LEADING")
@@ -102,26 +100,32 @@ class Trimmomatic (Module):
                  "SLIDINGWINDOW:%s:%s" % (window_size, window_qual),
                  "MINLEN:%s" % minlen]
 
+        # Generate base cmd for running locally
+        if not self.is_docker:
+            java = self.get_argument("java")
+            jvm_options = "-Xmx%dG -Djava.io.tmp=%s" % (mem * 4 / 5, "/tmp/")
+            basecmd = "%s %s -jar %s" % (java, jvm_options, trimmomatic)
+
+        # Generate base cmd for running on docker
+        else:
+            basecmd = str(trimmomatic)
+
         if R2 is not None:
             # Generate command for paired-end trimmomatic
             R2_out          = self.get_output("R2")
             R2_unpair_out   = self.get_output("R2_unpair")
 
             # Generating command
-            cmd = "%s %s -jar %s PE -threads %s %s %s %s %s %s %s %s %s > %s 2>&1" % (
-                java,
-                jvm_options,
-                trimmomatic,
+            cmd =  "%s PE -threads %s %s %s %s %s %s %s %s %s > %s 2>&1" % (
+                basecmd,
                 nr_cpus, phred_option,
                 R1, R2, R1_out, R1_unpair_out, R2_out, R2_unpair_out,
                 " ".join(steps),
                 trim_report)
         else:
             # Generate command for single-end trimmomatic
-            cmd = "%s %s -jar %s SE -threads %s %s %s %s %s > %s 2>&1" % (
-                java,
-                jvm_options,
-                trimmomatic,
+            cmd = "%s SE -threads %s %s %s %s %s > %s 2>&1" % (
+                basecmd,
                 nr_cpus, phred_option,
                 R1, R1_out,
                 " ".join(steps),
