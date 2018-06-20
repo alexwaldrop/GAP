@@ -1,9 +1,9 @@
 from Modules import Module
 
-class _QCReportReader(Module):
+class QCReportReader(Module):
 
     def __init__(self, module_id, is_docker=False):
-        super(_QCReportReader, self).__init__(module_id, is_docker)
+        super(QCReportReader, self).__init__(module_id, is_docker)
 
     def define_input(self):
         self.add_argument("qc_report",      is_required=True)
@@ -24,7 +24,7 @@ class _QCReportReader(Module):
         # Return QCReport parsed from stdout
         pass
 
-class GetNumReads(_QCReportReader):
+class GetNumReads(QCReportReader):
 
     def __init__(self, module_id, is_docker=False):
         super(GetNumReads, self).__init__(module_id, is_docker)
