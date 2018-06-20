@@ -92,7 +92,7 @@ class Processor(object):
 
         # Run in docker image if specified
         if docker_image is not None:
-            cmd = "docker run -it -v %s:%s %s %s" % (self.wrk_dir, self.wrk_dir, docker_image, cmd)
+            cmd = 'sudo docker run -rm --user root -v %s:%s -it %s -c "%s"' % (self.wrk_dir, self.wrk_dir, docker_image, cmd)
 
         # Make any modifications to the command to allow it to be run on a specific platform
         cmd = self.adapt_cmd(cmd)
