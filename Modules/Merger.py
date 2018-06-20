@@ -2,8 +2,8 @@ from Module import Module
 
 class Merger(Module):
 
-    def __init__(self, module_id):
-        super(Merger, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(Merger, self).__init__(module_id, is_docker)
 
     def define_input(self):
         raise NotImplementedError(

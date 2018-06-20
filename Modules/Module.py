@@ -7,10 +7,14 @@ from System.Datastore import GAPFile
 class Module(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, module_id):
+    def __init__(self, module_id, is_docker=False):
 
         # Initialize the module ID, defined in the config
         self.module_id = module_id
+
+        # Flag specifying whether module is being run in a docker or locally
+        # Can be used to set different dependencies based on runtime environment
+        self.is_docker = is_docker
 
         # Initialize the input arguments
         self.arguments = {}

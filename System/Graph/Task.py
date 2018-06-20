@@ -23,7 +23,7 @@ class Task(object):
         self.__module_args          = kwargs.pop("args", [])
 
         # Initialize modules
-        self.module                 = self.__load_module(self.__module_name)
+        self.module                 = self.__load_module(self.__module_name, is_docker=self.__docker_image is not None)
 
         # Whether task has been completed
         self.complete   = False
@@ -142,7 +142,7 @@ class Task(object):
     def get_clones(self):
         return self.__clones
 
-    def __load_module(self, module_name):
+    def __load_module(self, module_name, is_docker):
 
         # Try importing the module
         try:
@@ -158,7 +158,7 @@ class Task(object):
         # Generate the module ID
         module_id = "%s_%s" % (self.__task_id, module_name)
 
-        return _class(module_id)
+        return _class(module_id, is_docker)
 
     def get_task_string(self, input_from=None):
         # Get the module names

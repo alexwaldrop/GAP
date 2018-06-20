@@ -7,10 +7,10 @@ from Module import Module
 
 class Splitter(Module):
 
-    def __init__(self, module_id):
+    def __init__(self, module_id, is_docker=False):
 
         # Initialize object
-        super(Splitter, self).__init__(module_id)
+        super(Splitter, self).__init__(module_id, is_docker)
         self.output = OrderedDict()
 
     def define_input(self):
