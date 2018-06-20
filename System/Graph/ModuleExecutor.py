@@ -28,7 +28,9 @@ class ModuleExecutor(object):
 
         # Pull docker image if necessary
         if self.docker_image is not None:
-            job_name = "docker_pull_%s" % self.docker_image.get_image_name()
+            docker_image_name = self.docker_image.get_image_name().split("/")
+            docker_image_name.replace(":","_")
+            job_name = "docker_pull_%s" % self.docker_image.get_image_name().split("/")[0]
             self.docker_helper.pull(self.docker_image.get_image_name(), job_name=job_name)
             job_names.append(job_name)
 
