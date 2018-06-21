@@ -141,14 +141,14 @@ class _QCReportReader(Module):
         return "cat %s !LOG2!" % qc_report
 
 
-class GetNumReads(_QCReportReader):
+class GetNumReadsFastQC(_QCReportReader):
 
     def __init__(self, module_id, is_docker=False):
-        super(GetNumReads, self).__init__(module_id, is_docker)
+        super(GetNumReadsFastQC, self).__init__(module_id, is_docker)
         self.output_keys = ["nr_reads"]
 
     def define_input(self):
-        super(GetNumReads, self).define_input()
+        super(GetNumReadsFastQC, self).define_input()
         self.add_argument("filter_by_note", default_value=None)
 
     def define_output(self):
@@ -184,4 +184,3 @@ class GetNumReads(_QCReportReader):
         # Update num reads
         self.set_output("nr_reads", num_reads)
         logging.debug("Dis how many reads we got: %s" % num_reads)
-
