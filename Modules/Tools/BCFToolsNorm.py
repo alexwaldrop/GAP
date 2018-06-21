@@ -2,12 +2,9 @@ from Modules import Module
 
 class BCFToolsNorm(Module):
 
-    def __init__(self, module_id):
-        super(BCFToolsNorm, self).__init__(module_id)
-
-        self.input_keys     = ["bcftools", "vcf", "ref", "nr_cpus", "mem"]
+    def __init__(self, module_id, is_docker = False):
+        super(BCFToolsNorm, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf"]
-        self.quick_command  = True
 
     def define_input(self):
         self.add_argument("vcf",                is_required=True)                       # Input VCF file
@@ -17,26 +14,26 @@ class BCFToolsNorm(Module):
         self.add_argument("nr_cpus",            is_required=True,   default_value=4)
         self.add_argument("mem",                is_required=True,   default_value="nr_cpus*4")
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare recoded VCF output filename
-        normalized_vcf = self.generate_unique_file_name(split_name=split_name, extension=".normalized.vcf")
-        self.add_output(platform, "vcf", normalized_vcf)
+        normalized_vcf = self.generate_unique_file_name(extension=".normalized.vcf")
+        self.add_output("vcf", normalized_vcf)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Get input arguments
-        vcf_in              = self.get_arguments("vcf").get_value()
-        bcftools            = self.get_arguments("bcftools").get_value()
-        ref                 = self.get_arguments("ref").get_value()
-        split_multiallelic  = self.get_arguments("split_multiallelic").get_value()
+        vcf_in              = self.get_argument("vcf")
+        bcftools            = self.get_argument("bcftools")
+        ref                 = self.get_argument("ref")
+        split_multiallelic  = self.get_argument("split_multiallelic")
 
         # Get final normalized VCF output file path
         vcf_out = self.get_output("vcf")
 
-        cmd = "%s norm" % bcftools
+        cmd = "{0} norm".format(bcftools)
         if split_multiallelic:
             # Optionally specify to split multiallelic into two lines
             cmd += " -m-both"
-        cmd += " -f %s -o %s %s" % (ref, vcf_out, vcf_in)
+        cmd += " -f {0} -o {1} {2}".format(ref, vcf_out, vcf_in)
 
         # Capture stderr
         cmd += " !LOG3!"
