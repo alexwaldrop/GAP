@@ -2,10 +2,8 @@ from Modules import Module
 
 class Annovar(Module):
 
-    def __init__(self, module_id):
-        super(Annovar, self).__init__(module_id)
-
-        self.input_keys     = ["vcf", "annovar", "perl", "nr_cpus", "mem"]
+    def __init__(self, module_id, is_docker = False):
+        super(Annovar, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf"]
 
     def define_input(self):
@@ -20,24 +18,25 @@ class Annovar(Module):
         self.add_argument("nr_cpus",            is_required=True, default_value=6)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 6.5")
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare VCF output filename
-        vcf = self.generate_unique_file_name(split_name=split_name, extension=".hg19_multianno.vcf")
-        self.add_output(platform, "vcf", vcf)
+        vcf = self.generate_unique_file_name(extension=".hg19_multianno.vcf")
+        self.add_output("vcf", vcf)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Get input arguments
-        vcf_in      = self.get_arguments("vcf").get_value()
-        annovar     = self.get_arguments("annovar").get_value()
-        perl        = self.get_arguments("perl").get_value()
-        operation   = self.get_arguments("operations").get_value()
-        protocol    = self.get_arguments("protocol").get_value()
-        nastring    = self.get_arguments("nastring").get_value()
-        buildver    = self.get_arguments("buildver").get_value()
-        dbdir       = self.get_arguments("dbdir").get_value()
+        vcf_in      = self.get_argument("vcf")
+        annovar     = self.get_argument("annovar")
+        perl        = self.get_argument("perl")
+        operation   = self.get_argument("operations")
+        protocol    = self.get_argument("protocol")
+        nastring    = self.get_argument("nastring")
+        buildver    = self.get_argument("buildver")
+        dbdir       = self.get_argument("dbdir")
 
         # Generate prefix for final VCF output file
         vcf_out = self.get_output("vcf").rsplit(".hg19_multianno.vcf", 1)[0]
 
-        cmd = "%s %s %s %s --vcfinput --remove --buildver %s --outfile %s --protocol %s --operation %s --nastring %s !LOG3!" % (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring)
+        cmd = "{0} {1} {2} {3} --vcfinput --remove --buildver {4} --outfile {5} --protocol {6} --operation {7} --nastring {8} !LOG3!".format\
+                (perl, annovar, vcf_in, dbdir, buildver, vcf_out, protocol, operation, nastring)
         return cmd
