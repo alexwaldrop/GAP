@@ -2,7 +2,7 @@ import logging
 import importlib
 import copy
 
-from Modules import Splitter, Merger
+from Modules import Module, Splitter, Merger
 
 class Task(object):
 
@@ -19,11 +19,16 @@ class Task(object):
         # Id of docker image declared in Resource kit where task will be executed
         self.__docker_image         = kwargs.pop("docker_image", None)
 
+        # Submodule name
+        self.__submodule_name = kwargs.pop("submodule", None)
+
         # Get the config inputs
         self.__module_args          = kwargs.pop("args", [])
 
         # Initialize modules
-        self.module                 = self.__load_module(self.__module_name, is_docker=self.__docker_image is not None)
+        self.module                 = self.__load_module(self.__module_name,
+                                                         is_docker=self.__docker_image is not None,
+                                                         submodule=self.__submodule_name)
 
         # Whether task has been completed
         self.complete   = False
@@ -142,7 +147,7 @@ class Task(object):
     def get_clones(self):
         return self.__clones
 
-    def __load_module(self, module_name, is_docker):
+    def __load_module(self, module_name, is_docker, submodule=None):
 
         # Try importing the module
         try:
@@ -152,12 +157,44 @@ class Task(object):
                           "Check the module name spelling and ensure the module exists." % module_name)
             raise
 
+        # Check to see if submodule actually exists
+        submodule = module_name if submodule is None else submodule
+        if submodule not in _module.__dict__:
+            logging.error("Module '%s' was successfully imported, but does not contain submodule '%s'! "
+                          "Check the submodule spelling and ensure the submodule exists in the module." % (module_name, submodule))
+
+            # Get list of available submodules
+            available_modules = []
+            for mod_name, mod in _module.__dict__.iteritems():
+                # Exclude any builtin types (start with _ or __),
+                # Exclude imported modules that aren't classes (e.g. 'os' or 'logging')
+                # Exclude anything that isn't a class (__class__.__name__ is None, e.g. __doc__, __package__)
+                if mod_name.startswith("_") or mod.__class__.__name__ in [None, "module"]:
+                    continue
+
+                # Include anything that inherits from Module (with the exclusion of base classes (Module, Splitter, Merger)
+                if issubclass(mod, Module) and mod_name not in ["Module", "Splitter", "Merger"]:
+                    available_modules.append(mod_name)
+
+            # Show available submodules in error message
+            if len(available_modules) > 1:
+                available_modules = ",".join(available_modules)
+            elif len(available_modules) == 1:
+                available_modules = available_modules[0]
+            else:
+                available_modules = "None"
+            logging.error("Available submodules in module '%s':\n\t%s" % (module_name, available_modules))
+            raise IOError("Invalid submodule '%s' specified for module '%s' in graph config!" % (submodule,module_name))
+
         # Get the class
-        _class = _module.__dict__[module_name]
+        _class = _module.__dict__[submodule]
 
         # Generate the module ID
         module_id = "%s_%s" % (self.__task_id, module_name)
+        if submodule != module_name:
+            module_id = "%s_%s" % (module_id, submodule)
 
+        # Return instance of module class
         return _class(module_id, is_docker)
 
     def get_task_string(self, input_from=None):
