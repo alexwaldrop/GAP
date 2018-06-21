@@ -184,3 +184,41 @@ class GetNumReadsFastQC(_QCReportReader):
         # Update num reads
         self.set_output("nr_reads", num_reads)
         logging.debug("Dis how many reads we got: %s" % num_reads)
+
+
+class GetNumReadsTrimmomatic(_QCReportReader):
+
+    def __init__(self, module_id, is_docker=False):
+        super(GetNumReadsTrimmomatic, self).__init__(module_id, is_docker)
+        self.output_keys = ["nr_reads"]
+
+    def define_output(self):
+        self.add_output("nr_reads", 0, is_path=False)
+
+    def process_cmd_output(self, out, err):
+        # Parse numreads from FastQC sections of QCReport
+        qc_report = parse_qc_report(out)
+        sample_name     = self.get_argument("sample_name")
+
+        # Try to parse num_reads from QCReport
+        try:
+            num_reads = qc_report.fetch_values(sample_name,
+                                               module="Trimmomatic",
+                                               data_type="Trimmed_Reads")
+        # Raise any errors
+        except BaseException, e:
+            logging.error("GetNumReads unable to get number of reads from QCReport!")
+            if e.message != "":
+                logging.error("Receive the following err msg:\n%s" % e.message)
+            raise
+
+        # Get length of errors
+        if len(num_reads) == 0:
+            logging.error("GetNumReads could not find any Trimmomatic num reads which matched the search criteria!")
+            raise RuntimeError("GetNumReads could not determine the number of Trimmomatic reads from the QCReport!")
+
+        # Sum R1, R2 for paired end reads (will also work for single end reads where only one record is present)
+        num_reads = sum(num_reads)
+
+        # Update num reads
+        self.set_output("nr_reads", num_reads)
