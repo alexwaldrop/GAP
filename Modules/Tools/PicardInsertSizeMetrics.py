@@ -2,53 +2,56 @@ from Modules import Module
 
 class PicardInsertSizeMetrics(Module):
 
-    def __init__(self, module_id):
-        super(PicardInsertSizeMetrics, self).__init__(module_id)
-
-        self.input_keys     = ["bam", "bam_idx", "picard", "java", "num_reads", "nr_cpus", "mem"]
+    def __init__(self, module_id, is_docker = False):
+        super(PicardInsertSizeMetrics, self).__init__(module_id, is_docker)
         self.output_keys    = ["insert_size_report", "insert_size_histogram"]
-
-        # Command should be run on main processor
-        self.quick_command = True
 
     def define_input(self):
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("picard",             is_required=True, is_resource=True)
-        self.add_argument("java",               is_required=True, is_resource=True)
         self.add_argument("num_reads",          is_required=True, default_value=1000000)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value=5)
 
-    def define_output(self, platform, split_name=None):
+        # Require java if not being run on docker
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
+
+    def define_output(self):
         # Declare insert size report filename
-        report_file = self.generate_unique_file_name(split_name=split_name, extension="insertsize.out")
-        self.add_output(platform, "insert_size_report", report_file)
+        report_file = self.generate_unique_file_name(extension="insertsize.out")
+        self.add_output("insert_size_report", report_file)
 
         # Declare insert size report filename
-        hist_file = self.generate_unique_file_name(split_name=split_name, extension="insertsize.hist.pdf")
-        self.add_output(platform, "insert_size_histogram", hist_file)
+        hist_file = self.generate_unique_file_name(extension="insertsize.hist.pdf")
+        self.add_output("insert_size_histogram", hist_file)
 
-    def define_command(self, platform):
+    def define_command(self):
 
         # Obtaining the arguments
-        bam         = self.get_arguments("bam").get_value()
-        picard      = self.get_arguments("picard").get_value()
-        java        = self.get_arguments("java").get_value()
-        num_reads   = self.get_arguments("num_reads").get_value()
-        mem         = self.get_arguments("mem").get_value()
+        bam         = self.get_argument("bam")
+        picard      = self.get_argument("picard")
+        num_reads   = self.get_argument("num_reads")
+        mem         = self.get_argument("mem")
 
         # Output file
         report_out  = self.get_output("insert_size_report")
         hist_out    = self.get_output("insert_size_histogram")
 
-        # Generate JVM options
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, platform.get_workspace_dir("tmp"))
+        # Generate base cmd for running locally
+        if not self.is_docker:
+            java = self.get_argument("java")
+            # Generate JVM arguments
+            jvm_options = "-Xmx{0}G -Djava.io.tmp={1}".format(mem * 4 / 5, "/tmp/")
+            basecmd = "{0} {1} -jar {2}".format(java, jvm_options, picard)
+
+        # Generate base cmd for running on docker
+        else:
+            basecmd = str(picard)
 
         # Generate cmd to run picard insert size metrics
-        cmd = "%s %s -jar %s CollectInsertSizeMetrics HISTOGRAM_FILE=%s INPUT=%s OUTPUT=%s STOP_AFTER=%d !LOG2!" \
-                     % (java, jvm_options, picard,
-                        hist_out, bam,
-                        report_out,
-                        num_reads)
+        cmd = "{0} CollectInsertSizeMetrics HISTOGRAM_FILE={1} INPUT={2} OUTPUT={3} STOP_AFTER={4} !LOG2!".format\
+                (basecmd, hist_out, bam, report_out, num_reads)
+
         return cmd

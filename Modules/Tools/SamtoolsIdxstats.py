@@ -1,14 +1,9 @@
 from Modules import Module
 
 class SamtoolsIdxstats(Module):
-    def __init__(self, module_id):
-        super(SamtoolsIdxstats, self).__init__(module_id)
-
-        self.input_keys = ["bam", "bam_idx", "samtools", "nr_cpus", "mem"]
+    def __init__(self, module_id, is_docker = False):
+        super(SamtoolsIdxstats, self).__init__(module_id, is_docker)
         self.output_keys = ["idxstats"]
-
-        # Command should be run on main processor
-        self.quick_command = True
 
     def define_input(self):
         self.add_argument("bam",        is_required=True)
@@ -17,17 +12,18 @@ class SamtoolsIdxstats(Module):
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
         self.add_argument("mem",        is_required=True, default_value=1)
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare bam idxstats output filename
-        idxstats = self.generate_unique_file_name(split_name=split_name, extension=".idxstats.out")
-        self.add_output(platform, "idxstats", idxstats)
+        idxstats = self.generate_unique_file_name(extension=".idxstats.out")
+        self.add_output("idxstats", idxstats)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Define command for running samtools idxstats from a platform
-        bam         = self.get_arguments("bam").get_value()
-        samtools    = self.get_arguments("samtools").get_value()
+        bam         = self.get_argument("bam")
+        samtools    = self.get_argument("samtools")
+
         idxstats    = self.get_output("idxstats")
 
         # Generating Idxstats command
-        cmd = "%s idxstats %s > %s" % (samtools, bam, idxstats)
+        cmd = "{0} idxstats {1} > {2}".format(samtools, bam, idxstats)
         return cmd

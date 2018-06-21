@@ -1,8 +1,8 @@
 from Modules import Module
 
 class SamtoolsIndex(Module):
-    def __init__(self, module_id):
-        super(SamtoolsIndex, self).__init__(module_id)
+    def __init__(self, module_id, is_docker = False):
+        super(SamtoolsIndex, self).__init__(module_id, is_docker)
         self.output_keys = ["bam_idx"]
 
     def define_input(self):
@@ -35,8 +35,8 @@ class SamtoolsIndex(Module):
         cmd = ""
         if isinstance(bam, list):
             for b_in, b_out in zip(bam, bam_idx):
-                cmd += "%s index %s %s !LOG3! & " % (samtools, b_in, b_out)
+                cmd += "{0} index {1} {2} !LOG3! & ".format(samtools, b_in, b_out)
             cmd += "wait"
         else:
-            cmd = "%s index %s %s !LOG3!" % (samtools, bam, bam_idx)
+            cmd = "{0} index {1} {2} !LOG3!".format(samtools, bam, bam_idx)
         return cmd

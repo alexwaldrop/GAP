@@ -1,9 +1,8 @@
 from Modules import Module
 
 class SamtoolsFlagstat(Module):
-    def __init__(self, module_id):
-        super(SamtoolsFlagstat, self).__init__(module_id)
-
+    def __init__(self, module_id, is_docker = False):
+        super(SamtoolsFlagstat, self).__init__(module_id, is_docker)
         self.output_keys = ["flagstat"]
 
     def define_input(self):
@@ -25,5 +24,5 @@ class SamtoolsFlagstat(Module):
         flagstat    = self.get_output("flagstat")
 
         # Generating Flagstat command
-        cmd = "%s flagstat %s > %s" % (samtools, bam, flagstat)
+        cmd = "{0} flagstat {1} > {2}".format(samtools, bam, flagstat)
         return cmd
