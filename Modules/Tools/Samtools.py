@@ -98,8 +98,8 @@ class Idxstats(Module):
         return cmd
 
 class View(Module):
-    def __init__(self, module_id):
-        super(View, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(View, self).__init__(module_id, is_docker)
         self.output_keys = ["bam"]
 
     def define_input(self):
