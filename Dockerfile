@@ -20,7 +20,10 @@ RUN apt-get update -y &&\
 RUN pip install -U pip setuptools wheel configobj jsonschema requests
 
 # Install gcloud
-RUN curl https://sdk.cloud.google.com | bash &&\
+RUN curl -sSL https://sdk.cloud.google.com > /tmp/gcl &&\
+    bash /tmp/gcl --disable-prompts &&\
+    echo "if [ -f '/root/google-cloud-sdk/path.bash.inc' ]; then source '/root/google-cloud-sdk/path.bash.inc'; fi" >> /root/.bashrc &&\
+    echo "if [ -f '/root/google-cloud-sdk/completion.bash.inc' ]; then source '/root/google-cloud-sdk/completion.bash.inc'; fi" >> /root/.bashrc &&\
     exec -l $SHELL &&\
     gcloud components install beta
 
