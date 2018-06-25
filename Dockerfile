@@ -27,7 +27,7 @@ RUN curl https://sdk.cloud.google.com | bash &\
 RUN mkdir GAP &\
     cd GAP &\
     git clone &\
-    git clone https://github.com/alexwaldrop/GAP.git /GAP
+    git clone https://github.com/alexwaldrop/GAP.git
 
 ENV PATH /GAP:$PATH
 
