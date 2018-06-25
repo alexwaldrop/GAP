@@ -13,21 +13,20 @@ LABEL tags="NGS Cloud GAP GoogleCloud AWS Bioinformatics Workflow Pipeline"
 MAINTAINER Alex Waldrop <alex.waldrop@duke.edu>
 
 # update the OS related packages
-RUN apt-get update &\
+RUN apt-get update &&\
     apt-get install python-pip
 
 # upgrade pip, setuptools, and wheel Python modules
 RUN pip install -U pip setuptools wheel configobj jsonschema requests
 
 # Install gcloud
-RUN curl https://sdk.cloud.google.com | bash &\
-    exec -l $SHELL &\
+RUN curl https://sdk.cloud.google.com | bash &&\
+    exec -l $SHELL &&\
     gcloud components install beta
 
 # Install gcloud
-RUN mkdir GAP &\
-    cd GAP &\
-    git clone &\
+RUN mkdir GAP &&\
+    cd GAP &&\
     git clone https://github.com/alexwaldrop/GAP.git
 
 ENV PATH /GAP:$PATH
