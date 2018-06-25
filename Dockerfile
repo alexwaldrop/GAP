@@ -13,7 +13,7 @@ LABEL tags="NGS Cloud GAP GoogleCloud AWS Bioinformatics Workflow Pipeline"
 MAINTAINER Alex Waldrop <alex.waldrop@duke.edu>
 
 # update the OS related packages
-RUN sudo apt-get update
+RUN apt-get update
 
 # upgrade pip, setuptools, and wheel Python modules
 RUN sudo pip install -U pip setuptools wheel configobj jsonschema requests
