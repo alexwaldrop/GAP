@@ -14,7 +14,7 @@ MAINTAINER Alex Waldrop <alex.waldrop@duke.edu>
 
 # update the OS related packages
 RUN apt-get update -y &&\
-    apt-get install -y python-pip curl
+    apt-get install -y python-pip curl git
 
 # upgrade pip, setuptools, and wheel Python modules
 RUN pip install -U pip setuptools wheel configobj jsonschema requests
