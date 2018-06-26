@@ -4,7 +4,6 @@ class SampleSplitter(Splitter):
 
     def __init__(self, module_id, is_docker=False):
         super(SampleSplitter, self).__init__(module_id, is_docker)
-
         self.output_keys = ["sample_name"]
 
     def define_input(self):
@@ -15,8 +14,15 @@ class SampleSplitter(Splitter):
     def define_output(self):
         # Obtaining the arguments
         samples = self.get_argument("sample_name")
-        for sample in samples:
-            self.make_split(split_id=sample, visible_samples=[sample])
+
+        # Make one split if only one sample
+        if not isinstance(samples, list):
+            self.make_split(split_id=samples, visible_samples=[samples])
+
+        # Otherwise split through everything
+        else:
+            for sample in samples:
+                self.make_split(split_id=sample, visible_samples=[sample])
 
     def define_command(self):
         return None
