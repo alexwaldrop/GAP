@@ -23,9 +23,11 @@ RUN pip install -U pip setuptools wheel configobj jsonschema requests
 RUN curl -sSL https://sdk.cloud.google.com > /tmp/gcl &&\
     bash /tmp/gcl --disable-prompts &&\
     echo "if [ -f '/root/google-cloud-sdk/path.bash.inc' ]; then source '/root/google-cloud-sdk/path.bash.inc'; fi" >> /root/.bashrc &&\
-    echo "if [ -f '/root/google-cloud-sdk/completion.bash.inc' ]; then source '/root/google-cloud-sdk/completion.bash.inc'; fi" >> /root/.bashrc &&\
-    . /root/.bashrc &&\
-    gcloud components install beta
+    echo "if [ -f '/root/google-cloud-sdk/completion.bash.inc' ]; then source '/root/google-cloud-sdk/completion.bash.inc'; fi" >> /root/.bashrc
+ENV $PATH:/root/google-cloud-sdk/bin
+
+# Install gcloud beta components for pubsub
+RUN /bin/bash -c "gcloud components install beta --quiet"
 
 # Install gcloud
 RUN mkdir GAP &&\
