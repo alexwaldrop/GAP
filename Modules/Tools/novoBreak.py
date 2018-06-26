@@ -1,14 +1,9 @@
 from Modules import Module
 
 class novoBreak(Module):
-    def __init__(self, module_id):
-        super(novoBreak, self).__init__(module_id)
-
-        self.input_keys = ["bam", "is_tumor", "ref", "novoBreak", "nr_cpus", "mem"]
-
+    def __init__(self, module_id, is_docker = False):
+        super(novoBreak, self).__init__(module_id, is_docker)
         self.output_keys = ["vcf"]
-
-        self.quick_command = True
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
@@ -18,22 +13,29 @@ class novoBreak(Module):
         self.add_argument("nr_cpus",        is_required=True, default_value=10)
         self.add_argument("mem",            is_required=True, default_value=65)
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
 
         # Declare the output file
-        self.add_output(platform, "vcf", "novoBreak.pass.flt.vcf")
+        self.add_output("vcf", "novoBreak.pass.flt.vcf")
 
-    def define_command(self, platform):
+    def define_command(self):
 
         # Get arguments to run Delly
-        bam             = self.get_arguments("bam").get_value()
-        is_tumor        = self.get_arguments("is_tumor").get_value()
-        ref             = self.get_arguments("ref").get_value()
-        nr_cpus         = self.get_arguments("nr_cpus").get_value()
-        novoBreak_exe   = self.get_arguments("novoBreak").get_value()
+        bam             = self.get_argument("bam")
+        is_tumor        = self.get_argument("is_tumor")
+        ref             = self.get_argument("ref")
+        nr_cpus         = self.get_argument("nr_cpus")
+        novoBreak_exe   = self.get_argument("novoBreak")
 
-        # Get novoBreak executing directory
-        exe_dir = novoBreak_exe.rsplit("/", 1)[0]
+        # get working dir
+        wrk_dir = self.get_output_dir()
+
+        # holds the NovoBreak exe if docker is not provided
+        exe_dir = None
+
+        if not self.is_docker:
+            # Get novoBreak executing directory
+            exe_dir = novoBreak_exe.rsplit("/", 1)[0]
 
         # Identify the tumor and the normal
         if is_tumor[0]:
@@ -43,8 +45,13 @@ class novoBreak(Module):
             tumor = bam[1]
             normal = bam[0]
 
-        # Generate command
-        cmd = "export PATH=$PATH:%s ; %s %s %s %s %s %s %s !LOG3!" \
-              % (exe_dir, novoBreak_exe, exe_dir, ref, tumor, normal, nr_cpus, platform.get_workspace_dir())
+        if not self.is_docker:
+            # Generate command
+            cmd = "export PATH=$PATH:{0} ; {1} {2} {3} {4} {5} {6} {7} !LOG3!".format(
+                exe_dir, novoBreak_exe, exe_dir, ref, tumor, normal, nr_cpus, wrk_dir)
+        else:
+            # Generate command
+            cmd = "{0} {1} {2} {3} {4} {5} {6} !LOG3!".format(novoBreak_exe, exe_dir, ref,
+                                                              tumor, normal, nr_cpus, wrk_dir)
 
         return cmd
