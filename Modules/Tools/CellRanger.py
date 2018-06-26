@@ -4,13 +4,8 @@ import logging
 from Modules import Module
 
 class CellRanger(Module):
-    def __init__(self, module_id):
-        super(CellRanger, self).__init__(module_id)
-
-        self.input_keys = ["sample_name", "R1", "R2",
-                           "cellranger", "singlecell_rnaseq_ref",
-                           "nr_cpus", "mem"]
-
+    def __init__(self, module_id, is_docker = False):
+        super(CellRanger, self).__init__(module_id, is_docker)
         self.output_keys = ["cellranger_output_dir"]
 
     def define_input(self):
@@ -22,24 +17,24 @@ class CellRanger(Module):
         self.add_argument("nr_cpus",                is_required=True, default_value="MAX")
         self.add_argument("mem",                    is_required=True, default_value="nr_cpus * 6.5")
 
-    def define_output(self, platform, split_name=None):
+    def define_output(self):
         # Declare cell ranger output dir
-        sample_name = self.get_arguments("sample_name").get_value()
-        self.add_output(platform, "cellranger_output_dir", sample_name, is_path=True)
+        sample_name = self.get_argument("sample_name")
+        self.add_output("cellranger_output_dir", sample_name, is_path=True)
 
-    def define_command(self, platform):
+    def define_command(self):
         # Generate command for running Cell Ranger
-        cellranger      = self.get_arguments("cellranger").get_value()
-        sample_name     = self.get_arguments("sample_name").get_value()
-        transcriptome   = self.get_arguments("singlecell_rnaseq_ref").get_value()
-        nr_cpus         = self.get_arguments("nr_cpus").get_value()
-        mem             = self.get_arguments("mem").get_value()
-        R1              = self.get_arguments("R1").get_value()
-        R2              = self.get_arguments("R2").get_value()
+        cellranger      = self.get_argument("cellranger")
+        sample_name     = self.get_argument("sample_name")
+        transcriptome   = self.get_argument("singlecell_rnaseq_ref")
+        nr_cpus         = self.get_argument("nr_cpus")
+        mem             = self.get_argument("mem")
+        R1              = self.get_argument("R1")
+        R2              = self.get_argument("R2")
 
         cellranger_dir  = os.path.dirname(cellranger)
         source_path     = os.path.join(cellranger_dir, "sourceme.bash")
-        wrk_dir         = platform.get_workspace_dir()
+        wrk_dir         = self.get_output_dir()
 
         # We accommodate two idiosynchroses of Cell Ranger:
         # 1. CR accepts a folder of fastqs, not a list of files,
