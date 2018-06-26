@@ -30,9 +30,7 @@ ENV PATH /root/google-cloud-sdk/bin:$PATH
 RUN /bin/bash -c "gcloud components install beta --quiet"
 
 # Install gcloud
-RUN mkdir GAP &&\
-    cd GAP &&\
-    git clone https://github.com/alexwaldrop/GAP.git
+RUN git clone https://github.com/alexwaldrop/GAP.git
 
 ENV PATH /GAP:$PATH
 
