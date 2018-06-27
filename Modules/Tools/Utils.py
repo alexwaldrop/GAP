@@ -364,7 +364,7 @@ class CombineExpressionWithMetadata(Module):
 class GetVCFChroms(Module):
     def __init__(self, module_id, is_docker = False):
         super(GetVCFChroms, self).__init__(module_id, is_docker)
-        self.output_keys = ["vcf"]
+        self.output_keys = ["chrom_list"]
 
     def define_input(self):
         self.add_argument("vcf", is_required=True)
