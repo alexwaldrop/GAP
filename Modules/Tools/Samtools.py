@@ -97,6 +97,7 @@ class Idxstats(Module):
         cmd = "{0} idxstats {1} > {2}".format(samtools, bam, idxstats)
         return cmd
 
+
 class View(Module):
     def __init__(self, module_id, is_docker=False):
         super(View, self).__init__(module_id, is_docker)
@@ -130,3 +131,34 @@ class View(Module):
         # Generating samtools view command
         cmd = "%s view -b %s %s > %s !LOG2!" % (samtools, bam, reg, bam_out)
         return cmd
+
+
+class Depth(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(Depth, self).__init__(module_id, is_docker)
+        self.output_keys    = ["samtools_depth"]
+
+    def define_input(self):
+        self.add_argument("bam",        is_required=True)
+        self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("samtools",   is_required=True,   is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True,   default_value=1)
+        self.add_argument("mem",        is_required=True,   default_value=3)
+        self.add_argument("location",   is_required=False)
+
+    def define_output(self):
+        # Declare samtools depth out filename
+        samtools_depth_out = self.generate_unique_file_name(extension=".samtools_depth.out")
+        self.add_output("samtools_depth", samtools_depth_out)
+
+    def define_command(self):
+        # Get arguments for generating command
+        bam                 = self.get_argument("bam")
+        samtools            = self.get_argument("samtools")
+        chrm                = self.get_argument("location")
+        samtools_depth_out  = self.get_output("samtools_depth")
+        # Get depth of single chromosome/region
+        if chrm is not None:
+            return "%s depth -r %s -a %s > %s !LOG2!" % (samtools, chrm, bam, samtools_depth_out)
+        # Get depth of entire bam
+        return "%s depth -a %s > %s !LOG2!" % (samtools, bam, samtools_depth_out)
