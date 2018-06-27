@@ -399,7 +399,7 @@ class GetRefChroms(Module):
         self.output_keys = ["chrom_list"]
 
     def define_input(self):
-        self.add_argument("ref_dict", is_required=True)
+        self.add_argument("ref_idx", is_required=True)
         self.add_argument("nr_cpus", is_required=True, default_value=1)
         self.add_argument("mem", is_required=True, default_value=1)
 
@@ -408,9 +408,9 @@ class GetRefChroms(Module):
 
     def define_command(self):
         # Get arguments
-        ref_dict = self.get_argument("ref_dict")
+        ref_idx = self.get_argument("ref_idx")
 
-        cmd = "cut -f1 {0}".format(ref_dict)
+        cmd = "cut -f1 {0}".format(ref_idx)
 
         return cmd
 
