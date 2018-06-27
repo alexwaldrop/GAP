@@ -316,3 +316,47 @@ class GetReadGroup(Module):
         read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
                                         "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
         self.set_output("read_group", read_group_header)
+
+class CombineExpressionWithMetadata(Module):
+    def __init__(self, module_id, is_docker = False):
+        super(CombineExpressionWithMetadata, self).__init__(module_id, is_docker)
+        self.output_keys = ["annotated_expression_file"]
+
+    def define_input(self):
+        self.add_argument("expression_file",    is_required=True)
+        self.add_argument("gtf",                is_required=True, is_resource=True)
+        self.add_argument("combine_script",     is_required=True, is_resource=True)
+        self.add_argument("result_type",        is_required=True)
+        self.add_argument("nr_cpus",            is_required=True, default_value=4)
+        self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
+
+    def define_output(self):
+
+        # Declare unique file name
+        output_file_name = self.generate_unique_file_name(extension=".txt")
+
+        self.add_output("annotated_expression_file", output_file_name)
+
+    def define_command(self):
+
+        # Get arguments
+        expression_file     = self.get_argument("expression_file")
+        gtf_file            = self.get_argument("gtf")
+        result_type         = self.get_argument("result_type")
+
+        #get the script that combines the expression with metadata
+        combine_script = self.get_argument("combine_script")
+
+        #get the output file and make appropriate path for it
+        output_file = self.get_output("annotated_expression_file")
+
+        if not self.is_docker:
+            #generate command line for Rscript
+            cmd = "sudo Rscript --vanilla {0} -e {1} -a {2} -t {3} -o {4} !LOG3!".format(combine_script, expression_file,
+                                                                                         gtf_file, result_type,
+                                                                                         output_file)
+        else:
+            cmd = "Rscript --vanilla {0} -e {1} -a {2} -t {3} -o {4} !LOG3!".format(combine_script, expression_file,
+                                                                                    gtf_file, result_type, output_file)
+
+        return cmd
