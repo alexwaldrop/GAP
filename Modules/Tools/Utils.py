@@ -391,7 +391,7 @@ class GetVCFChroms(Module):
             # Skip empty lines
             if len(line) > 0:
                 chrom_list.append(line)
-        self.set_output("chr_list", out)
+        self.set_output("chrom_list", out)
 
 class GetRefChroms(Module):
     def __init__(self, module_id, is_docker = False):
@@ -423,4 +423,4 @@ class GetRefChroms(Module):
             # Skip empty lines
             if len(line) > 0:
                 chrom_list.append(line)
-        self.set_output("chr_list", out)
+        self.set_output("chrom_list", out)
