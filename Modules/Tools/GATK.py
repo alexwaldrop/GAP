@@ -430,8 +430,8 @@ class GenotypeGVCFs(Module):
 
 class IndexVCF(Module):
 
-    def __init__(self, module_id):
-        super(IndexVCF, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(IndexVCF, self).__init__(module_id, is_docker)
         self.output_keys  = ["vcf", "vcf_idx"]
 
     def define_input(self):
@@ -483,8 +483,8 @@ class IndexVCF(Module):
 
 class FilterMutectCalls(Module):
 
-    def __init__(self, module_id):
-        super(FilterMutectCalls, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(FilterMutectCalls, self).__init__(module_id, is_docker)
         self.output_keys    = ["vcf"]
 
     def define_input(self):
@@ -513,3 +513,49 @@ class FilterMutectCalls(Module):
             return "%s -jar %s FilterMutectCalls -V %s -O %s !LOG3!" % (java, gatk, vcf_in, vcf_out)
 
         return "%s FilterMutectCalls -V %s -O %s !LOG3!" % (gatk, vcf_in, vcf_out)
+
+
+class CollectReadCounts(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(CollectReadCounts, self).__init__(module_id, is_docker)
+        self.output_keys    = ["read_count_out"]
+
+    def define_input(self):
+        self.add_argument("bam",            is_required=True)
+        self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("gatk",           is_required=True,   is_resource=True)
+        self.add_argument("nr_cpus",        is_required=True,   default_value=1)
+        self.add_argument("mem",            is_required=True,   default_value=2)
+        self.add_argument("interval_list",  is_required=False)
+
+        # Require java if not being run in docker environment
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        read_count_out = self.generate_unique_file_name(extension=".read_count.txt")
+        self.add_output("read_count_out", read_count_out)
+
+    def define_command(self):
+        # Get input arguments
+        bam  = self.get_argument("bam")
+        gatk    = self.get_argument("gatk")
+        read_count_out = self.get_output("read_count_out")
+        interval_list   = self.get_argument("interval_list")
+        mem             = self.get_argument("mem")
+
+        # Generating command for base recalibration
+        if not self.is_docker:
+            java = self.get_argument("java")
+            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+            cmd = "%s %s -jar %s -T CollectReadCounts -I %s -O %s --format TSV " % (java, jvm_options, gatk, bam, read_count_out)
+        else:
+            cmd = "%s CollectReadCounts -I %s -O %s --format TSV " % (gatk, bam, read_count_out)
+
+
+        if interval_list is not None:
+            cmd = "%s -L %s --interval-merging-rule OVERLAPPING_ONLY" % (cmd, interval_list)
+
+        return "%s !LOG3!" % cmd
