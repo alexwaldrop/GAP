@@ -277,3 +277,61 @@ class PrintTable(_QCParser):
         # Direct output to output file
         cmd += " > %s !LOG2!" % qc_table
         return cmd
+
+
+class MosdepthDist(_QCParser):
+
+    def __init__(self, module_id, is_docker=False):
+        super(MosdepthDist, self).__init__(module_id, is_docker)
+
+    def define_input(self):
+        super(MosdepthDist, self).define_input()
+        self.add_argument("mosdepth_dist", is_required=True)
+
+    def define_command(self):
+        # Get options from kwargs
+        input_file      = self.get_argument("mosdepth_dist")
+        qc_parser       = self.get_argument("qc_parser")
+        sample_name     = self.get_argument("sample_name")
+        parser_note     = self.get_argument("note")
+        qc_report       = self.get_output("qc_report")
+
+        # Generate base command
+        cmd = "%s MosdepthDist -i %s -s %s" % (qc_parser, input_file, sample_name)
+
+        # Add parser note if necessary
+        if parser_note is not None:
+            cmd += " -n \"%s\"" % parser_note
+
+        # Output qc_report to file
+        cmd += " > %s !LOG2!" % qc_report
+        return cmd
+
+
+class GATKCollectReadCount(_QCParser):
+
+    def __init__(self, module_id, is_docker=False):
+        super(GATKCollectReadCount, self).__init__(module_id, is_docker)
+
+    def define_input(self):
+        super(GATKCollectReadCount, self).define_input()
+        self.add_argument("read_count_out", is_required=True)
+
+    def define_command(self):
+        # Get options from kwargs
+        input_file      = self.get_argument("read_count_out")
+        qc_parser       = self.get_argument("qc_parser")
+        sample_name     = self.get_argument("sample_name")
+        parser_note     = self.get_argument("note")
+        qc_report       = self.get_output("qc_report")
+
+        # Generate base command
+        cmd = "%s GATKCollectReadCount -i %s -s %s" % (qc_parser, input_file, sample_name)
+
+        # Add parser note if necessary
+        if parser_note is not None:
+            cmd += " -n \"%s\"" % parser_note
+
+        # Output qc_report to file
+        cmd += " > %s !LOG2!" % qc_report
+        return cmd
