@@ -131,6 +131,7 @@ class View(Module):
         include_flag    = self.get_argument("include_flag")
         outfmt          = self.get_argument("outfmt")
         bam_out         = self.get_output("bam")
+        bam_out_idx     = self.get_output("bam_idx")
 
         # Create base samtools view command
         cmd = "%s view -@ %d -%s %s" % (samtools, nr_cpus, outfmt, bam)
@@ -151,9 +152,13 @@ class View(Module):
             cmd = "%s %s " % (cmd, reg)
 
         # Generating samtools view command
-        view_cmd = "%s > %s !LOG2!" % (cmd, bam_out)
-        index_cmd = "%s %s %s !LOG2!" % (samtools, bam_out, bam_idx)
-        return "%s ; %s" % (view_cmd, index_cmd)
+        view_cmd = "%s > %s" % (cmd, bam_out)
+
+        # Generating samtools index command
+        index_cmd = "%s %s %s" % (samtools, bam_out, bam_out_idx)
+
+        # Combine both into single command
+        return "%s !LOG2! && %s !LOG2!" % (view_cmd, index_cmd)
 
 
 class Depth(Module):
