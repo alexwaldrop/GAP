@@ -101,36 +101,59 @@ class Idxstats(Module):
 class View(Module):
     def __init__(self, module_id, is_docker=False):
         super(View, self).__init__(module_id, is_docker)
-        self.output_keys = ["bam"]
+        self.output_keys = ["bam", "bam_idx"]
 
     def define_input(self):
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
         self.add_argument("samtools",       is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",        is_required=True, default_value=2)
-        self.add_argument("mem",            is_required=True, default_value=5)
+        self.add_argument("nr_cpus",        is_required=True, default_value=4)
+        self.add_argument("mem",            is_required=True, default_value=6)
         self.add_argument("regions",        is_required=False)
+        self.add_argument("exclude_flag",   is_required=False)
+        self.add_argument("include_flag",   is_required=False)
+        self.add_argument("outfmt",         is_required=True, default_value="b")
 
     def define_output(self):
         bam_out = self.generate_unique_file_name(extension=".bam")
-        self.add_output("bam", bam_out)
+        bam_idx = "%s.bai" % bam_out
+        self.add_output("bam",      bam_out)
+        self.add_output("bam_idx",  bam_idx)
 
     def define_command(self):
         # Define command for running samtools view from a platform
-        bam         = self.get_argument("bam")
-        regions     = self.get_argument("regions")
-        samtools    = self.get_argument("samtools")
-        bam_out     = self.get_output("bam")
+        bam             = self.get_argument("bam")
+        bam_idx         = self.get_argument("bam_idx")
+        regions         = self.get_argument("regions")
+        samtools        = self.get_argument("samtools")
+        nr_cpus         = self.get_argument("nr_cpus")
+        exclude_flag    = self.get_argument("exclude_flag")
+        include_flag    = self.get_argument("include_flag")
+        outfmt          = self.get_argument("outfmt")
+        bam_out         = self.get_output("bam")
 
-        # Generating the regions string
-        if isinstance(regions, list):
-            reg = " ".join(regions)
-        else:
-            reg = regions
+        # Create base samtools view command
+        cmd = "%s view -@ %d -%s %s" % (samtools, nr_cpus, outfmt, bam)
+
+        # Add include/exclude flags
+        if exclude_flag is not None:
+            cmd = "%s -F %s" % (cmd, exclude_flag)
+
+        if include_flag is not None:
+            cmd = "%s -f %s" % (cmd, include_flag)
+
+        # Add commands to subset region
+        if regions is not None:
+            if isinstance(regions, list):
+                reg = " ".join(regions)
+            else:
+                reg = regions
+            cmd = "%s %s " % (cmd, reg)
 
         # Generating samtools view command
-        cmd = "%s view -b %s %s > %s !LOG2!" % (samtools, bam, reg, bam_out)
-        return cmd
+        view_cmd = "%s > %s !LOG2!" % (cmd, bam_out)
+        index_cmd = "%s %s %s !LOG2!" % (samtools, bam_out, bam_idx)
+        return "%s ; %s" % (view_cmd, index_cmd)
 
 
 class Depth(Module):
