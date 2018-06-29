@@ -19,6 +19,7 @@ class _QCParser(Module):
         summary_file = self.generate_unique_file_name(extension=".qc_report.json")
         self.add_output("qc_report", summary_file)
 
+
 class FastQC(_QCParser):
 
     def __init__(self, module_id, is_docker=False):
