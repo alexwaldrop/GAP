@@ -1,8 +1,8 @@
 from Modules import Module
 
-class novoBreak(Module):
+class NovoBreak(Module):
     def __init__(self, module_id, is_docker = False):
-        super(novoBreak, self).__init__(module_id, is_docker)
+        super(NovoBreak, self).__init__(module_id, is_docker)
         self.output_keys = ["vcf"]
 
     def define_input(self):
