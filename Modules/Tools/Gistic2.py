@@ -9,7 +9,7 @@ class Gistic2(Module):
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("gistic2",            is_required=True, is_resource=True)
         self.add_argument("analysis_type",      is_required=True)
-        self.add_argument("seg",                is_required=True)
+        self.add_argument("export",             is_required=True)
         self.add_argument("refgene_mat",        is_required=True, is_resource=True)
         self.add_argument("genegistic",         is_required=True, default_value=1)
         self.add_argument("broad",              is_required=True, default_value=1)
@@ -41,7 +41,7 @@ class Gistic2(Module):
 
         # Get arguments
         gistic2         = self.get_argument("gistic2")
-        seg             = self.get_argument("seg")
+        export          = self.get_argument("export")
         refgene_mat     = self.get_argument("refgene_mat")
         genegisitc      = self.get_argument("genegistic")
         broad           = self.get_argument("broad")
@@ -64,7 +64,7 @@ class Gistic2(Module):
         # Command line for GISTIC2 run
         cmd = "{15} ; {0} -b {1} -seg {2} -refgene {3} -genegistic {4} -broad {5} -brlen {6} " \
               "-conf {7} -armpeel {8} -savegene {9} -gcm {10} -ta {11} -td {12} -twosides {13} " \
-              "-v {14} !LOG3!".format(gistic2, gistic_output_dir, seg, refgene_mat, genegisitc, broad, brlen, conf,
+              "-v {14} !LOG3!".format(gistic2, gistic_output_dir, export, refgene_mat, genegisitc, broad, brlen, conf,
                                       armpeel, savegene, gcm, ta, td, twosides, verbose, mkdir_cmd)
 
         return cmd
