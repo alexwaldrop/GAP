@@ -277,6 +277,7 @@ class BGZip(Module):
         cmd = "{0} {1} > {2} !LOG3!".format(bgzip, vcf_in, vcf_out)
         return cmd
 
+
 class GetReadGroup(Module):
     def __init__(self, module_id, is_docker = False):
         super(GetReadGroup, self).__init__(module_id, is_docker)
@@ -317,6 +318,7 @@ class GetReadGroup(Module):
                                         "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
         self.set_output("read_group", read_group_header)
 
+
 class CombineExpressionWithMetadata(Module):
     def __init__(self, module_id, is_docker = False):
         super(CombineExpressionWithMetadata, self).__init__(module_id, is_docker)
@@ -334,7 +336,6 @@ class CombineExpressionWithMetadata(Module):
 
         # Declare unique file name
         output_file_name = self.generate_unique_file_name(extension=".txt")
-
         self.add_output("annotated_expression_file", output_file_name)
 
     def define_command(self):
@@ -361,25 +362,24 @@ class CombineExpressionWithMetadata(Module):
 
         return cmd
 
+
 class GetVCFChroms(Module):
     def __init__(self, module_id, is_docker = False):
         super(GetVCFChroms, self).__init__(module_id, is_docker)
         self.output_keys = ["chrom_list"]
 
     def define_input(self):
-        self.add_argument("vcf", is_required=True)
-        self.add_argument("nr_cpus", is_required=True, default_value=1)
-        self.add_argument("mem", is_required=True, default_value=1)
+        self.add_argument("vcf",        is_required=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
     def define_output(self):
-        self.add_output("chrom_list", None, is_path=False)
+        self.add_output("chrom_list", [], is_path=False)
 
     def define_command(self):
         # Get arguments
         vcf = self.get_argument("vcf")
-
         cmd = 'cat {0} | grep -v "#" | cut -f1 | sort | uniq'.format(vcf)
-
         return cmd
 
     def process_cmd_output(self, out, err):
@@ -393,25 +393,24 @@ class GetVCFChroms(Module):
                 chrom_list.append(line)
         self.set_output("chrom_list", out)
 
+
 class GetRefChroms(Module):
     def __init__(self, module_id, is_docker = False):
         super(GetRefChroms, self).__init__(module_id, is_docker)
         self.output_keys = ["chrom_list"]
 
     def define_input(self):
-        self.add_argument("ref_idx", is_required=True)
-        self.add_argument("nr_cpus", is_required=True, default_value=1)
-        self.add_argument("mem", is_required=True, default_value=1)
+        self.add_argument("ref_idx",    is_required=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=1)
 
     def define_output(self):
-        self.add_output("chrom_list", None, is_path=False)
+        self.add_output("chrom_list", [], is_path=False)
 
     def define_command(self):
         # Get arguments
         ref_idx = self.get_argument("ref_idx")
-
         cmd = "cut -f1 {0}".format(ref_idx)
-
         return cmd
 
     def process_cmd_output(self, out, err):
