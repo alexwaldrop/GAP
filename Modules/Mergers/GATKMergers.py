@@ -183,7 +183,6 @@ class MergeBQSRs(Merger):
 
     def define_input(self):
         self.add_argument("BQSR_report",    is_required=True)
-        self.add_argument("samtools",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
         self.add_argument("gatk",           is_required=True, is_resource=True)
