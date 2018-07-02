@@ -2,8 +2,8 @@ from Modules import Splitter
 
 class RefSplitter(Splitter):
 
-    def __init__(self, module_id):
-        super(RefSplitter, self).__init__(module_id)
+    def __init__(self, module_id, is_docker=False):
+        super(RefSplitter, self).__init__(module_id, is_docker)
         self.output_keys = ["location", "excluded_location"]
 
     def define_input(self):
