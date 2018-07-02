@@ -2,7 +2,7 @@ import logging
 import importlib
 import copy
 
-from Modules import Module, Splitter, Merger
+from Modules import Module, Splitter, Merger, PseudoMerger
 
 class Task(object):
 
@@ -235,3 +235,10 @@ class Task(object):
                 to_ret += "\t\t%s\t= %s\n" % (key, self.__module_args[key])
 
         return to_ret
+
+    def can_accept_multi_input(self):
+        if self.is_merger_task():
+            return True
+        elif isinstance(self.module, PseudoMerger):
+            return True
+        return False

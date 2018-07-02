@@ -128,7 +128,7 @@ class GraphValidator(Validator):
             # Check to make sure that only merge type modules receive the same input from multiple different parents
             parent_outputs = parent_task.get_output_keys()
             for parent_output in parent_outputs:
-                if parent_output in parent_output_types and not task.is_merger_task():
+                if parent_output in parent_output_types and not task.can_accept_multi_input():
                     self.report_error("In task '%s', the input argument '%s' is satisfied by two or more upstream tasks and is NOT a Merger module."
                                       " Tasks can only receive one type of argument from each parent task to prevent runtime ambiguity! "
                                       % (task_id, parent_output))
