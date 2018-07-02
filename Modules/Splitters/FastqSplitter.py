@@ -4,9 +4,8 @@ from Modules import Splitter
 
 class FastqSplitter(Splitter):
 
-    def __init__(self, module_id):
-        super(FastqSplitter, self).__init__(module_id)
-
+    def __init__(self, module_id, is_docker=False):
+        super(FastqSplitter, self).__init__(module_id, is_docker)
         self.output_keys = ["R1", "R2", "nr_cpus"]
 
         # BWA-MEM aligning speed constant
