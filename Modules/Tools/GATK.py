@@ -383,3 +383,46 @@ class CollectReadCounts(Module):
             cmd = "%s -L %s --interval-merging-rule OVERLAPPING_ONLY" % (cmd, interval_list)
 
         return "%s !LOG3!" % cmd
+
+class BedToIntervalList(Module):
+    def __init__(self, module_id, is_docker=False):
+        super(BedToIntervalList, self).__init__(module_id, is_docker)
+        self.output_keys = ["interval_list"]
+
+    def define_input(self):
+        self.add_argument("bed",        is_required=True)
+        self.add_argument("dict_file",  is_required=True, is_resource=True)
+        self.add_argument("gatk",       is_required=True, is_resource=True)
+        self.add_argument("nr_cpus",    is_required=True, default_value=1)
+        self.add_argument("mem",        is_required=True, default_value=2)
+
+        # Require java if not being run in docker environment
+        if not self.is_docker:
+            self.add_argument("java", is_required=True, is_resource=True)
+
+    def define_output(self):
+        # Declare recoded VCF output filename
+        interval_list = self.generate_unique_file_name(extension=".interval.list")
+        self.add_output("interval_list", interval_list)
+
+    def define_command(self):
+
+        # Get input arguments
+        bed         = self.get_argument("bed")
+        dict_file   = self.get_argument("dict_file")
+        gatk        = self.get_argument("gatk")
+        mem         = self.get_argument("mem")
+
+        # get the interval list file name
+        interval_list = self.get_output("interval_list")
+
+        # Generating command for base recalibration
+        if not self.is_docker:
+            java = self.get_argument("java")
+            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+            cmd = "{0} {1} -jar {2} -T BedToIntervalList -I {3} -O {4} -SD {5}".format(java, jvm_options, gatk, bed,
+                                                                                       interval_list, dict_file)
+        else:
+            cmd = "{0} -T BedToIntervalList -I {1} -O {2} -SD {3}".format(gatk, bed, interval_list, dict_file)
+
+        return "{0} !LOG3!".format(cmd)
