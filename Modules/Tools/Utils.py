@@ -429,7 +429,7 @@ class GetRefChroms(Module):
         self.output_keys = ["chrom_list"]
 
     def define_input(self):
-        self.add_argument("ref_idx",    is_required=True)
+        self.add_argument("ref_idx",    is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
         self.add_argument("mem",        is_required=True, default_value=1)
 
