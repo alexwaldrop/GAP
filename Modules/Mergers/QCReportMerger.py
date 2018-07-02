@@ -1,4 +1,4 @@
-from Modules import Merger, Module
+from Modules import Merger, PseudoMerger
 
 class Rbind(Merger):
 
@@ -28,7 +28,7 @@ class Rbind(Merger):
             return "%s Rbind -i %s > %s !LOG2!" % (qc_parser, input_files, qc_report)
 
 
-class Cbind(Module):
+class Cbind(PseudoMerger):
 
     def __init__(self, module_id, is_docker=False):
         super(Cbind, self).__init__(module_id, is_docker)
