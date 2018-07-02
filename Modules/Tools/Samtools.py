@@ -109,7 +109,7 @@ class View(Module):
         self.add_argument("samtools",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=4)
         self.add_argument("mem",            is_required=True, default_value=6)
-        self.add_argument("regions",        is_required=False)
+        self.add_argument("location",       is_required=False)
         self.add_argument("exclude_flag",   is_required=False)
         self.add_argument("include_flag",   is_required=False)
         self.add_argument("outfmt",         is_required=True, default_value="b")
@@ -123,8 +123,7 @@ class View(Module):
     def define_command(self):
         # Define command for running samtools view from a platform
         bam             = self.get_argument("bam")
-        bam_idx         = self.get_argument("bam_idx")
-        regions         = self.get_argument("regions")
+        location        = self.get_argument("location")
         samtools        = self.get_argument("samtools")
         nr_cpus         = self.get_argument("nr_cpus")
         exclude_flag    = self.get_argument("exclude_flag")
@@ -144,11 +143,11 @@ class View(Module):
             cmd = "%s -f %s" % (cmd, include_flag)
 
         # Add commands to subset region
-        if regions is not None:
-            if isinstance(regions, list):
-                reg = " ".join(regions)
+        if location is not None:
+            if isinstance(location, list):
+                reg = " ".join(location)
             else:
-                reg = regions
+                reg = location
             cmd = "%s %s " % (cmd, reg)
 
         # Generating samtools view command
