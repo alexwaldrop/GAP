@@ -50,11 +50,11 @@ class ConcatFastq(Module):
         self.__check_input(r1, r2)
 
         cmd = None
-        if r1 != r1_out:
+        if r1 != r1_out.get_path():
             # Concat R1 if necessary
             cmd = "cat %s > %s !LOG2!" % (" ".join(r1), r1_out)
 
-        if r2 != r2_out:
+        if r2 != r2_out.get_path():
             # Concat R2 if necessary
             r2_cmd = "cat %s > %s !LOG2!" % (" ".join(r2), r2_out)
             # Join in the background so they run at the same time
@@ -345,6 +345,7 @@ class GetReadGroup(Module):
         rg_pl = seq_platform if not isinstance(seq_platform, list) else seq_platform[0] # Read Group Platform used
         read_group_header = "\\t".join(["@RG", "ID:%s" % rg_id, "PU:%s" % rg_pu,
                                         "SM:%s" % rg_sm, "LB:%s" % rg_lb, "PL:%s" % rg_pl])
+        logging.info("Read group: %s" % read_group_header)
         self.set_output("read_group", read_group_header)
 
 
@@ -451,4 +452,6 @@ class GetRefChroms(Module):
             # Skip empty lines
             if len(line) > 0:
                 chrom_list.append(line)
-        self.set_output("chrom_list", out)
+
+        logging.info("Chrom List: %s" % ",".join(chrom_list))
+        self.set_output("chrom_list", chrom_list)
