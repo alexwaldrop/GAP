@@ -61,10 +61,9 @@ class Module(object):
         if is_path and not isinstance(value, GAPFile) and value is not None:
             # Convert paths to GAPFiles if they haven't already been converted
             file_id = "%s.%s" % (self.module_id, key)
-            self.output[key] = GAPFile(file_id, file_type=key, path=value, **kwargs)
+            value = GAPFile(file_id, file_type=key, path=value, **kwargs)
 
-        else:
-            self.output[key] = value
+        self.output[key] = value
 
     def get_command(self):
 
