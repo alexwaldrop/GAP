@@ -38,9 +38,6 @@ class Scheduler(object):
                 # Check if task worker has been created for task
                 task_worker = None if task_id not in self.task_workers else self.task_workers[task_id]
 
-                if task_worker is not None:
-                    logging.debug("(%s) Status: %s" % (task_id, task_worker.get_status()))
-
                 # Finalize completed tasks
                 if task_worker is not None and task_worker.get_status() == TaskWorker.COMPLETE:
                     self.__finalize_task_worker(task_worker)
