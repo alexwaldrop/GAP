@@ -390,7 +390,7 @@ class BedToIntervalList(Module):
         self.output_keys = ["interval_list"]
 
     def define_input(self):
-        self.add_argument("bed",        is_required=True)
+        self.add_argument("bed",        is_required=True, is_resource=True)
         self.add_argument("dict_file",  is_required=True, is_resource=True)
         self.add_argument("gatk",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
@@ -420,9 +420,9 @@ class BedToIntervalList(Module):
         if not self.is_docker:
             java = self.get_argument("java")
             jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "{0} {1} -jar {2} -T BedToIntervalList -I {3} -O {4} -SD {5}".format(java, jvm_options, gatk, bed,
+            cmd = "{0} {1} -jar {2} BedToIntervalList -I {3} -O {4} -SD {5}".format(java, jvm_options, gatk, bed,
                                                                                        interval_list, dict_file)
         else:
-            cmd = "{0} -T BedToIntervalList -I {1} -O {2} -SD {3}".format(gatk, bed, interval_list, dict_file)
+            cmd = "{0} BedToIntervalList -I {1} -O {2} -SD {3}".format(gatk, bed, interval_list, dict_file)
 
         return "{0} !LOG3!".format(cmd)
