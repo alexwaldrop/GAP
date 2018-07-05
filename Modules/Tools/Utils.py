@@ -1,4 +1,5 @@
 import logging
+import copy
 
 from System.Datastore import GAPFile
 from Modules import Module
@@ -24,7 +25,8 @@ class ConcatFastq(Module):
         r1 = self.get_argument("R1")
         if not isinstance(r1, list):
             # Just pass the filename as is if no concatenation required (num R1 = 1)
-            self.add_output("R1", r1)
+            r1_copy = copy.deepcopy(self.arguments["R1"].get_value())
+            self.add_output("R1", r1_copy)
         else:
             # Concatenate R1 files to new output
             extension = ".R1.fastq.gz" if r1[0].endswith(".gz") else "concat.R1.fastq"
@@ -34,7 +36,8 @@ class ConcatFastq(Module):
         r2 = self.get_argument("R2")
         if not isinstance(r2, list):
             # Either R2 is single path or R2 is None
-            self.add_output("R2", r2)
+            r2_copy = copy.deepcopy(self.arguments["R2"].get_value())
+            self.add_output("R2", r2_copy)
         else:
             extension = ".R2.fastq.gz" if r2[0].endswith(".gz") else "concat.R2.fastq"
             self.add_output("R2", self.generate_unique_file_name(extension=extension))
