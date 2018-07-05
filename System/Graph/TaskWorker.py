@@ -146,12 +146,12 @@ class TaskWorker(Thread):
                 # Post-process command output if necessary
                 self.module.process_cmd_output(out, err)
 
-            # Save output files in workspace output dirs (if any)
-            self.set_status(self.FINALIZING)
-            output_files        = self.datastore.get_task_output_files(self.task.get_ID())
-            final_output_types  = self.task.get_final_output_keys()
-            if len(output_files) > 0:
-                self.module_executor.save_output(output_files, final_output_types)
+                # Save output files in workspace output dirs (if any)
+                self.set_status(self.FINALIZING)
+                output_files        = self.datastore.get_task_output_files(self.task.get_ID())
+                final_output_types  = self.task.get_final_output_keys()
+                if len(output_files) > 0:
+                    self.module_executor.save_output(output_files, final_output_types)
 
             # Indicate that task finished without any errors
             if not self.__cancelled:
