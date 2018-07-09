@@ -10,12 +10,12 @@ class Mosdepth(Module):
         self.add_argument("bam_idx",    is_required=True)
         self.add_argument("nr_cpus",    is_required=True,   default_value=6)
         self.add_argument("mem",        is_required=True,   default_value=12)
-        self.add_argument("target_bed", is_resource=True,   is_required=False)
+        self.add_argument("bed",        is_resource=True,   is_required=False)
 
     def define_output(self):
 
         # Determine if output name based on whether it's being subset by BED
-        target_bed  = self.get_argument("target_bed")
+        target_bed  = self.get_argument("bed")
         extension = ".mosdepth.global.dist.txt" if target_bed is None else ".mosdepth.region.dist.txt"
 
 
@@ -28,7 +28,7 @@ class Mosdepth(Module):
         bam             = self.get_argument("bam")
         mosdepth        = self.get_argument("mosdepth")
         nr_cpus         = self.get_argument("nr_cpus")
-        target_bed      = self.get_argument("target_bed")
+        target_bed      = self.get_argument("bed")
         mosdepth_out    = self.get_output("mosdepth_dist")
 
         # Get output prefix
