@@ -290,13 +290,10 @@ class FilterMutectCalls(_GATKBase):
         self.output_keys    = ["vcf"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("vcf",        is_required=True)
-        self.add_argument("gatk",       is_required=True,   is_resource=True)
         self.add_argument("nr_cpus",    is_required=True,   default_value=1)
         self.add_argument("mem",        is_required=True,   default_value=2)
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare recoded VCF output filename
@@ -305,34 +302,24 @@ class FilterMutectCalls(_GATKBase):
 
     def define_command(self):
         # Get input arguments
-        vcf_in  = self.get_argument("vcf")
-        gatk    = self.get_argument("gatk")
-        vcf_out = self.get_output("vcf")
-
-        # Generating command for base recalibration
-        if not self.is_docker:
-            java = self.get_argument("java")
-            return "%s -jar %s FilterMutectCalls -V %s -O %s !LOG3!" % (java, gatk, vcf_in, vcf_out)
-
-        return "%s FilterMutectCalls -V %s -O %s !LOG3!" % (gatk, vcf_in, vcf_out)
+        vcf_in      = self.get_argument("vcf")
+        gatk_cmd    = self.get_gatk_command()
+        vcf_out     = self.get_output("vcf")
+        return "{0} FilterMutectCalls -V {1} -O {2} !LOG3!".format(gatk_cmd, vcf_in, vcf_out)
 
 class CollectReadCounts(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(CollectReadCounts, self).__init__(module_id, is_docker)
-        self.output_keys    = ["read_count_out"]
+        self.output_keys = ["read_count_out"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
-        self.add_argument("gatk",           is_required=True,   is_resource=True)
         self.add_argument("nr_cpus",        is_required=True,   default_value=1)
         self.add_argument("mem",            is_required=True,   default_value=2)
         self.add_argument("interval_list",  is_required=False)
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare recoded VCF output filename
@@ -341,25 +328,17 @@ class CollectReadCounts(_GATKBase):
 
     def define_command(self):
         # Get input arguments
-        bam  = self.get_argument("bam")
-        gatk    = self.get_argument("gatk")
-        read_count_out = self.get_output("read_count_out")
+        bam             = self.get_argument("bam")
+        gatk_cmd        = self.get_gatk_command()
+        read_count_out  = self.get_output("read_count_out")
         interval_list   = self.get_argument("interval_list")
-        mem             = self.get_argument("mem")
 
-        # Generating command for base recalibration
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -jar %s -T CollectReadCounts -I %s -O %s --format TSV " % (java, jvm_options, gatk, bam, read_count_out)
-        else:
-            cmd = "%s CollectReadCounts -I %s -O %s --format TSV " % (gatk, bam, read_count_out)
-
+        cmd = "{0} CollectReadCounts -I {1} -O {2} --format TSV ".format(gatk_cmd, bam, read_count_out)
 
         if interval_list is not None:
-            cmd = "%s -L %s --interval-merging-rule OVERLAPPING_ONLY" % (cmd, interval_list)
+            cmd = "{0} -L {1} --interval-merging-rule OVERLAPPING_ONLY".format(cmd, interval_list)
 
-        return "%s !LOG3!" % cmd
+        return "{0} !LOG3!".format(cmd)
 
 class BedToIntervalList(_GATKBase):
     def __init__(self, module_id, is_docker=False):
@@ -369,13 +348,8 @@ class BedToIntervalList(_GATKBase):
     def define_input(self):
         self.add_argument("bed",        is_required=True, is_resource=True)
         self.add_argument("dict_file",  is_required=True, is_resource=True)
-        self.add_argument("gatk",       is_required=True, is_resource=True)
         self.add_argument("nr_cpus",    is_required=True, default_value=1)
         self.add_argument("mem",        is_required=True, default_value=2)
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare recoded VCF output filename
@@ -385,22 +359,9 @@ class BedToIntervalList(_GATKBase):
     def define_command(self):
 
         # Get input arguments
-        bed         = self.get_argument("bed")
-        dict_file   = self.get_argument("dict_file")
-        gatk        = self.get_argument("gatk")
-        mem         = self.get_argument("mem")
+        bed             = self.get_argument("bed")
+        dict_file       = self.get_argument("dict_file")
+        gatk_cmd        = self.get_gatk_command()
+        interval_list   = self.get_output("interval_list")
 
-        # get the interval list file name
-        interval_list = self.get_output("interval_list")
-
-        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-
-        # Generating command for base recalibration
-        if not self.is_docker:
-            java = self.get_argument("java")
-            cmd = "{0} {1} -jar {2} BedToIntervalList -I {3} -O {4} -SD {5}".format(java, jvm_options, gatk, bed,
-                                                                                       interval_list, dict_file)
-        else:
-            cmd = "java {0} -jar {1} BedToIntervalList -I {2} -O {3} -SD {4}".format(jvm_options, gatk, bed, interval_list, dict_file)
-
-        return "{0} !LOG3!".format(cmd)
+        return "{0} BedToIntervalList -I {1} -O {2} -SD {3} !LOG3!".format(gatk_cmd, bed, interval_list, dict_file)
