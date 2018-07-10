@@ -265,14 +265,9 @@ class IndexVCF(_GATKBase):
         vcf_out = self.get_output("vcf")
 
         # Generate command with java if not running on docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            cmd = "%s org.broadinstitute.gatk.tools.CatVariants" % gatk
+        java = self.get_argument("java")
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+        cmd = "%s %s -cp %s org.broadinstitute.gatk.tools.CatVariants" % (java, jvm_options, gatk)
 
         # Generating the CatVariants options
         opts = list()
