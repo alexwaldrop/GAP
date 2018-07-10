@@ -2,26 +2,54 @@ import logging
 
 from Modules import Module
 
-class HaplotypeCaller(Module):
+
+class _GATKBase(Module):
+
+    def __init__(self, module_id, is_docker=False):
+        super(_GATKBase, self).__init__(module_id, is_docker)
+
+    def define_base_args(self):
+        self.add_argument("java",           is_required=True, is_resource=True)
+        self.add_argument("gatk",           is_required=True, is_resource=True)
+        self.add_argument("gatk_version",   is_required=True)
+        self.add_argument("location")
+        self.add_argument("excluded_location")
+
+    def get_gatk_command(self):
+        # Get input arguments
+        gatk    = self.get_argument("gatk")
+        mem     = self.get_argument("mem")
+        java = self.get_argument("java")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 / 5, "/tmp/")
+
+        # Determine numeric version of GATK
+        gatk_version = self.get_argument("gatk_version")
+        gatk_version = str(gatk_version).lower().replace("gatk","")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            return "{0} {1} -jar {2} -T".format(java, jvm_options, gatk)
+
+        # Generate base command with endpoint provided by docker
+        else:
+            return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
+
+
+class HaplotypeCaller(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(HaplotypeCaller, self).__init__(module_id, is_docker)
         self.output_keys = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=48)
-        self.add_argument("location")
-        self.add_argument("excluded_location")
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare GVCF output filename
@@ -35,22 +63,11 @@ class HaplotypeCaller(Module):
         # Get input arguments
         bam     = self.get_argument("bam")
         BQSR    = self.get_argument("BQSR_report")
-        gatk    = self.get_argument("gatk")
         ref     = self.get_argument("ref")
         L       = self.get_argument("location")
         XL      = self.get_argument("excluded_location")
-        mem     = self.get_argument("mem")
         gvcf    = self.get_output("gvcf")
-
-        # Generate command with java if not running on docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -jar %s -T HaplotypeCaller" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            cmd = "%s -T HaplotypeCaller" % gatk
+        gatk_cmd = self.get_gatk_command()
 
         # Generating the haplotype caller options
         opts = list()
@@ -77,29 +94,22 @@ class HaplotypeCaller(Module):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating command for HaplotypeCaller
-        return "%s %s !LOG3!" % (cmd, " ".join(opts))
+        return "%s HaplotypeCaller %s !LOG3!" % (gatk_cmd, " ".join(opts))
 
-
-class PrintReads(Module):
+class PrintReads(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(PrintReads, self).__init__(module_id, is_docker)
         self.output_keys            = ["bam"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("BQSR_report",        is_required=True)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2.5")
-        self.add_argument("location")
-        self.add_argument("excluded_location")
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare bam output filename
@@ -110,23 +120,12 @@ class PrintReads(Module):
         # Obtaining the arguments
         bam     = self.get_argument("bam")
         BQSR    = self.get_argument("BQSR_report")
-        gatk    = self.get_argument("gatk")
         ref     = self.get_argument("ref")
         L       = self.get_argument("location")
         XL      = self.get_argument("excluded_location")
         nr_cpus = self.get_argument("nr_cpus")
-        mem     = self.get_argument("mem")
         output_bam = self.get_output("bam")
-
-        # Generate command with java if not running on docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -jar %s -T PrintReads" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            cmd = "%s -T PrintReads" % gatk
+        gatk_cmd = self.get_gatk_command()
 
         # Generating the PrintReads caller options
         opts = list()
@@ -151,10 +150,9 @@ class PrintReads(Module):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating command for GATK PrintReads
-        return "%s %s !LOG3!" % (cmd, " ".join(opts))
+        return "%s PrintReads %s !LOG3!" % (gatk_cmd, " ".join(opts))
 
-
-class BaseRecalibrator(Module):
+class BaseRecalibrator(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(BaseRecalibrator, self).__init__(module_id, is_docker)
@@ -251,8 +249,7 @@ class BaseRecalibrator(Module):
         # If here, then process the entire file
         return None
 
-
-class IndexVCF(Module):
+class IndexVCF(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(IndexVCF, self).__init__(module_id, is_docker)
@@ -304,8 +301,7 @@ class IndexVCF(Module):
         # Generating the IndexVCF cmd
         return "%s  %s !LOG3!" % (cmd, " ".join(opts))
 
-
-class FilterMutectCalls(Module):
+class FilterMutectCalls(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(FilterMutectCalls, self).__init__(module_id, is_docker)
@@ -338,8 +334,7 @@ class FilterMutectCalls(Module):
 
         return "%s FilterMutectCalls -V %s -O %s !LOG3!" % (gatk, vcf_in, vcf_out)
 
-
-class CollectReadCounts(Module):
+class CollectReadCounts(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(CollectReadCounts, self).__init__(module_id, is_docker)
@@ -384,7 +379,7 @@ class CollectReadCounts(Module):
 
         return "%s !LOG3!" % cmd
 
-class BedToIntervalList(Module):
+class BedToIntervalList(_GATKBase):
     def __init__(self, module_id, is_docker=False):
         super(BedToIntervalList, self).__init__(module_id, is_docker)
         self.output_keys = ["interval_list"]
@@ -416,13 +411,14 @@ class BedToIntervalList(Module):
         # get the interval list file name
         interval_list = self.get_output("interval_list")
 
+        jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
+
         # Generating command for base recalibration
         if not self.is_docker:
             java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
             cmd = "{0} {1} -jar {2} BedToIntervalList -I {3} -O {4} -SD {5}".format(java, jvm_options, gatk, bed,
                                                                                        interval_list, dict_file)
         else:
-            cmd = "{0} BedToIntervalList -I {1} -O {2} -SD {3}".format(gatk, bed, interval_list, dict_file)
+            cmd = "java {0} -jar {1} BedToIntervalList -I {2} -O {3} -SD {4}".format(jvm_options, gatk, bed, interval_list, dict_file)
 
         return "{0} !LOG3!".format(cmd)
