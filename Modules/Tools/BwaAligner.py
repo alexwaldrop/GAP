@@ -35,11 +35,11 @@ class BwaAligner(Module):
 
         if R2 is not None:
             # Generate bwa-mem paired-end command
-            align_cmd = "{0} mem -M -R \"{1}\" -t {2} {3} {4} {5} !LOG2!".format(
+            align_cmd = '{0} mem -M -R "{1}" -t {2} {3} {4} {5} !LOG2!'.format(
                 bwa, rg_header, nr_cpus, ref, R1, R2)
         else:
             # Generate bwa-mem single-end command
-            align_cmd = "{0} mem -M -R \"{1}\" -t {2} {3} {4} !LOG2!".format(
+            align_cmd = '{0} mem -M -R "{1}" -t {2} {3} {4} !LOG2!'.format(
                 bwa, rg_header, nr_cpus, ref, R1)
 
         # Generating command for converting SAM to BAM
