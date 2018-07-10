@@ -159,19 +159,15 @@ class BaseRecalibrator(_GATKBase):
         self.output_keys    = ["BQSR_report"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("chrom_size_list",    is_required=False)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("dbsnp",              is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value="MAX")
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
         self.add_argument("max_nr_reads",       is_required=True, default_value=2.5*10**7)
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare BQSR report file
@@ -181,27 +177,17 @@ class BaseRecalibrator(_GATKBase):
     def define_command(self):
         # Get arguments needed to generate GATK BQSR command
         bam             = self.get_argument("bam")
-        gatk            = self.get_argument("gatk")
         chrom_size_list = self.get_argument("chrom_size_list")
         ref             = self.get_argument("ref")
         dbsnp           = self.get_argument("dbsnp")
         nr_cpus         = self.get_argument("nr_cpus")
-        mem             = self.get_argument("mem")
         max_nr_reads    = self.get_argument("max_nr_reads")
         bqsr_report     = self.get_output("BQSR_report")
 
+        gatk_cmd        = self.get_gatk_command()
+
         # Convert max_nr_reads to integer if necessary
         max_nr_reads    = eval(max_nr_reads) if isinstance(max_nr_reads, basestring) else max_nr_reads
-
-        # Generate command with java if not running on docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -jar %s -T BaseRecalibrator" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            cmd = "%s BaseRecalibrator" % gatk
 
         # Generating the base recalibration options
         opts = list()
@@ -229,7 +215,7 @@ class BaseRecalibrator(_GATKBase):
             raise
 
         # Generating command for base recalibration
-        return "%s %s !LOG3!" % (cmd, " ".join(opts))
+        return "{0} BaseRecalibrator {1} !LOG3!".format(gatk_cmd, " ".join(opts))
 
     @staticmethod
     def __get_chrom_locations(chrom_size_list, max_nr_reads):
@@ -256,15 +242,11 @@ class IndexVCF(_GATKBase):
         self.output_keys  = ["vcf", "vcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("vcf",               is_required=True)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=2)
         self.add_argument("mem",                is_required=True, default_value=13)
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare merged GVCF output filename
