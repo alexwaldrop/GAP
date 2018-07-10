@@ -154,7 +154,7 @@ class View(Module):
         view_cmd = "%s > %s" % (cmd, bam_out)
 
         # Generating samtools index command
-        index_cmd = "%s %s %s" % (samtools, bam_out, bam_out_idx)
+        index_cmd = "%s index %s %s" % (samtools, bam_out, bam_out_idx)
 
         # Combine both into single command
         return "%s !LOG2! && %s !LOG2!" % (view_cmd, index_cmd)
