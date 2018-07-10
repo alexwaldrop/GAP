@@ -121,7 +121,12 @@ class PreemptibleInstance(Instance):
         can_retry   = False
         needs_reset = False
 
-        logging.debug("(%s) Handling failure for proc '%s'. Curr status: %s" % (self.name, proc_name, self.get_status()))
+        logging.warning("(%s) Handling failure for proc '%s'. Curr status: %s" % (self.name, proc_name, self.get_status()))
+        logging.debug("(%s) Error code: %s" % (self.name, proc_obj.returncode))
+        
+        if proc_obj.returncode == 255:
+            logging.warning("(%s) Waiting for 60 seconds to make sure instance wasn't preempted..." % self.name)
+            time.sleep(60)
 
         # Raise error if processor is locked
         if self.is_locked() and proc_name != "destroy":
