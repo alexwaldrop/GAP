@@ -1,24 +1,51 @@
 from Modules import Merger
 
-class GenotypeGVCFs(Merger):
+class _GATKBase(Merger):
+
+    def __init__(self, module_id, is_docker=False):
+        super(_GATKBase, self).__init__(module_id, is_docker)
+
+    def define_base_args(self):
+        self.add_argument("java",           is_required=True, is_resource=True)
+        self.add_argument("gatk",           is_required=True, is_resource=True)
+        self.add_argument("gatk_version",   is_required=True)
+        self.add_argument("location")
+        self.add_argument("excluded_location")
+
+    def get_gatk_command(self):
+        # Get input arguments
+        gatk        = self.get_argument("gatk")
+        mem         = self.get_argument("mem")
+        java        = self.get_argument("java")
+        jvm_options = "-Xmx{0}G -Djava.io.tmpdir={1}".format(mem * 4 / 5, "/tmp/")
+
+        # Determine numeric version of GATK
+        gatk_version = self.get_argument("gatk_version")
+        gatk_version = str(gatk_version).lower().replace("gatk","")
+        gatk_version = gatk_version.strip()
+        gatk_version = int(gatk_version.split(".")[0])
+
+        if gatk_version < 4:
+            return "{0} {1} -jar {2} -T".format(java, jvm_options, gatk)
+
+        # Generate base command with endpoint provided by docker
+        else:
+            return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
+
+
+class GenotypeGVCFs(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(GenotypeGVCFs, self).__init__(module_id, is_docker)
         self.output_keys = ["vcf", "vcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("gvcf",                is_required=True)
         self.add_argument("gvcf_idx",            is_required=True)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=6)
         self.add_argument("mem",                is_required=True, default_value=35)
-        self.add_argument("location")
-        self.add_argument("excluded_location")
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare VCF output filename
@@ -30,23 +57,12 @@ class GenotypeGVCFs(Merger):
 
     def define_command(self):
         # Get input arguments
-        gvcf_in = self.get_argument("gvcf")
-        gatk    = self.get_argument("gatk")
-        ref     = self.get_argument("ref")
-        L       = self.get_argument("location")
-        XL      = self.get_argument("excluded_location")
-        vcf    = self.get_output("vcf")
-
-        # Generate base command where executables exist outside docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            mem = self.get_argument("mem")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            gatk_cmd = "%s %s -jar %s -T" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            gatk_cmd = "%s" % gatk
+        gvcf_in     = self.get_argument("gvcf")
+        ref         = self.get_argument("ref")
+        L           = self.get_argument("location")
+        XL          = self.get_argument("excluded_location")
+        vcf         = self.get_output("vcf")
+        gatk_cmd    = self.get_gatk_command()
 
         # Generating the haplotype caller options
         opts = list()
