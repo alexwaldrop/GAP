@@ -32,7 +32,6 @@ class _GATKBase(Merger):
         else:
             return "{0} {1} -jar {2}".format(java, jvm_options, gatk)
 
-
 class GenotypeGVCFs(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
@@ -93,29 +92,22 @@ class GenotypeGVCFs(_GATKBase):
         # Generating command for base recalibration
         return "touch {0}/*.idx; {1} GenotypeGVCFs {2} !LOG3!".format(self.get_output_dir(), gatk_cmd, " ".join(opts))
 
-
-class Mutect2(Merger):
+class Mutect2(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(Mutect2, self).__init__(module_id, is_docker)
         self.output_keys = ["vcf", "vcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("bam",                is_required=True)
         self.add_argument("bam_idx",            is_required=True)
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("is_tumor",           is_required=True)
-        self.add_argument("gatk",               is_required=True,   is_resource=True)
         self.add_argument("ref",                is_required=True,   is_resource=True)
         self.add_argument("germline_vcf",       is_required=False,  is_resource=True)
         self.add_argument("nr_cpus",            is_required=True,   default_value=8)
         self.add_argument("mem",                is_required=True,   default_value=30)
-        self.add_argument("location")
-        self.add_argument("excluded_location")
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare VCF output filename
@@ -130,24 +122,14 @@ class Mutect2(Merger):
         bams            = self.get_argument("bam")
         sample_names    = self.get_argument("sample_name")
         is_tumor        = self.get_argument("is_tumor")
-        gatk            = self.get_argument("gatk")
         ref             = self.get_argument("ref")
         germline_vcf    = self.get_argument("germline_vcf")
         L               = self.get_argument("location")
         XL              = self.get_argument("excluded_location")
         nr_cpus         = self.get_argument("nr_cpus")
-        mem             = self.get_argument("mem")
         vcf             = self.get_output("vcf")
 
-        # Generate command with java if not running on docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            cmd = "%s %s -jar %s Mutect2" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            cmd = "%s Mutect2" % gatk
+        gatk_cmd        = self.get_gatk_command()
 
         # Generating the MuTect2 options
         opts = list()
@@ -188,24 +170,19 @@ class Mutect2(Merger):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating command for Mutect2
-        return "%s %s !LOG3!" % (cmd, " ".join(opts))
+        return "{0} Mutect2 {1} !LOG3!".format(gatk_cmd, " ".join(opts))
 
-
-class MergeBQSRs(Merger):
+class MergeBQSRs(_GATKBase):
 
     def __init__(self, module_id, is_docker=False):
         super(MergeBQSRs, self).__init__(module_id, is_docker)
         self.output_keys  = ["BQSR_report"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("BQSR_report",    is_required=True)
         self.add_argument("nr_cpus",        is_required=True, default_value=8)
         self.add_argument("mem",            is_required=True, default_value="nr_cpus * 2")
-        self.add_argument("gatk",           is_required=True, is_resource=True)
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare merged bam output file
@@ -215,24 +192,13 @@ class MergeBQSRs(Merger):
     def define_command(self):
         # Obtaining the arguments
         bqsrs_in    = self.get_argument("BQSR_report")
-        gatk        = self.get_argument("gatk")
-        mem         = self.get_argument("mem")
         bqsr_out    = self.get_output("BQSR_report")
 
-        # Generate base command where executables exist outside docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            gatk_cmd = "%s %s -jar %s" % (java, jvm_options, gatk)
+        gatk_cmd    = self.get_gatk_command()
 
-        # Generate base command with endpoint provided by docker
-        else:
-            gatk_cmd = "%s" % gatk
+        return "{0} GatherBQSRReports {1} -O {2}".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
 
-        return "{0} GatherBQSRReports --input {1} -O {2}".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
-
-
-class CatVariants(Merger):
+class CatVariants(_GATKBase):
     # Merger module intended to merge gVCF files within samples (i.e. re-combine chromosomes)
 
     def __init__(self, module_id, is_docker=False):
@@ -285,26 +251,19 @@ class CatVariants(Merger):
                                                                                     " ".join(opts))
         return cmd
 
-
-class CombineGVCF(Merger):
+class CombineGVCF(_GATKBase):
     # Merger module intended to merge gVCF files across multiple samples
     def __init__(self, module_id):
         super(CombineGVCF, self).__init__(module_id)
         self.output_keys  = ["gvcf", "gvcf_idx"]
 
     def define_input(self):
+        self.define_base_args()
         self.add_argument("gvcf",               is_required=True)
         self.add_argument("gvcf_idx",           is_required=True)
-        self.add_argument("gatk",               is_required=True, is_resource=True)
         self.add_argument("ref",                is_required=True, is_resource=True)
         self.add_argument("nr_cpus",            is_required=True, default_value=8)
         self.add_argument("mem",                is_required=True, default_value=16)
-        self.add_argument("location")
-        self.add_argument("excluded_location")
-
-        # Require java if not being run in docker environment
-        if not self.is_docker:
-            self.add_argument("java", is_required=True, is_resource=True)
 
     def define_output(self):
         # Declare merged GVCF output filename
@@ -318,22 +277,12 @@ class CombineGVCF(Merger):
 
         # Obtaining the arguments
         gvcf_list   = self.get_argument("gvcf")
-        gatk        = self.get_argument("gatk")
         ref         = self.get_argument("ref")
         L           = self.get_argument("location")
         XL          = self.get_argument("excluded_location")
         gvcf_out    = self.get_output("gvcf")
 
-        # Generate base command where executables exist outside docker
-        if not self.is_docker:
-            java = self.get_argument("java")
-            mem  = self.get_argument("mem")
-            jvm_options = "-Xmx%dG -Djava.io.tmpdir=%s" % (mem * 4 / 5, "/tmp/")
-            gatk_cmd = "%s %s -jar %s -T" % (java, jvm_options, gatk)
-
-        # Generate base command with endpoint provided by docker
-        else:
-            gatk_cmd = "%s" % gatk
+        gatk_cmd    = self.get_gatk_command()
 
         # Generating the combine options
         opts = list()
@@ -359,4 +308,4 @@ class CombineGVCF(Merger):
                 opts.append("-XL \"%s\"" % XL)
 
         # Generating the combine command
-        return "%s CombineGVCFs %s !LOG3!" % (gatk_cmd, " ".join(opts))
+        return "{0} CombineGVCFs {1} !LOG3!".format(gatk_cmd, " ".join(opts))
