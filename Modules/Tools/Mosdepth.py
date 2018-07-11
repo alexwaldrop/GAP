@@ -8,6 +8,7 @@ class Mosdepth(Module):
     def define_input(self):
         self.add_argument("bam",        is_required=True)
         self.add_argument("bam_idx",    is_required=True)
+        self.add_argument("mosdepth",   is_resource=True,   is_required=True)
         self.add_argument("nr_cpus",    is_required=True,   default_value=6)
         self.add_argument("mem",        is_required=True,   default_value=12)
         self.add_argument("bed",        is_resource=True,   is_required=False)
