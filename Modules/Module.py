@@ -147,8 +147,15 @@ class Module(object):
                                                                                                         self.__class__.__name__))
             raise RuntimeError("Attempt to get undeclared input type for module!")
         val = self.arguments[key].get_value()
+
+        # Convert GAPFile to path string
         if isinstance(val, GAPFile):
             return val.get_path()
+
+        # Convert list of GAPFiles to list of path strings
+        elif isinstance(val, list) and isinstance(val[0], GAPFile):
+            return [file_val.get_path() for file_val in val]
+
         return val
 
     def get_arguments(self):
