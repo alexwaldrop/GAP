@@ -33,7 +33,7 @@ class Mosdepth(Module):
         mosdepth_out    = self.get_output("mosdepth_dist")
 
         # Get output prefix
-        out_prefix = mosdepth_out.split(".mosdepth.")[0]
+        out_prefix = mosdepth_out.get_path().split(".mosdepth.")[0]
 
         # Generate mosdepth command with subset bed
         if target_bed is not None:
