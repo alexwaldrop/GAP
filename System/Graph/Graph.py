@@ -137,17 +137,22 @@ class Graph(object):
         adj_list  = {}
 
         for task_id in self.config:
-
-            task_data = self.config[task_id]
-
-            adj_list[task_id] = task_data.pop("input_from")
-            tasks[task_id] = Task(task_id, **task_data)
+            task_data           = self.config[task_id]
+            adj_list[task_id]   = task_data.pop("input_from")
+            tasks[task_id]      = Task(task_id, **task_data)
 
         return tasks, adj_list
 
     def __check_adjacency_list(self, runtime=False):
         errors = False
         for task, adj_tasks in self.adj_list.iteritems():
+
+            # Enforce uniqueness of task inputs. Duplicate entries are probably a mistake so better to just throw error
+            if len(adj_tasks) != len(set(adj_tasks)):
+                logging.error("Incorrect pipeline graph! Task '%s' has one or more duplicate input tasks! "
+                              "Task inputs must be unique." % task)
+                errors = True
+
             for adj_task in adj_tasks:
                 if adj_task not in self.tasks:
                     if not runtime:
