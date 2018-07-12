@@ -8,6 +8,7 @@ class MakeCNVPoN(Merger):
     def define_input(self):
         self.add_argument("bam",            is_required=True)
         self.add_argument("bam_idx",        is_required=True)
+        self.add_argument("pooled_normal",  is_required=True)
         self.add_argument("cnvkit",         is_required=True, is_resource=True)
         self.add_argument("ref",            is_required=True, is_resource=True)
         self.add_argument("targets",        is_required=True, is_resource=True)
@@ -24,19 +25,24 @@ class MakeCNVPoN(Merger):
     def define_command(self):
 
         # Get arguments
-        bams        = self.get_argument("bam")
-        cnvkit      = self.get_argument("cnvkit")
-        ref         = self.get_argument("ref")
-        targets     = self.get_argument("targets")
-        access      = self.get_argument("access")
-        method      = self.get_argument("method")
-        nr_cpus     = self.get_argument("nr_cpus")
+        bams            = self.get_argument("bam")
+        cnvkit          = self.get_argument("cnvkit")
+        pooled_normals  = self.get_argument("pooled_normal")
+        ref             = self.get_argument("ref")
+        targets         = self.get_argument("targets")
+        access          = self.get_argument("access")
+        method          = self.get_argument("method")
+        nr_cpus         = self.get_argument("nr_cpus")
 
         #get the filename which store Panel of Normal ref cnn
         ref_cnn = self.get_output("ref_cnn")
 
         #join cns file names with space delimiter
-        bams = " ".join(bams)
+        pooled_normal_bams = []
+        for i in range(len(bams)):
+            if pooled_normals[i]:
+                pooled_normal_bams.append(bams[i])
+        bams = " ".join(pooled_normal_bams)
 
         # Get current working dir
         working_dir = self.get_output_dir()
