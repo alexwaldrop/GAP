@@ -8,7 +8,6 @@ class Gistic2(Module):
     def define_input(self):
         self.add_argument("sample_name",        is_required=True)
         self.add_argument("gistic2",            is_required=True, is_resource=True)
-        self.add_argument("analysis_type",      is_required=True)
         self.add_argument("export",             is_required=True)
         self.add_argument("refgene_mat",        is_required=True, is_resource=True)
         self.add_argument("genegistic",         is_required=True, default_value=1)
@@ -26,16 +25,7 @@ class Gistic2(Module):
         self.add_argument("mem",                is_required=True, default_value="nr_cpus * 2")
 
     def define_output(self):
-
-        #get the anlysis type
-        analysis_type = self.get_argument("analysis_type")
-
-        if analysis_type == "tumor":
-            self.add_output("gistic_output_dir", "gistic_tumors_only")
-        elif analysis_type == "normal":
-            self.add_output("gistic_output_dir", "gistic_normals_only")
-        else:
-            raise NotImplementedError("Analysis type {0} is not implemented yet.".format(analysis_type))
+        self.add_output("gistic_output_dir", self.get_output_dir())
 
     def define_command(self):
 
