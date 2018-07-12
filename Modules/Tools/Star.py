@@ -17,6 +17,7 @@ class Star(Module):
         self.add_argument("out_unmapped_within_sam",    default_value="Within")
         self.add_argument("output_file_type",           default_value="BAM SortedByCoordinate")
         self.add_argument("twopass_mode",               default_value="None")
+        self.add_argument("read_group",                 is_required=True)
         self.add_argument("nr_cpus",                    is_required=True, default_value=8)
         self.add_argument("mem",                        is_required=True, default_value=30)
 
@@ -41,11 +42,12 @@ class Star(Module):
         out_unmapped_within_sam     = self.get_argument("out_unmapped_within_sam")
         output_file_type            = self.get_argument("output_file_type")
         twopass_mode                = self.get_argument("twopass_mode")
+        read_group                  = self.get_argument("read_group")
         nr_cpus                     = self.get_argument("nr_cpus")
         bam                         = self.get_output("bam").get_path()
 
         # Generate output file name prefix for STAR
-        output_file_name_prefix = bam.split(".")[0]
+        output_file_name_prefix = bam.split(".")[0] + "."
 
         # Check the input FASTQ format
         if R1.endswith(".gz"):
@@ -53,16 +55,21 @@ class Star(Module):
         else:
             read_file_command = "-"
 
+        # remove @RG text from the read group string as STAR adds it automatically and
+        # required read group line to starts with ID
+        read_group = read_group.replace("@RG\\t", "")
+        read_group = read_group.replace("\\t", " ")
+
         # Design command line based on read type (i.e. paired-end or single-end)
         if self.get_argument("R2") is not None:
-            cmd = "{0} --runThreadN {1} --genomeDir {2} --readFilesIn {3} {4} --outFileNamePrefix {5} --readFilesCommand {6} \
-                       --quantMode {7} --outSAMunmapped {8} --outSAMtype {9} --twopassMode {10} !LOG3!".format\
+            cmd = "{0} --runThreadN {1} --genomeDir {2} --readFilesIn {3} {4} --outFileNamePrefix {5} --readFilesCommand {6} " \
+                  "--quantMode {7} --outSAMunmapped {8} --outSAMtype {9} --twopassMode {10} --outSAMattrRGline {11} !LOG3!".format\
                         (star, nr_cpus, ref, R1, R2, output_file_name_prefix, read_file_command, quant_mod,
-                         out_unmapped_within_sam, output_file_type, twopass_mode)
+                         out_unmapped_within_sam, output_file_type, twopass_mode, read_group)
         else:
-            cmd = "{0} --runThreadN {1} --genomeDir {2} --readFilesIn {3} --outFileNamePrefix {4} --readFilesCommand {5} \
-                        --quantMode {6} --outSAMunmapped {7} --outSAMtype {8} --twopassMode {9} !LOG3!".format\
+            cmd = "{0} --runThreadN {1} --genomeDir {2} --readFilesIn {3} --outFileNamePrefix {4} --readFilesCommand {5} " \
+                  "--quantMode {6} --outSAMunmapped {7} --outSAMtype {8} --twopassMode {9} --outSAMattrRGline {10} !LOG3!".format\
                        (star, nr_cpus, ref, R1, output_file_name_prefix, read_file_command, quant_mod,
-                        out_unmapped_within_sam, output_file_type, twopass_mode)
+                        out_unmapped_within_sam, output_file_type, twopass_mode, read_group)
 
         return cmd
