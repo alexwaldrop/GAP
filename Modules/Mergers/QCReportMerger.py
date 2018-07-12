@@ -9,8 +9,8 @@ class Rbind(Merger):
     def define_input(self):
         self.add_argument("qc_report",  is_required=True)
         self.add_argument("qc_parser",  is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",    is_required=True, default_value=1)
-        self.add_argument("mem",        is_required=True, default_value=1)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=4)
 
     def define_output(self):
         # Declare output summary filename
@@ -37,8 +37,8 @@ class Cbind(PseudoMerger):
     def define_input(self):
         self.add_argument("qc_report",  is_required=True)
         self.add_argument("qc_parser",  is_required=True, is_resource=True)
-        self.add_argument("nr_cpus",    is_required=True, default_value=1)
-        self.add_argument("mem",        is_required=True, default_value=1)
+        self.add_argument("nr_cpus",    is_required=True, default_value=2)
+        self.add_argument("mem",        is_required=True, default_value=4)
 
     def define_output(self):
         # Declare output summary filename
