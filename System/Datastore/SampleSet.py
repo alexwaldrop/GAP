@@ -182,7 +182,12 @@ class SampleSet (object):
             else:
                 # Create list from singleton value and add new value to list
                 data[key] = [data[key], value]
-        else:
+
+        elif not isinstance(value, list):
             data[key] = value
+
+        else:
+            data[key] = [value]
+
         return data
 
