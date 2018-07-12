@@ -63,27 +63,35 @@ class Platform(object):
     def get_processor(self, task_id, nr_cpus, mem, disk_space):
         # Initialize new processor and register with platform
 
+        logging.debug("(%s) Checking platform locked..." % task_id)
         if self.__locked:
             logging.error("Platform failed to initialize processor with id '%s'! Platform is currently locked!" % task_id)
             raise TaskPlatformLockError("Cannot get processor while platform is locked!")
+        logging.debug("(%s) Platform ain't locked!" % task_id)
 
         # Check to see if processor is asking for too many resources
+        logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
         self.__check_processor(task_id, nr_cpus, mem, disk_space)
+        logging.debug("(%s) Processor ain't too big!" % task_id)
 
         # Ensure unique name for processor
         name        = "proc-%s-%s-%s" % (self.name[:20], task_id[:25], self.generate_unique_id())
         logging.info("Creating processor '%s' for task '%s'..." % (name, task_id))
 
         # Initialize new processor with enough CPU/mem/disk space to complete task
+        logging.debug("(%s) Checking to see if processor is too big for platform..." % task_id)
         processor   = self.init_task_processor(name, nr_cpus, mem, disk_space)
+        logging.debug("(%s) Platform sucessfully initialized processor for task!" % task_id)
 
         # Add to list of processors if not already there
-        if task_id not in self.processors:
-            with self.platform_lock:
+        with self.platform_lock:
+            logging.debug("(%s) We starting to put that processor in the spot..." % task_id)
+            if task_id not in self.processors:
                 self.processors[task_id] = processor
-        else:
-            logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
-            raise RuntimeError("Platform attempted to create duplicate task processor!")
+                logging.debug("(%s) We put that processor in the spot!" % task_id)
+            else:
+                logging.error("Platform cannot create task processor with duplicate id: '%s'!" % task_id)
+                raise RuntimeError("Platform attempted to create duplicate task processor!")
 
         return self.processors[task_id]
 
@@ -183,14 +191,15 @@ class Platform(object):
     def __get_curr_usage(self):
         # Return total cpus, mem, disk space currently in use on platform
         with self.platform_lock:
-            cpu = 0
-            mem = 0
-            disk_space = 0
-            for processor_id, processor in self.processors.iteritems():
-                if processor.get_status() > Processor.OFF:
-                    cpu += processor.get_nr_cpus()
-                    mem += processor.get_mem()
-                    disk_space += processor.get_disk_space()
+            procs = self.processors.values()
+        cpu = 0
+        mem = 0
+        disk_space = 0
+        for processor in procs:
+            if processor.get_status() > Processor.OFF:
+                cpu += processor.get_nr_cpus()
+                mem += processor.get_mem()
+                disk_space += processor.get_disk_space()
         return cpu, mem, disk_space
 
     ####### ABSTRACT METHODS TO BE IMPLEMENTED BY INHERITING CLASSES
