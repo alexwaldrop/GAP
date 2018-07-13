@@ -193,10 +193,8 @@ class MergeBQSRs(_GATKBase):
         # Obtaining the arguments
         bqsrs_in    = self.get_argument("BQSR_report")
         bqsr_out    = self.get_output("BQSR_report")
-
         gatk_cmd    = self.get_gatk_command()
-
-        return "{0} GatherBQSRReports {1} -O {2}".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
+        return "{0} GatherBQSRReports --input {1} -O {2} !LOG3!".format(gatk_cmd, " --input ".join(bqsrs_in), bqsr_out)
 
 class CatVariants(_GATKBase):
     # Merger module intended to merge gVCF files within samples (i.e. re-combine chromosomes)
