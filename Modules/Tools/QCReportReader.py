@@ -219,6 +219,6 @@ class GetNumReadsTrimmomatic(_QCReportReader):
 
         # Sum R1, R2 for paired end reads (will also work for single end reads where only one record is present)
         num_reads = sum(num_reads)
-
+        logging.info("Num reads: %s" % num_reads)
         # Update num reads
         self.set_output("nr_reads", num_reads)
