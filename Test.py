@@ -3,13 +3,69 @@ from System.Graph import Graph
 from System.Datastore import ResourceKit, SampleSet
 from System.Validators.GraphValidator import GraphValidator
 from System.Platform import StorageHelper, DockerHelper
-from System.Platform.Google import GoogleStandardProcessor, GoogleCloudHelper
-from Main import configure_import_paths, configure_logging
+from System.Platform.Google import GoogleCloudHelper
+from GAP import configure_import_paths, configure_logging
 import time
 import importlib
 
 configure_import_paths()
 configure_logging(3)
+
+
+ss_file = "/home/alex/Desktop/projects/gap/test/test_runs/qc_report_merge/ss.json"
+ss = SampleSet(ss_file)
+print ss.get_paths()
+print ss.get_data(data_type="qc_report", samples="Jijoye_early2")
+print ss.get_data(data_type="qc_report", samples="Jijoye_early1")
+
+exit(0)
+
+
+
+######################### Test GCH ls command
+
+print GoogleCloudHelper.ls("gs://derp_test/new_gap_test_1/**dummy.txt")
+print GoogleCloudHelper.ls("gs://derp_test/*gasdf")
+
+exit(0)
+
+######################### Test GAPfile updating with modules
+from System.Platform.Google import GooglePlatform
+from System.Datastore import Datastore
+
+# Test cycle checking algorithm
+graph_file = "/home/alex/Desktop/projects/gap/test/test_runs/simple_success/graph.config"
+graph = Graph(graph_file)
+
+#print graph
+rk_file = "/home/alex/Desktop/projects/gap/test/test_runs/simple_success/rk.config"
+rk = ResourceKit(rk_file)
+
+ss_file = "/home/alex/Desktop/projects/gap/test/test_runs/simple_success/ss.json"
+ss = SampleSet(ss_file)
+
+plat_file = "/home/alex/Desktop/projects/gap/test/test_runs/simple_success/plat.config"
+plat = GooglePlatform("test_plat", plat_file, "gs://derp_test/dis_a_test_3/")
+
+dstore = Datastore(graph, rk, ss, plat)
+
+
+# Test graph splitting
+t1 = graph.tasks["tool1_FASTQC"].module
+dstore.set_task_input_args("tool1_FASTQC")
+
+print t1.get_arguments()
+print t1.get_argument("java")
+
+input_files = dstore.get_task_input_files("tool1_FASTQC")
+print input_files
+
+for input_file in input_files:
+    print "Before: %s" % input_file.get_path()
+    input_file.update_path(new_dir="/data/tool1_FASTQC/")
+    print "After: %s" % input_file.get_path()
+
+print t1.get_argument("java")
 
 ######################### Test GoogleCloud helper
 
@@ -101,7 +157,7 @@ iv = InputValidator(rk, ss, sh, dh)
 
 try:
     proc.create()
-    proc.configure_SSH()
+    proc.__configure_SSH()
     print "We validatin'"
     print iv.validate()
     print "We done validatin'"
