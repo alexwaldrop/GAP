@@ -68,7 +68,7 @@ class FastQC(_QCParser):
         fastqc_summary_file = os.path.join(fastqc_dir, "fastqc_data.txt")
 
         # Get output filename
-        output = "%s.fastqcsummary.txt" % fastqc_summary_file.split("_fastqc")[0]
+        output = "%s.fastqcsummary.txt" % fastqc_summary_file.split("_fastqc/fastqc_data.txt")[0]
 
         # Generate base command
         cmd = "%s FastQC -i %s -s %s" % (qc_parser, fastqc_summary_file, sample_name)
