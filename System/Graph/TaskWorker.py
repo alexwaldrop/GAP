@@ -60,6 +60,7 @@ class TaskWorker(Thread):
     def get_status(self):
         # Returns instance status with threading.lock() to prevent race conditions
         with self.status_lock:
+            logging.debug("(%s) TaskWorker status: %s" % (self.task.get_ID(), self.status))
             return self.status
 
     def get_task(self):
@@ -126,14 +127,24 @@ class TaskWorker(Thread):
 
                 # Get processor capable of running job
                 self.proc = self.platform.get_processor(self.task.get_ID(), cpus, mem, disk_space)
+                logging.debug("(%s) Successfully acquired processor!" % self.task.get_ID())
+
+                # Check to see if pipeline has been cancelled
+                self.__check_cancelled()
 
                 self.module_executor = ModuleExecutor(task_id=self.task.get_ID(),
                                                       processor=self.proc,
                                                       workspace=task_workspace,
                                                       docker_image=docker_image)
 
+                # Check to see if pipeline has been cancelled
+                self.__check_cancelled()
+
                 # Load task inputs onto module executor
                 self.module_executor.load_input(input_files)
+
+                # Check to see if pipeline has been cancelled
+                self.__check_cancelled()
 
                 # Update module's command to reflect changes to input paths
                 self.set_status(self.RUNNING)
@@ -236,6 +247,7 @@ class TaskWorker(Thread):
 
         # Add sizes of each input file
         for input_file in input_files:
+            print input_file
             input_size += input_file.get_size()
 
         # Set size of desired disk
